@@ -117,13 +117,16 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - Preencher area_m2, typology, dicofre/freguesia via UI (Frações → editar) a partir das
   cadernetas. Aceitação: página Mercado mostra €/m² e desvio vs INE para as frações arrendadas.
 
-**P0-3 · Versionar e fazer deploy (Vercel)**
-- Objetivo: repo git privado + deploy. Passos: verificar .gitignore (`.env.local`, `dados/`,
-  `.next/`, `node_modules/` — CONFIRMAR antes do 1.º commit que nenhum ficheiro de dados reais
-  fica tracked), commit inicial, repo GitHub privado, projeto Vercel (env vars
-  NEXT_PUBLIC_SUPABASE_URL/ANON_KEY), Supabase Auth → adicionar URL do Vercel aos redirects.
-- Aceitação: build Vercel verde; login funciona no domínio; RLS impede escrita de viewer.
-- Armadilhas: nunca commitar `dados/`; o middleware usa cookies — testar auth em produção.
+**P0-3 · Versionar e fazer deploy (Vercel)** — ✅ FEITO 2026-07-20
+- Commit inicial `main` (60 ficheiros; .gitignore verificado: dados/ e .env* fora; identidade
+  git repo-local Miguel/margaridaministro2002@gmail.com, igual ao palpites).
+- **PRODUÇÃO: https://patrimonio-app-beryl.vercel.app** (projeto Vercel "patrimonio-app",
+  conta miguelferreira19, CLI autenticada). Deploy por `npx vercel@latest deploy --prod --yes`
+  (com o PATH do node Logitech). Sem env vars no Vercel: `src/lib/env.ts` tem fallbacks
+  (anon key é pública por design; RLS protege). Login verificado no domínio de produção.
+- FALTA (opcional): repo GitHub privado como backup/auto-deploy (hoje o deploy é manual por
+  CLI); Supabase Auth → definir Site URL para o domínio se um dia se usarem links por email
+  (password login funciona sem isso).
 
 **P0-4 · Contas da família (viewers)**
 - Objetivo: criar utilizadores para pai/tio/avô (viewers) via Admin → utilizadores; testar que
@@ -201,6 +204,11 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - Import por SQL Editor > wizard (superuser, idempotente, verificável). Wizard = casos pequenos.
 - Payments com `on conflict do nothing` — reimports nunca pisam marcações manuais.
 - Node só via pasta Logitech (CLAUDE.md); caminhos com espaços ("OneDrive - ISEG") → aspas.
+- **`src/components/ui.tsx` NÃO pode levar `"use client"`** (é módulo partilhado): as páginas
+  server passam `icon={LucideIcon}` a StatCard/EmptyState; com a diretiva cria-se uma fronteira
+  de serialização e TODAS essas páginas crasham em runtime (digest, build não apanha). Foi o
+  hotfix de 2026-07-20. Para reproduzir/validar sem login: página temporária em
+  `src/app/login/debug/page.tsx` (o middleware deixa passar tudo o que começa por /login).
 - `dados/` é gitignored e contém dados pessoais — nunca sair daí.
 - Sem commits/push sem pedido explícito do utilizador.
 

@@ -27,6 +27,7 @@ App interna (família) de gestão de ~50 arrendamentos: frações, contratos, re
 - Acento ÚNICO teal (ações `bg-teal-800`, ativo `teal-700`, focus `ring-teal-600`); base zinc; cores semânticas só para estado real (emerald=ok/pago, amber=atenção/parcial, red=crítico, zinc=neutro).
 - Forma: `rounded-lg` em tudo; `rounded-full` só badges. Números sempre `tabular-nums`; códigos matriciais e meses em `font-mono`.
 - Primitivas em `src/components/ui.tsx` (PageHeader, Card, StatCard, Table, Badge, Button, Modal, EmptyState) — usar SEMPRE estas, não inventar markup ad-hoc.
+- **`ui.tsx` é módulo PARTILHADO — nunca acrescentar `"use client"`** (páginas server passam `icon={LucideIcon}` como prop; a diretiva cria fronteira de serialização e crasha em runtime sem falhar o build). Componentes com hooks vão para ficheiros próprios.
 - Proibido na UI: travessões "—", emojis, gradientes néon/roxos, animações infinitas.
 
 ## Estrutura
