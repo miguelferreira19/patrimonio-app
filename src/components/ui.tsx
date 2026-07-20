@@ -5,7 +5,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ArrowDown, ArrowUp, X, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -171,9 +171,35 @@ export function Badge({
 }
 
 // ---------- Tabela ----------
-export function Table({ children, className }: { children: ReactNode; className?: string }) {
+// `edgeFade`: indício visual (CSS puro, sem listeners de scroll) de que a tabela
+// continua para a direita — usado nas grelhas largas (Pagamentos) onde o scroll
+// horizontal é aceitável. Duas camadas de fundo: uma sombra "presa" ao contentor
+// (background-attachment: scroll) e uma cobertura branca "presa" ao fim do
+// conteúdo (background-attachment: local) que a tapa assim que se chega ao fim.
+const edgeFadeStyle: CSSProperties = {
+  backgroundImage:
+    "linear-gradient(to left, #fff, #fff 24px, rgba(255,255,255,0) 44px), " +
+    "linear-gradient(to left, rgba(24,24,27,0.16), rgba(24,24,27,0) 24px)",
+  backgroundRepeat: "no-repeat, no-repeat",
+  backgroundPosition: "right top, right top",
+  backgroundSize: "44px 100%, 24px 100%",
+  backgroundAttachment: "local, scroll",
+};
+
+export function Table({
+  children,
+  className,
+  edgeFade,
+}: {
+  children: ReactNode;
+  className?: string;
+  edgeFade?: boolean;
+}) {
   return (
-    <div className={cn("overflow-x-auto", className)}>
+    <div
+      className={cn("overflow-x-auto", className)}
+      style={edgeFade ? edgeFadeStyle : undefined}
+    >
       <table className="w-full min-w-max border-collapse text-sm">{children}</table>
     </div>
   );

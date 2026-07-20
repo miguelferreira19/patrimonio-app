@@ -73,15 +73,19 @@ export function ExpensesClient({
       </div>
 
       <Card>
-        <div className="mb-3 flex flex-wrap gap-2">
-          <Select value={year} onChange={(e) => setYear(e.target.value)} className="max-w-28">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Select value={year} onChange={(e) => setYear(e.target.value)} className="w-full sm:w-auto sm:max-w-28">
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
             ))}
           </Select>
-          <Select value={category} onChange={(e) => setCategory(e.target.value)} className="max-w-40">
+          <Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full sm:w-auto sm:max-w-40"
+          >
             <option value="">Todas as categorias</option>
             {Object.entries(EXPENSE_CATEGORY_LABEL).map(([k, v]) => (
               <option key={k} value={k}>
@@ -89,7 +93,11 @@ export function ExpensesClient({
               </option>
             ))}
           </Select>
-          <Select value={propertyId} onChange={(e) => setPropertyId(e.target.value)} className="max-w-56">
+          <Select
+            value={propertyId}
+            onChange={(e) => setPropertyId(e.target.value)}
+            className="w-full sm:w-auto sm:max-w-56"
+          >
             <option value="">Todas as frações</option>
             {properties.map((p) => (
               <option key={p.id} value={p.id}>
@@ -102,43 +110,79 @@ export function ExpensesClient({
         {filtered.length === 0 ? (
           <EmptyState icon={ReceiptText}>Sem despesas para os filtros escolhidos.</EmptyState>
         ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Data</Th>
-                <Th>Fração</Th>
-                <Th>Categoria</Th>
-                <Th>Descrição</Th>
-                <Th className="text-right">Valor</Th>
-                {isAdmin && <Th />}
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop/tablet */}
+            <div className="hidden md:block">
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Data</Th>
+                    <Th>Fração</Th>
+                    <Th>Categoria</Th>
+                    <Th>Descrição</Th>
+                    <Th className="text-right">Valor</Th>
+                    {isAdmin && <Th />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((e) => (
+                    <tr key={e.id} className="hover:bg-zinc-50">
+                      <Td className="whitespace-nowrap tabular-nums">{fmtDate(e.expense_date)}</Td>
+                      <Td className="max-w-52 truncate">
+                        {e.property_id
+                          ? (propertyName.get(e.property_id) ?? "?")
+                          : e.landlord_id
+                            ? `Geral · ${landlordName.get(e.landlord_id) ?? "?"}`
+                            : "Geral"}
+                      </Td>
+                      <Td>{EXPENSE_CATEGORY_LABEL[e.category]}</Td>
+                      <Td className="max-w-56 truncate">{e.description ?? "n/d"}</Td>
+                      <Td className="text-right tabular-nums">{fmtEur(e.amount, 2)}</Td>
+                      {isAdmin && (
+                        <Td>
+                          <div className="flex gap-1">
+                            <ExpenseFormButton properties={properties} expense={e} />
+                            <DeleteExpenseButton id={e.id} />
+                          </div>
+                        </Td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+
+            {/* Mobile: um cartão por despesa. */}
+            <div className="space-y-2 md:hidden">
               {filtered.map((e) => (
-                <tr key={e.id} className="hover:bg-zinc-50">
-                  <Td className="whitespace-nowrap tabular-nums">{fmtDate(e.expense_date)}</Td>
-                  <Td className="max-w-52 truncate">
-                    {e.property_id
-                      ? (propertyName.get(e.property_id) ?? "?")
-                      : e.landlord_id
-                        ? `Geral · ${landlordName.get(e.landlord_id) ?? "?"}`
-                        : "Geral"}
-                  </Td>
-                  <Td>{EXPENSE_CATEGORY_LABEL[e.category]}</Td>
-                  <Td className="max-w-56 truncate">{e.description ?? "n/d"}</Td>
-                  <Td className="text-right tabular-nums">{fmtEur(e.amount, 2)}</Td>
+                <div key={e.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-zinc-800">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
+                      <p className="truncate text-xs text-zinc-500">
+                        {e.property_id
+                          ? (propertyName.get(e.property_id) ?? "?")
+                          : e.landlord_id
+                            ? `Geral · ${landlordName.get(e.landlord_id) ?? "?"}`
+                            : "Geral"}
+                      </p>
+                    </div>
+                    <p className="shrink-0 tabular-nums font-semibold text-zinc-800">{fmtEur(e.amount, 2)}</p>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-zinc-500">
+                    <span className="tabular-nums">{fmtDate(e.expense_date)}</span>
+                    {e.description && <span className="truncate">{e.description}</span>}
+                  </div>
                   {isAdmin && (
-                    <Td>
-                      <div className="flex gap-1">
-                        <ExpenseFormButton properties={properties} expense={e} />
-                        <DeleteExpenseButton id={e.id} />
-                      </div>
-                    </Td>
+                    <div className="mt-2 flex gap-1 border-t border-zinc-100 pt-2">
+                      <ExpenseFormButton properties={properties} expense={e} />
+                      <DeleteExpenseButton id={e.id} />
+                    </div>
                   )}
-                </tr>
+                </div>
               ))}
-            </tbody>
-          </Table>
+            </div>
+          </>
         )}
       </Card>
     </div>

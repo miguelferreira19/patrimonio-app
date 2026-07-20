@@ -206,19 +206,47 @@ export default async function DashboardPage() {
           {lateRows.length === 0 ? (
             <EmptyState icon={CheckCircle2}>Sem rendas em atraso.</EmptyState>
           ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Fração</Th>
-                  <Th>Inquilino</Th>
-                  <Th className="text-right">Meses em falta</Th>
-                  <Th className="text-right">€</Th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="hidden md:block">
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th>Fração</Th>
+                      <Th>Inquilino</Th>
+                      <Th className="text-right">Meses em falta</Th>
+                      <Th className="text-right">€</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lateRows.map((r) => (
+                      <tr key={r.contract.id} className="hover:bg-zinc-50">
+                        <Td>
+                          {r.property ? (
+                            <Link
+                              href={`/fracoes/${r.property.id}`}
+                              className="font-medium text-teal-700 hover:underline"
+                            >
+                              {r.property.name}
+                            </Link>
+                          ) : (
+                            "?"
+                          )}
+                        </Td>
+                        <Td>{r.contract.tenant_name}</Td>
+                        <Td className="text-right tabular-nums">{r.monthsLate}</Td>
+                        <Td className="text-right tabular-nums text-red-700">{fmtEur(r.totalLate)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+              <div className="space-y-2 md:hidden">
                 {lateRows.map((r) => (
-                  <tr key={r.contract.id} className="hover:bg-zinc-50">
-                    <Td>
+                  <div
+                    key={r.contract.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+                  >
+                    <div className="min-w-0">
                       {r.property ? (
                         <Link
                           href={`/fracoes/${r.property.id}`}
@@ -227,16 +255,20 @@ export default async function DashboardPage() {
                           {r.property.name}
                         </Link>
                       ) : (
-                        "?"
+                        <span className="font-medium text-zinc-700">?</span>
                       )}
-                    </Td>
-                    <Td>{r.contract.tenant_name}</Td>
-                    <Td className="text-right tabular-nums">{r.monthsLate}</Td>
-                    <Td className="text-right tabular-nums text-red-700">{fmtEur(r.totalLate)}</Td>
-                  </tr>
+                      <p className="truncate text-xs text-zinc-500">{r.contract.tenant_name}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="tabular-nums font-semibold text-red-700">{fmtEur(r.totalLate)}</p>
+                      <p className="tabular-nums text-xs text-zinc-500">
+                        {r.monthsLate} {r.monthsLate === 1 ? "mês" : "meses"}
+                      </p>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </Table>
+              </div>
+            </>
           )}
         </Card>
 
@@ -253,33 +285,60 @@ export default async function DashboardPage() {
               )}
             </EmptyState>
           ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Fração</Th>
-                  <Th>Desvio</Th>
-                  <Th className="text-right">Potencial/mês</Th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="hidden md:block">
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th>Fração</Th>
+                      <Th>Desvio</Th>
+                      <Th className="text-right">Potencial/mês</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {belowMarket.map((r) => (
+                      <tr key={r.property.id} className="hover:bg-zinc-50">
+                        <Td>
+                          <Link
+                            href={`/fracoes/${r.property.id}`}
+                            className="font-medium text-teal-700 hover:underline"
+                          >
+                            {r.property.name}
+                          </Link>
+                        </Td>
+                        <Td><DeviationBadge deviation={r.mv.deviation} /></Td>
+                        <Td className="text-right tabular-nums text-amber-700">
+                          {r.mv.gapEurMonth ? `+${fmtEur(r.mv.gapEurMonth)}` : "n/d"}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+              <div className="space-y-2 md:hidden">
                 {belowMarket.map((r) => (
-                  <tr key={r.property.id} className="hover:bg-zinc-50">
-                    <Td>
+                  <div
+                    key={r.property.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+                  >
+                    <div className="min-w-0">
                       <Link
                         href={`/fracoes/${r.property.id}`}
                         className="font-medium text-teal-700 hover:underline"
                       >
                         {r.property.name}
                       </Link>
-                    </Td>
-                    <Td><DeviationBadge deviation={r.mv.deviation} /></Td>
-                    <Td className="text-right tabular-nums text-amber-700">
+                      <div className="mt-1">
+                        <DeviationBadge deviation={r.mv.deviation} />
+                      </div>
+                    </div>
+                    <p className="shrink-0 tabular-nums font-semibold text-amber-700">
                       {r.mv.gapEurMonth ? `+${fmtEur(r.mv.gapEurMonth)}` : "n/d"}
-                    </Td>
-                  </tr>
+                    </p>
+                  </div>
                 ))}
-              </tbody>
-            </Table>
+              </div>
+            </>
           )}
         </Card>
       </div>

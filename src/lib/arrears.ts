@@ -110,8 +110,10 @@ export interface ArrearsSummary {
 
 // ---------- Helpers de mês (chave "YYYY-MM-01") ----------
 
-/** Normaliza qualquer data ISO ("YYYY-MM-DD" ou "YYYY-MM-DDTHH:mm:ssZ") para a chave do 1º dia do mês. */
-function toMonthKey(dateStr: string): string {
+/** Normaliza qualquer data ISO ("YYYY-MM-DD" ou "YYYY-MM-DDTHH:mm:ssZ") para a chave do 1º dia do mês.
+ *  Exportada para reutilização fora deste módulo (ex.: histórico de pagamentos da fração) — a
+ *  mesma normalização, sem duplicar a regra. */
+export function toMonthKey(dateStr: string): string {
   return `${dateStr.slice(0, 7)}-01`;
 }
 

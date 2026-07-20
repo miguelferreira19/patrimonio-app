@@ -106,8 +106,12 @@ export function PaymentsGrid({
 
   return (
     <Card>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Select value={landlord} onChange={(e) => setLandlord(e.target.value)} className="max-w-44">
+      <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+        <Select
+          value={landlord}
+          onChange={(e) => setLandlord(e.target.value)}
+          className="w-full sm:w-auto sm:max-w-44"
+        >
           <option value="">Todos os senhorios</option>
           {landlords.map((l) => (
             <option key={l.id} value={l.id}>
@@ -124,7 +128,7 @@ export function PaymentsGrid({
           />
           Só com rendas em falta
         </label>
-        <div className="ml-auto">
+        <div className="sm:ml-auto">
           {lateCount > 0 ? (
             <Badge tone="red">{lateCount} renda(s) em falta</Badge>
           ) : (
@@ -133,16 +137,16 @@ export function PaymentsGrid({
         </div>
       </div>
 
-      <Table>
+      <Table edgeFade>
         <thead>
           <tr>
-            <Th className="sticky left-0 z-10 bg-white">Fração / Inquilino</Th>
+            <Th className="sticky left-0 top-0 z-30 bg-white">Fração / Inquilino</Th>
             {months.map((m) => (
               <Th
                 key={m}
                 className={cn(
-                  "text-center font-mono normal-case tracking-normal",
-                  m === current && "bg-teal-50 text-teal-800",
+                  "sticky top-0 z-20 text-center font-mono normal-case tracking-normal",
+                  m === current ? "bg-teal-50 text-teal-800" : "bg-white",
                 )}
               >
                 {monthLabel(m)}
@@ -179,7 +183,7 @@ export function PaymentsGrid({
                         state === "pago" ? "pago" : state === "falta" ? "em falta" : state === "aguarda" ? "dentro do prazo" : "sem contrato"
                       }`}
                       className={cn(
-                        "inline-flex h-8 w-16 items-center justify-center gap-1 rounded-lg text-xs font-medium transition-colors",
+                        "inline-flex h-10 w-16 items-center justify-center gap-1 rounded-lg text-xs font-medium transition-colors sm:h-8",
                         cellTone(state),
                         clickable &&
                           "hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1",

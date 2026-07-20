@@ -94,54 +94,105 @@ export default async function MercadoPage() {
             title="Frações vs. mercado"
             subtitle="Ordenado das mais abaixo do mercado para as mais acima"
           >
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Fração</Th>
-                  <Th>Freguesia</Th>
-                  <Th className="text-right">Renda</Th>
-                  <Th className="text-right">€/m²</Th>
-                  <Th className="text-right">Mediana €/m²</Th>
-                  <Th>Desvio</Th>
-                  <Th className="text-right">Potencial/mês</Th>
-                  <Th className="text-right">Valor estimado</Th>
-                  <Th className="text-right">Yield bruto</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ property, contract, mv }) => (
-                  <tr key={property.id} className="hover:bg-zinc-50">
-                    <Td>
-                      <Link
-                        href={`/fracoes/${property.id}`}
-                        className="font-medium text-teal-700 hover:underline"
-                      >
-                        {property.name}
-                      </Link>
-                    </Td>
-                    <Td>
-                      {property.parish ?? "n/d"}
-                      {mv.benchmark?.level === "concelho" && (
-                        <span className="ml-1 text-[10px] text-zinc-400">(mediana concelho)</span>
-                      )}
-                    </Td>
-                    <Td className="text-right tabular-nums">{fmtEur(contract?.rent ?? null)}</Td>
-                    <Td className="text-right tabular-nums">
-                      {mv.rentPerM2 !== null ? fmtNum(mv.rentPerM2, 1) : "n/d"}
-                    </Td>
-                    <Td className="text-right tabular-nums">
-                      {mv.benchmarkRentM2 !== null ? fmtNum(mv.benchmarkRentM2, 1) : "n/d"}
-                    </Td>
-                    <Td><DeviationBadge deviation={mv.deviation} /></Td>
-                    <Td className="text-right tabular-nums text-amber-700">
-                      {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
-                    </Td>
-                    <Td className="text-right tabular-nums">{fmtEur(mv.estimatedValue)}</Td>
-                    <Td className="text-right tabular-nums">{fmtPct(mv.grossYield, 1)}</Td>
+            {/* Desktop/tablet */}
+            <div className="hidden md:block">
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Fração</Th>
+                    <Th>Freguesia</Th>
+                    <Th className="text-right">Renda</Th>
+                    <Th className="text-right">€/m²</Th>
+                    <Th className="text-right">Mediana €/m²</Th>
+                    <Th>Desvio</Th>
+                    <Th className="text-right">Potencial/mês</Th>
+                    <Th className="text-right">Valor estimado</Th>
+                    <Th className="text-right">Yield bruto</Th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {rows.map(({ property, contract, mv }) => (
+                    <tr key={property.id} className="hover:bg-zinc-50">
+                      <Td>
+                        <Link
+                          href={`/fracoes/${property.id}`}
+                          className="font-medium text-teal-700 hover:underline"
+                        >
+                          {property.name}
+                        </Link>
+                      </Td>
+                      <Td>
+                        {property.parish ?? "n/d"}
+                        {mv.benchmark?.level === "concelho" && (
+                          <span className="ml-1 text-[10px] text-zinc-400">(mediana concelho)</span>
+                        )}
+                      </Td>
+                      <Td className="text-right tabular-nums">{fmtEur(contract?.rent ?? null)}</Td>
+                      <Td className="text-right tabular-nums">
+                        {mv.rentPerM2 !== null ? fmtNum(mv.rentPerM2, 1) : "n/d"}
+                      </Td>
+                      <Td className="text-right tabular-nums">
+                        {mv.benchmarkRentM2 !== null ? fmtNum(mv.benchmarkRentM2, 1) : "n/d"}
+                      </Td>
+                      <Td><DeviationBadge deviation={mv.deviation} /></Td>
+                      <Td className="text-right tabular-nums text-amber-700">
+                        {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
+                      </Td>
+                      <Td className="text-right tabular-nums">{fmtEur(mv.estimatedValue)}</Td>
+                      <Td className="text-right tabular-nums">{fmtPct(mv.grossYield, 1)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+
+            {/* Mobile: um cartão por fração, com todos os dados da linha. */}
+            <div className="space-y-2 md:hidden">
+              {rows.map(({ property, contract, mv }) => (
+                <div key={property.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/fracoes/${property.id}`}
+                      className="font-medium text-teal-700 hover:underline"
+                    >
+                      {property.name}
+                    </Link>
+                    <DeviationBadge deviation={mv.deviation} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    {property.parish ?? "n/d"}
+                    {mv.benchmark?.level === "concelho" && " (mediana concelho)"}
+                  </p>
+                  <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+                    <div>
+                      <p className="text-[11px] text-zinc-400">Renda</p>
+                      <p className="tabular-nums font-medium text-zinc-800">{fmtEur(contract?.rent ?? null)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-zinc-400">€/m² (atual / mediana)</p>
+                      <p className="tabular-nums text-zinc-700">
+                        {mv.rentPerM2 !== null ? fmtNum(mv.rentPerM2, 1) : "n/d"} /{" "}
+                        {mv.benchmarkRentM2 !== null ? fmtNum(mv.benchmarkRentM2, 1) : "n/d"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-zinc-400">Potencial/mês</p>
+                      <p className="tabular-nums text-amber-700">
+                        {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-zinc-400">Valor estimado</p>
+                      <p className="tabular-nums text-zinc-800">{fmtEur(mv.estimatedValue)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[11px] text-zinc-400">Yield bruto</p>
+                      <p className="tabular-nums text-zinc-800">{fmtPct(mv.grossYield, 1)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
             {missingData > 0 && (
               <p className="mt-2 text-xs text-amber-700">
                 {missingData} fração(ões) arrendada(s) sem dados suficientes: preenche a área (m²)

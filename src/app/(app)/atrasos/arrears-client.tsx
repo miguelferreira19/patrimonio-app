@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   CalendarClock,
@@ -202,8 +203,12 @@ export function ArrearsClient({
           </EmptyState>
         ) : (
           <>
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Select value={landlordId} onChange={(e) => setLandlordId(e.target.value)} className="max-w-44">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Select
+                value={landlordId}
+                onChange={(e) => setLandlordId(e.target.value)}
+                className="w-full sm:w-auto sm:max-w-44"
+              >
                 <option value="">Todos os senhorios</option>
                 {landlords.map((l) => (
                   <option key={l.id} value={l.id}>
@@ -214,7 +219,7 @@ export function ArrearsClient({
               <Select
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as ArrearsSeverity | "")}
-                className="max-w-44"
+                className="w-full sm:w-auto sm:max-w-44"
               >
                 <option value="">Todas as gravidades</option>
                 <option value="critico">Crítico</option>
@@ -227,38 +232,127 @@ export function ArrearsClient({
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Procurar por inquilino ou fração…"
-                className="max-w-xs"
+                className="w-full sm:max-w-xs"
               />
             </div>
 
             {filtered.length === 0 ? (
               <EmptyState icon={Search}>Sem contratos para os filtros escolhidos.</EmptyState>
             ) : (
-              <Table>
-                <thead>
-                  <tr>
-                    <Th className="w-8" />
-                    <Th>Fração</Th>
-                    <Th>Inquilino</Th>
-                    <Th>Senhorio(s)</Th>
-                    <Th className="text-right">Renda</Th>
-                    <Th>Último mês pago</Th>
-                    <Th className="text-right">Meses em atraso</Th>
-                    <Th className="text-right">Em falta (12m)</Th>
-                    <Th className="text-right">Dívida estimada</Th>
-                    <Th>Estado</Th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* Desktop/tablet: tabela com cabeçalho fixo ao fazer scroll vertical. */}
+                <div className="hidden md:block">
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th className="sticky top-0 z-10 w-8 bg-white" />
+                        <Th className="sticky top-0 z-10 bg-white">Fração</Th>
+                        <Th className="sticky top-0 z-10 bg-white">Inquilino</Th>
+                        <Th className="sticky top-0 z-10 bg-white">Senhorio(s)</Th>
+                        <Th className="sticky top-0 z-10 bg-white text-right">Renda</Th>
+                        <Th className="sticky top-0 z-10 bg-white">Último mês pago</Th>
+                        <Th className="sticky top-0 z-10 bg-white text-right">Meses em atraso</Th>
+                        <Th className="sticky top-0 z-10 bg-white text-right">Em falta (12m)</Th>
+                        <Th className="sticky top-0 z-10 bg-white text-right">Dívida estimada</Th>
+                        <Th className="sticky top-0 z-10 bg-white">Estado</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((row) => {
+                        const isOpen = expandedId === row.contractId;
+                        return (
+                          <Fragment key={row.contractId}>
+                            <tr
+                              onClick={() => setExpandedId(isOpen ? null : row.contractId)}
+                              className="cursor-pointer hover:bg-zinc-50"
+                            >
+                              <Td className="pr-0">
+                                <button
+                                  type="button"
+                                  aria-label={isOpen ? "Recolher detalhe mensal" : "Expandir detalhe mensal"}
+                                  aria-expanded={isOpen}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedId(isOpen ? null : row.contractId);
+                                  }}
+                                  className="rounded p-0.5 text-zinc-400 transition-colors duration-150 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                                >
+                                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                </button>
+                              </Td>
+                              <Td>
+                                <Link
+                                  href={`/fracoes/${row.propertyId}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="block max-w-40 truncate font-medium text-teal-700 hover:underline"
+                                >
+                                  {row.propertyName}
+                                </Link>
+                                {row.matrizArticle && (
+                                  <p className="font-mono text-xs text-zinc-400">{row.matrizArticle}</p>
+                                )}
+                              </Td>
+                              <Td className="max-w-40 truncate">{row.tenantName}</Td>
+                              <Td className="max-w-32 truncate">{row.landlordNames.join(", ") || "n/d"}</Td>
+                              <Td className="text-right tabular-nums">{fmtEur(row.rent)}</Td>
+                              <Td className="font-mono text-xs tabular-nums">
+                                {row.lastPaidMonth ? monthLabel(row.lastPaidMonth) : "nunca"}
+                              </Td>
+                              <Td className="text-right tabular-nums">{row.streak}</Td>
+                              <Td className="text-right tabular-nums">{row.missed12}</Td>
+                              <Td
+                                className={cn(
+                                  "text-right tabular-nums",
+                                  row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
+                                )}
+                              >
+                                {fmtEur(row.debt)}
+                              </Td>
+                              <Td>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <SeverityBadge severity={row.severity} />
+                                  {row.cadence !== null && (
+                                    <Badge tone="amber">paga a cada ~{Math.round(row.cadence)} meses</Badge>
+                                  )}
+                                </div>
+                              </Td>
+                            </tr>
+                            {isOpen && (
+                              <tr>
+                                <Td colSpan={TABLE_COLS} className="bg-zinc-50/70">
+                                  <MonthsGrid months={row.months24} />
+                                </Td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </div>
+
+                {/* Mobile: um cartão por contrato, com o mesmo toggle de detalhe mensal. */}
+                <div className="space-y-2 md:hidden">
                   {filtered.map((row) => {
                     const isOpen = expandedId === row.contractId;
                     return (
-                      <Fragment key={row.contractId}>
-                        <tr
+                      <div key={row.contractId} className="rounded-lg border border-zinc-200 bg-white shadow-xs">
+                        <div
                           onClick={() => setExpandedId(isOpen ? null : row.contractId)}
-                          className="cursor-pointer hover:bg-zinc-50"
+                          className="flex cursor-pointer items-start justify-between gap-2 p-3"
                         >
-                          <Td className="pr-0">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/fracoes/${row.propertyId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-medium text-teal-700 hover:underline"
+                            >
+                              {row.propertyName}
+                            </Link>
+                            <p className="truncate text-xs text-zinc-500">{row.tenantName}</p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <SeverityBadge severity={row.severity} />
                             <button
                               type="button"
                               aria-label={isOpen ? "Recolher detalhe mensal" : "Expandir detalhe mensal"}
@@ -267,54 +361,62 @@ export function ArrearsClient({
                                 e.stopPropagation();
                                 setExpandedId(isOpen ? null : row.contractId);
                               }}
-                              className="rounded p-0.5 text-zinc-400 transition-colors duration-150 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                              className="-m-1.5 flex h-10 w-10 items-center justify-center rounded text-zinc-400 transition-colors duration-150 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                             >
                               {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                             </button>
-                          </Td>
-                          <Td>
-                            <p className="max-w-40 truncate font-medium text-zinc-800">{row.propertyName}</p>
-                            {row.matrizArticle && (
-                              <p className="font-mono text-xs text-zinc-400">{row.matrizArticle}</p>
-                            )}
-                          </Td>
-                          <Td className="max-w-40 truncate">{row.tenantName}</Td>
-                          <Td className="max-w-32 truncate">{row.landlordNames.join(", ") || "n/d"}</Td>
-                          <Td className="text-right tabular-nums">{fmtEur(row.rent)}</Td>
-                          <Td className="font-mono text-xs tabular-nums">
-                            {row.lastPaidMonth ? monthLabel(row.lastPaidMonth) : "nunca"}
-                          </Td>
-                          <Td className="text-right tabular-nums">{row.streak}</Td>
-                          <Td className="text-right tabular-nums">{row.missed12}</Td>
-                          <Td
-                            className={cn(
-                              "text-right tabular-nums",
-                              row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
-                            )}
-                          >
-                            {fmtEur(row.debt)}
-                          </Td>
-                          <Td>
-                            <div className="flex flex-wrap items-center gap-1">
-                              <SeverityBadge severity={row.severity} />
-                              {row.cadence !== null && (
-                                <Badge tone="amber">paga a cada ~{Math.round(row.cadence)} meses</Badge>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-zinc-100 px-3 py-2.5 text-sm">
+                          <div>
+                            <p className="text-[11px] text-zinc-400">Renda</p>
+                            <p className="tabular-nums font-medium text-zinc-800">{fmtEur(row.rent)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-zinc-400">Último mês pago</p>
+                            <p className="font-mono text-xs tabular-nums text-zinc-700">
+                              {row.lastPaidMonth ? monthLabel(row.lastPaidMonth) : "nunca"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-zinc-400">Meses em atraso</p>
+                            <p className="tabular-nums text-zinc-800">{row.streak}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-zinc-400">Em falta (12m)</p>
+                            <p className="tabular-nums text-zinc-800">{row.missed12}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-zinc-400">Dívida estimada</p>
+                            <p
+                              className={cn(
+                                "tabular-nums",
+                                row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
                               )}
+                            >
+                              {fmtEur(row.debt)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-zinc-400">Senhorio(s)</p>
+                            <p className="truncate text-zinc-700">{row.landlordNames.join(", ") || "n/d"}</p>
+                          </div>
+                          {row.cadence !== null && (
+                            <div className="col-span-2">
+                              <Badge tone="amber">paga a cada ~{Math.round(row.cadence)} meses</Badge>
                             </div>
-                          </Td>
-                        </tr>
+                          )}
+                        </div>
                         {isOpen && (
-                          <tr>
-                            <Td colSpan={TABLE_COLS} className="bg-zinc-50/70">
-                              <MonthsGrid months={row.months24} />
-                            </Td>
-                          </tr>
+                          <div className="border-t border-zinc-100 bg-zinc-50/70 px-3 py-2">
+                            <MonthsGrid months={row.months24} />
+                          </div>
                         )}
-                      </Fragment>
+                      </div>
                     );
                   })}
-                </tbody>
-              </Table>
+                </div>
+              </>
             )}
           </>
         )}
