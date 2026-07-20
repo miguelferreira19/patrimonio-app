@@ -1,5 +1,7 @@
-"use client";
-
+// Sem "use client": estas primitivas são partilhadas (server + client). Nenhuma usa
+// hooks; o Modal só é renderizado por componentes client (forms, grelhas), onde os
+// handlers são válidos. Marcar este ficheiro como client criaria uma fronteira de
+// serialização e as páginas server deixariam de poder passar icon={LucideIcon}.
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ArrowDown, ArrowUp, X, type LucideIcon } from "lucide-react";
