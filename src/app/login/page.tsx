@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { FileText, LineChart, ShieldCheck } from "lucide-react";
 import { createClient, supabaseConfigured } from "@/lib/supabase/server";
@@ -24,8 +25,8 @@ export default async function LoginPage() {
       {/* Painel de marca */}
       <div className="login-glow relative hidden w-[45%] flex-col overflow-hidden p-10 lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/15 text-base font-bold text-teal-300">
-            P
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/15">
+            <Image src="/logo.png" alt="" width={24} height={27} className="h-6 w-auto" />
           </span>
           <span className="text-lg font-semibold text-white">Património</span>
         </div>

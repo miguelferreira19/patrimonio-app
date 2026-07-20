@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -83,8 +84,8 @@ export function AppNav({ role, email }: { role: Role; email: string | null }) {
 
   const brand = (
     <div className="flex items-center gap-2.5 px-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-sm font-bold text-teal-300">
-        P
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/15">
+        <Image src="/logo.png" alt="" width={22} height={25} className="h-[22px] w-auto" />
       </span>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-white">Património</p>
@@ -173,8 +174,8 @@ export function AppNav({ role, email }: { role: Role; email: string | null }) {
       {/* Topbar mobile */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-900 bg-zinc-950 px-4 md:hidden">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/15 text-xs font-bold text-teal-300">
-            P
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/15">
+            <Image src="/logo.png" alt="" width={18} height={20} className="h-[18px] w-auto" />
           </span>
           <span className="text-sm font-semibold text-white">Património</span>
         </div>
