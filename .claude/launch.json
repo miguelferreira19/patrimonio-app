@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "patrimonio-dev",
+      "runtimeExecutable": "C:\\Users\\migue\\AppData\\Local\\Logi\\LogiPluginService\\PluginHosts\\node22\\node\\npm.cmd",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}

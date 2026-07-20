@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+build/
+
+# Segredos — NUNCA commitar
+.env
+.env.local
+.env*.local
+
+# Dados pessoais reais (exports do Portal das Finanças) — NUNCA commitar
+dados/
+
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+
+.vercel
+.env*
