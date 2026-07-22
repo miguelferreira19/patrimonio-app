@@ -1,0 +1,22 @@
+# Rede contra a classe de regressões que já custou dois hotfixes em produção:
+# o build apanha erros de tipos e de compilação, o check corre os self-checks puros
+# (atrasos + saúde dos dados) sem precisar de base de dados nem de segredos.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check

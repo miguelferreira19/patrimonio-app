@@ -165,9 +165,11 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
   conta miguelferreira19, CLI autenticada). Deploy por `npx vercel@latest deploy --prod --yes`
   (com o PATH do node Logitech). Sem env vars no Vercel: `src/lib/env.ts` tem fallbacks
   (anon key é pública por design; RLS protege). Login verificado no domínio de produção.
-- FALTA (opcional): repo GitHub privado como backup/auto-deploy (hoje o deploy é manual por
-  CLI); Supabase Auth → definir Site URL para o domínio se um dia se usarem links por email
-  (password login funciona sem isso).
+- **Repo GitHub FEITO 2026-07-22:** https://github.com/miguelferreira19/patrimonio-app (privado),
+  remote `origin`, `main` com histórico. Falta ligar o repo ao projeto no Vercel
+  (Settings → Git → Connect) para o deploy deixar de ser manual.
+- FALTA (opcional): Supabase Auth → definir Site URL para o domínio se um dia se usarem links
+  por email (password login funciona sem isso).
 
 **P0-4 · Contas da família (viewers)**
 - Objetivo: criar utilizadores para pai/tio/avô (viewers) via Admin → utilizadores; testar que
@@ -254,11 +256,11 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
   erro de quotas (é ficha incompleta); contrato cessado com data de fim não é sobreposição.
 - `npm run check` corre os dois self-checks (arrears + health).
 
-**P1-6 · CI no GitHub (Actions)**
-- Objetivo: `npm run build` + `npm run check:arrears` a cada push. Rede contra a classe de
-  regressões desta semana. Liga ao repo GitHub opcional do P0-3.
-- Ficheiros: `.github/workflows/ci.yml` (node 22, `npm ci`, os dois comandos). Aceitação: verde
-  no PR; falha bloqueia merge.
+**P1-6 · CI no GitHub (Actions)** — ✅ FEITO 2026-07-22
+- `.github/workflows/ci.yml`: node 22, `npm ci`, `npm run build` + `npm run check` (os dois
+  self-checks) em push para `main` e em PR. Não precisa de segredos — `src/lib/env.ts` tem
+  fallbacks e os self-checks são puros.
+- **Repo: https://github.com/miguelferreira19/patrimonio-app (privado), `main` com histórico.**
 
 **P1-7 · Export/backup que a família controla** — ✅ FEITO 2026-07-22
 - Route handler `src/app/api/export/route.ts` (GET, `requireAdmin`, `paginateAll` por tabela com
