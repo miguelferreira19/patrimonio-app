@@ -13,6 +13,7 @@ import {
   Menu,
   ReceiptText,
   Settings,
+  Stethoscope,
   TrendingUp,
   Users,
   X,
@@ -55,6 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/mercado", label: "Mercado", icon: TrendingUp },
       { href: "/senhorios", label: "Senhorios", icon: Users },
+      { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
     ],
   },
 ];

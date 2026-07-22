@@ -271,8 +271,9 @@ function PaymentModal({
   const [date, setDate] = useState(payment?.received_date ?? todayISO());
   const [method, setMethod] = useState<PaymentMethod>(payment?.method ?? "transferencia");
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
+  // `withMethod` existe para o atalho de dinheiro (P1-2): grava com o método escolhido no
+  // botão sem obrigar a passar pelo Select. O resto do formulário é o mesmo.
+  function save(withMethod: PaymentMethod) {
     const v = Number(amount.replace(",", "."));
     if (!Number.isFinite(v)) return;
     run(
@@ -281,10 +282,15 @@ function PaymentModal({
         ref_month: month,
         amount: v,
         received_date: date,
-        method,
+        method: withMethod,
       }),
       onClose,
     );
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    save(method);
   }
 
   return (
@@ -330,6 +336,17 @@ function PaymentModal({
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
+            {!payment && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => save("dinheiro")}
+              >
+                <Banknote size={15} strokeWidth={1.75} />
+                Em dinheiro
+              </Button>
+            )}
             <Button type="submit" disabled={pending}>
               {pending ? "A gravar…" : payment ? "Atualizar" : "Marcar como recebida"}
             </Button>

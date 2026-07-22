@@ -24,7 +24,8 @@ análises sempre em ótica de família (valores por inteiro).
 - Redesign visual (2026-07-19): design system coerente, ver CLAUDE.md §Design system.
 - Página de Atrasos com metodologia própria (ver §5).
 - 2026-07-22: checklist "Este mês" de recibos por emitir (P1-3), StatCard de ocupação (P2-9
-  parcial) e backup `.xlsx` da carteira em Admin (P1-7). Em produção.
+  parcial), backup `.xlsx` da carteira em Admin (P1-7), página **Saúde dos dados** (P1-5) e
+  atalho de pagamento em dinheiro (P1-2). Em produção.
 
 **Pendências imediatas de dados (não de código):**
 - Tio Ilídio: exports do Portal ainda não existem em `dados/Tio/` — quando existirem, correr o
@@ -42,6 +43,9 @@ análises sempre em ótica de família (valores por inteiro).
 
 - Windows 11; node NÃO está no PATH — ver CLAUDE.md para o prefixo do PATH (Logitech node22).
 - `npm run build` = gate de qualidade obrigatório. `npm run dev` na porta 3000.
+- `npm run check` = self-checks puros (atrasos + saúde dos dados), sem BD nem framework.
+- Smoke sem login NÃO chega para validar páginas com dados: o `anon` não tem GRANT em
+  `payments` e `fetchAllPayments` rebenta (42501). Validar autenticado, em dev ou produção.
 - Deploy: ainda NÃO há commits nem repo remoto (decisão pendente do utilizador) — ver P0-3.
 - Supabase SQL Editor = via de administração de dados (corre como superuser, ignora RLS).
 - Python (para `dados/`): pandas, xlrd, openpyxl já instalados no ambiente do utilizador.
@@ -184,10 +188,10 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
   old/new e reason='coeficiente'; grelha de pagamentos passa a esperar a nova renda no mês certo.
 - Armadilhas: NÃO aplicar automaticamente a todos — sempre ação explícita por contrato.
 
-**P1-2 · Registo rápido de pagamentos em dinheiro**
-- Objetivo: na grelha de Pagamentos, marcar um mês como pago em dinheiro em 1 clique (hoje é
-  o fluxo manual geral). Método 'dinheiro', source 'manual', received_date = hoje (editável).
-- Aceitação: célula muda de estado sem reload completo; Atrasos deixa de listar esse mês.
+**P1-2 · Registo rápido de pagamentos em dinheiro** — ✅ FEITO 2026-07-22
+- Botão "Em dinheiro" no modal da grelha de Pagamentos (só em meses ainda sem pagamento): grava
+  com `method='dinheiro'`, valor = renda contratada e data = hoje, sem passar pelo Select.
+  Reusa `markPayment`; o `save(method)` extraído do submit é a única alteração de lógica.
 
 **P1-3 · Checklist mensal de recibos a emitir** — ✅ FEITO 2026-07-22
 - Cartão "Este mês: recibos por emitir" no dashboard (`src/app/(app)/page.tsx`): contratos ativos
@@ -236,15 +240,19 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 
 Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9). Ordenados por valor.
 
-**P1-5 · Página "Saúde dos dados"** (a de MAIOR valor — nasce da série de bugs de atrasos)
-- Objetivo: uma página que corre verificações e mostra anomalias em vez de elas aparecerem como
-  falsos números. Só LEITURA (não altera nada), reaproveita `fetchAllPayments` + contratos.
-- Ficheiros: nova `src/app/(app)/saude/page.tsx` + `src/lib/health.ts` (funções puras + self-check
-  no padrão de `arrears.check.ts`); link no `nav.tsx`.
-- Checks: contrato `ativo` sem recibo há >12m (stale); `contract.rent` ≠ último recibo; quotas de
-  `property_owners` que não somam ~100% por fração; recibos órfãos (sem contrato); contratos
-  sobrepostos na mesma fração; rendas 0/negativas; VPT/área/typology/dicofre em falta.
-- Aceitação: cada anomalia com link para a fração/contrato; contagem por severidade no topo.
+**P1-5 · Página "Saúde dos dados"** — ✅ FEITO 2026-07-22
+- `src/app/(app)/saude/page.tsx` (server, só leitura) + `src/lib/health.ts` (puro) +
+  `src/lib/health.check.ts` (8 casos, `npm run check:health`); link em `nav.tsx` → Referência.
+- 7 checks: contrato-zombie, renda desalinhada, contratos sobrepostos, rendas ≤0, quotas ≠100%,
+  recibos órfãos, ficha incompleta. Severidade erro/aviso/"a completar" com contagem no topo e
+  link por anomalia.
+- Reutilização deliberada: contrato-zombie e renda desalinhada saem de `computeArrears`
+  (`stale`, `expectedRent`) em vez de reanalisar recibos. Recibos órfãos por `count` (head:true),
+  nunca por leitura das >5000 linhas.
+- Decisões: a retenção na fonte aparece como AVISO (é causa legítima, a app não a distingue de
+  renda desatualizada — resolve-se com o P2-5); frações SEM quotas registadas não contam como
+  erro de quotas (é ficha incompleta); contrato cessado com data de fim não é sobreposição.
+- `npm run check` corre os dois self-checks (arrears + health).
 
 **P1-6 · CI no GitHub (Actions)**
 - Objetivo: `npm run build` + `npm run check:arrears` a cada push. Rede contra a classe de

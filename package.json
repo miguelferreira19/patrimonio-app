@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "check:arrears": "tsc src/lib/arrears.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/arrears.check.js"
+    "check:arrears": "tsc src/lib/arrears.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/arrears.check.js",
+    "check:health": "tsc src/lib/health.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/health.check.js",
+    "check": "npm run check:arrears && npm run check:health"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
