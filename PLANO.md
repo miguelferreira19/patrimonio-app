@@ -8,7 +8,7 @@
 
 ---
 
-## 1. Visão e estado atual (2026-07-19)
+## 1. Visão e estado atual (2026-07-22)
 
 **Objetivo:** a família emite recibos no Portal das Finanças mas não tem controlo agregado.
 A app dá esse controlo: carteira, recebimentos, atrasos, despesas, benchmarks de mercado, e no
@@ -23,6 +23,8 @@ análises sempre em ótica de família (valores por inteiro).
 - **Import de dados reais por SQL** (pipeline `dados/`): Pai ✔ e Avô Miguel ✔ (ver §4).
 - Redesign visual (2026-07-19): design system coerente, ver CLAUDE.md §Design system.
 - Página de Atrasos com metodologia própria (ver §5).
+- 2026-07-22: checklist "Este mês" de recibos por emitir (P1-3), StatCard de ocupação (P2-9
+  parcial) e backup `.xlsx` da carteira em Admin (P1-7). Em produção.
 
 **Pendências imediatas de dados (não de código):**
 - Tio Ilídio: exports do Portal ainda não existem em `dados/Tio/` — quando existirem, correr o
@@ -81,25 +83,60 @@ os dados errados introduzidos pelo wizard — padrão a reutilizar se voltar a a
 ## 5. Metodologia de Atrasos (implementada em src/lib/arrears.ts)
 
 Fonte: `payments` (recebimentos reais) × contratos ativos. Conceitos:
-- **Mês vencido:** renda vence ao dia 1 (`due_day`); um mês conta como devido a partir do dia
-  8 (carência `GRACE_DAYS = 8`). O último mês devido é o corrente se hoje>dia 8, senão o anterior.
-- **Streak de atraso:** nº de meses consecutivos sem pagamento desde o último mês pago até ao
-  último mês devido. Sem pagamentos de todo → conta desde o início do contrato (ou marca
-  "sem histórico" se não houver start_date).
-- **Parcial:** soma dos payments do mês < renda − 1€.
-- **Dívida estimada:** `min(streak, 24) × renda atual` (nota de método visível na página; o cap
-  evita números absurdos em contratos com anos sem recibo — ex.: Capitão Silva Pereira desde
-  2021-10).
-- **Cadência própria:** mediana do intervalo entre meses pagos (janela 36m); se ≥2 (ex.: Loja
-  S. Pedro do pai paga ao trimestre), a severidade é ajustada e mostra-se badge "paga a cada
-  ~N meses" — evita falsos positivos.
-- **Severidade:** ok / atenção (1 mês) / atraso (2-3) / crítico (>3), ajustada pela cadência.
-- KPIs, gráfico esperado-vs-recebido 12m (esperado = rendas ativas atuais, aproximação
-  declarada), tabela ordenada por gravidade, detalhe por contrato com grelha de 24 meses.
-- **Armadilha:** ler payments com `.limit(...)` alto — o PostgREST corta a 1000 linhas.
+- **Renda de referência (`referenceRent`, base de TUDO):** `min(contract.rent, mediana dos meses
+  com pagamento nos últimos 24m)`. `contract.rent` é escalar, bruto e com o valor de HOJE, mas
+  os payments são cash LÍQUIDO e histórico — compará-los diretamente gerava falsos positivos
+  em massa (ver correção 2026-07-20 abaixo). A mediana absorve retenção na fonte (25% em
+  inquilinos-empresa) e atualizações de renda sem precisar de `rent_updates` nem de coluna
+  `withholding`. Nunca sobe acima de `rent`; onde diverge, a UI mostra "recebe X".
+- **Mês liquidado (`isMonthSettled`):** recebido ≥ 90% da renda de referência (`PAID_TOLERANCE`).
+- **Mês vencido:** renda vence ao dia 1; conta como devido a partir do dia 8 (`GRACE_DAYS = 8`).
+- **Horizonte de dados (`dataHorizonMonth`, trava CRÍTICA):** o último mês devido nunca passa o
+  mês mais recente (não futuro) com pagamentos na carteira. Os recibos são importados em lote
+  (§4); enquanto o mês corrente não é importado, cobrar atraso por ele dava dívida falsa a TODOS
+  os contratos. É a causa de fundo dos falsos positivos (RCFDT ficava com meses recentes ainda
+  não importados a contar como atraso). A página da fração faz a mesma trava via query barata do
+  máximo `ref_month`. Inquilino que parou mesmo continua apanhado — os outros contratos empurram
+  o horizonte para a frente.
+- **Streak de atraso:** nº de meses consecutivos não liquidados desde o último mês liquidado até
+  ao último mês devido. Sem pagamentos de todo → desde o início do contrato (ou "sem histórico").
+- **Dívida estimada:** `min(streak, 24) × renda de referência`. Meses parciais NÃO somam défice
+  por cima (o streak já os conta como mês inteiro). Contratos sem recibos há >12m (`STALE_MONTHS`)
+  não somam dívida — badge "confirmar se cessou" (ex.: 512797/Ilídio, sem recibos desde 2021-10).
+- **Cadência própria:** mediana do intervalo entre meses liquidados (janela 36m); se ≥2 (ex.:
+  Loja S. Pedro paga ao trimestre), severidade ajustada + badge "paga a cada ~N meses".
+- **Severidade:** ok / atenção (1) / atraso (2-3) / crítico (>3), ajustada pela cadência.
+- **Gráfico esperado-vs-recebido:** 12 meses FECHADOS (exclui o corrente, que tem recibos por
+  emitir); esperado = Σ renda de referência dos contratos JÁ em vigor nesse mês; recebido só de
+  contratos ativos (mesmo universo). Antes usava renda atual constante → gap fantasma + penhasco.
+- **Armadilha CRÍTICA (resolvida 2026-07-20):** `.limit(50000)` NÃO passa por cima do max-rows
+  do Supabase (~1000). A leitura do histórico COMPLETO (>5000 linhas) vinha truncada → contratos
+  para lá da linha 1000 apareciam como "nunca"/24 e o que ficava a cavalo aparecia parcial (o
+  RCESQ mostrava jun 2025 em vez de jun 2026, contradizendo a ficha da fração). Fix: `fetchAllPayments`
+  em `data.ts` pagina por `.range()` (helper puro `paginateAll` em `paginate.ts`, testado no
+  self-check G/H). As leituras com piso de 12-13 meses (dashboard 535, pagamentos 493) ficam bem
+  abaixo das 1000 — só precisam de paginar acima de ~80 contratos ativos.
+- **Self-check:** `npm run check:arrears` (src/lib/arrears.check.ts) — 6 casos reais que davam
+  falso positivo; corre o `computeArrearsRow` real, sem framework. Vitest completo continua P2-4.
+
+**Correção de falsos positivos (2026-07-20):** a comparação contra `contract.rent` fazia meses
+perfeitamente pagos parecerem em falta; quando NENHUM mês atingia a renda atual, caía no ramo
+"sem mês pago" e inventava 24×renda. Casos nos dados reais: retenção na fonte (6204271: recibo
+600/pago 450 → falso 7200€), atualização de renda sem recibos novos (RCFDT 68686 → falso 7104€),
+dupla contagem de parciais, contratos-zombie. Resultado nos dados atuais: dívida total estimada
+44.539€ → 25.375€ (−43%). O 512797 mantém-se (é atraso real, provável contrato por cessar).
+**Ronda 2 (mesma data):** a causa de fundo era o horizonte de dados — na BD live os recibos dos
+meses recentes ainda não estavam importados e o app cobrava atraso por eles a toda a gente. Trava
+`dataHorizonMonth` limita o último mês devido ao último mês importado. Com isto o RCFDT vai a 0
+(toda a dívida dele era falsa: meses não importados). Ficheiros: `src/lib/arrears.ts`,
+`src/app/(app)/atrasos/arrears-client.tsx`, `src/app/(app)/fracoes/[id]/page.tsx`,
+`src/lib/arrears.check.ts`. Deploy manual (`npx vercel deploy --prod`) — 2 deploys nesta sessão.
 
 Limitações honestas (não esconder ao utilizador): payments derivam de RECIBOS — renda paga em
 dinheiro sem recibo aparece como atraso; a app mede "recibos em falta", que é o proxy possível.
+A renda de referência normaliza quem paga sistematicamente a menos do que devia — daí o desvio
+ser mostrado ("recebe X"), não escondido. Quando o P2-2 importar a retenção real, a referência
+passa a sair do dado em vez da mediana.
 
 ## 6. Backlog priorizado
 
@@ -152,11 +189,12 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
   o fluxo manual geral). Método 'dinheiro', source 'manual', received_date = hoje (editável).
 - Aceitação: célula muda de estado sem reload completo; Atrasos deixa de listar esse mês.
 
-**P1-3 · Checklist mensal de recibos a emitir**
-- Objetivo: página/secção "Este mês" no dashboard: contratos ativos sem recibo do mês corrente
-  (fonte: receipts, não payments), com link direto para o Portal das Finanças. É o lembrete
-  operacional do avô/pai. Aceitação: lista bate certo com o Portal; esconde contratos de
-  cadência própria fora do mês devido.
+**P1-3 · Checklist mensal de recibos a emitir** — ✅ FEITO 2026-07-22
+- Cartão "Este mês: recibos por emitir" no dashboard (`src/app/(app)/page.tsx`): contratos ativos
+  sem recibo do mês corrente (query a `receipts` por `ref_month`, emitido = match por
+  `contract_id` OU `pf_contract_no`), link para o Portal. Contratos de cadência própria só entram
+  quando `lastPaidMonth + cadence <= mês corrente` (reusa as linhas de `computeArrears` que o
+  dashboard já calcula). Falta validar a lista contra o Portal com dados reais.
 
 **P1-4 · Refresh INE agendado**
 - Objetivo: atualizar benchmarks trimestralmente sem clique manual. Vercel Cron (route handler
@@ -194,6 +232,73 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - **P3-3 Multi-tema (dark)** — só se a família pedir; hoje é light-only por decisão.
 - **P3-4 Histórico/auditoria de alterações** — tabela audit_log via triggers nas tabelas core.
 
+### Novos temas aprovados (2026-07-20) — "tornar mais profissional"
+
+Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9). Ordenados por valor.
+
+**P1-5 · Página "Saúde dos dados"** (a de MAIOR valor — nasce da série de bugs de atrasos)
+- Objetivo: uma página que corre verificações e mostra anomalias em vez de elas aparecerem como
+  falsos números. Só LEITURA (não altera nada), reaproveita `fetchAllPayments` + contratos.
+- Ficheiros: nova `src/app/(app)/saude/page.tsx` + `src/lib/health.ts` (funções puras + self-check
+  no padrão de `arrears.check.ts`); link no `nav.tsx`.
+- Checks: contrato `ativo` sem recibo há >12m (stale); `contract.rent` ≠ último recibo; quotas de
+  `property_owners` que não somam ~100% por fração; recibos órfãos (sem contrato); contratos
+  sobrepostos na mesma fração; rendas 0/negativas; VPT/área/typology/dicofre em falta.
+- Aceitação: cada anomalia com link para a fração/contrato; contagem por severidade no topo.
+
+**P1-6 · CI no GitHub (Actions)**
+- Objetivo: `npm run build` + `npm run check:arrears` a cada push. Rede contra a classe de
+  regressões desta semana. Liga ao repo GitHub opcional do P0-3.
+- Ficheiros: `.github/workflows/ci.yml` (node 22, `npm ci`, os dois comandos). Aceitação: verde
+  no PR; falha bloqueia merge.
+
+**P1-7 · Export/backup que a família controla** — ✅ FEITO 2026-07-22
+- Route handler `src/app/api/export/route.ts` (GET, `requireAdmin`, `paginateAll` por tabela com
+  `.order()` obrigatório) devolve um `.xlsx` com uma folha por tabela (landlords, properties,
+  property_owners, contracts, receipts, payments, expenses). Link `<a href="/api/export">` no
+  cartão "Cópia de segurança" do Admin — sem JS de cliente. NÃO exporta `market_benchmarks`
+  (regenerável do INE). Mais tarde: agendar (Vercel Cron → Storage).
+
+**P2-5 · Retenção na fonte e caução no modelo** (pré-requisito do P2-6)
+- Objetivo: `receipts.withholding` + `contracts.deposit` no schema e no gerador SQL de `dados/`.
+  A retenção já vem no ListaRecibos (bruto − "Importância recebida"). Alimenta o Anexo F (crédito)
+  E torna a renda de referência dos Atrasos EXATA em vez de mediana estimada (ver arrears.ts).
+- Armadilha: inquilino-empresa retém ~25%; particular não. Migração idempotente no schema.sql.
+
+**P2-6 · Otimizador de IRS Anexo F por senhorio** (evolui o P2-2)
+- Objetivo: por senhorio/ano — rendas ilíquidas, gastos DEDUTÍVEIS (mapear `expenses`: só
+  conservação/condomínio/IMI/selo/taxas; EXCLUIR financiamento e obras de valorização), retenções,
+  predial líquido; e SIMULAR englobamento vs taxa autónoma 28% vs taxas reduzidas de longa duração
+  (§9). Mostrar imposto estimado por opção + a melhor. Export Excel do Anexo F.
+- Ficheiros: `src/lib/irs.ts` (puro + self-check) + página. Armadilha: é ESTIMATIVA — rótulo claro
+  "confirmar no simulador da AT / com contabilista"; não é aconselhamento fiscal vinculativo.
+
+**P2-7 · Elegibilidade de taxa reduzida (art. 72.º) por contrato**
+- Objetivo: por contrato de HABITAÇÃO, usar início+duração para assinalar a taxa reduzida a que
+  podia aceder (≥5a 15%, ≥10a 10%, ≥20a 5%) vs os 28% atuais, e estimar €/ano poupados. Requer o
+  campo `typology`/uso (habitação vs comércio) e duração — depende do P0-2.
+- Aceitação: lista acionável "contratos a comunicar à AT (Portaria 110/2019)"; não altera IRS
+  sozinho, é um alerta. Armadilha: comércio/garagens NÃO beneficiam; confirmar caso a caso.
+
+**P2-8 · Ciclo de vida dos contratos**
+- Objetivo: avisos de fim/renovação/denúncia com antecedência legal; e GERAR a carta de
+  atualização de renda no formato/prazo legais (liga ao P1-1). Aceitação: badge no dashboard +
+  carta em PDF/docx pronta a enviar.
+
+**P2-9 · Ocupação / vacância** — parcial 2026-07-22
+- FEITO: StatCard "Ocupação" no dashboard (% de frações com contrato ativo + nomes das vagas,
+  link para Frações). Deriva dos contratos, não de `properties.status` (campo manual que fica
+  desatualizado). FALTA: período de vazio e renda perdida (precisa dos gaps entre contratos).
+
+**P2-10 · Relatório anual PDF por senhorio**
+- Objetivo: retrato da carteira (ocupação, yield, evolução de atrasos, despesas por categoria)
+  exportável. Complementa o Anexo F do P2-6.
+
+**P3-5 · Monitor de AIMI**
+- Objetivo: somar VPT por proprietário e comparar com o limite (600k singular / 1,2M casal);
+  sinalizar exposição a AIMI. A distribuição de propriedade por herdeiros reduz AIMI — MAS é
+  planeamento sucessório: só sinalizar e remeter para contabilista, nunca recomendar a ação.
+
 ## 7. Armadilhas e decisões permanentes (não re-litigar)
 
 - Ótica de família: valores por INTEIRO em toda a apresentação; quotas só para IRS (P2-2).
@@ -222,3 +327,34 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
   if not exists`) acrescentadas a `supabase/schema.sql` + coladas no SQL Editor manualmente.
 - Rever com `git diff` depois de cada agente (quando houver repo) e só depois avançar.
 - Em caso de dúvida de produto: perguntar ao utilizador, não assumir (ele decide rápido).
+
+## 9. Análise IRS 2025 (Pai e Avô) — leveres fiscais para o produto
+
+> NÃO é aconselhamento fiscal vinculativo. São estimativas/observações para desenhar as features
+> P2-6/P2-7/P3-5. Qualquer decisão numa declaração real confirma-se no simulador da AT ou com
+> contabilista. Fonte: `dados/Pai/IRS_PAI.pdf`, `dados/Avo_Miguel/IRS_Miguel.pdf` (ano 2025).
+
+**Números-chave.** Pai (António, NIF 186274220, solteiro/divorciado, incapacidade 62%): Anexo F
+rendas ilíquidas 45.835€, gastos só ~6.6k (conservação apenas **1.500€**), retenção 1.200€, pensão
+10.440€; optou por ENGLOBAMENTO; AIMI 668€ (VPT 695k). Avô (Miguel 123645891 + Eva 123645905,
+casados, tributação CONJUNTA, Miguel 60% incap.): Anexo F rendas 90.458€ (frações a 50/50, por isso
+duplicadas A/B), gastos ~38.9k (conservação **26.587€**), retenção 150€, pensões 15.742€; optou por
+ENGLOBAMENTO; AIMI 1.314€ (VPT 1,39M, usa o limite de casal 1,2M). Mais-valia rústica pequena (G).
+
+**Levers (por ordem de impacto), que viram features:**
+1. **Taxa reduzida de longa duração (art. 72.º) — Q4.2 VAZIO nos dois → maior lever.** TODOS os
+   contratos estão no Q4.1 (regime geral). Muitos são antigos (1978, 1995, 1999, 2004, 2010-2016):
+   contratos de HABITAÇÃO com ≥5/10/20 anos podiam estar a 15%/10%/5% em vez de 28%. Exige uso
+   habitacional + duração + comunicação à AT (Portaria 110/2019). Comércio/garagens não entram
+   (ex.: garagem 68631 a 25€/mês). → **P2-7**.
+2. **Englobamento vs 28% autónoma — os dois escolheram englobar.** Não é claramente errado: para o
+   Avô (casal, quociente, pensões baixas, incap.) englobar pode ganhar; para o Pai (individual,
+   ~56k, taxa média mais alta) os 28% podem ganhar. É um cálculo a refazer TODOS os anos. → **P2-6**.
+3. **Despesas dedutíveis subaproveitadas (sobretudo o Pai): 1.500€ vs 26.587€ do Avô** em 29 vs 46
+   contratos. Se há manutenção real sem fatura com NIF do senhorio, perde-se dedução ao marginal
+   (~28-40%). Dedutível em F: conservação/condomínio/IMI/selo/taxas; NÃO financiamento nem obras de
+   valorização. → **P2-6** (mapa) + disciplina de faturas.
+4. **Retenção na fonte** (inquilino-empresa retém ~25%): é crédito, não poupança, mas tem de ser
+   modelada (crédito no Anexo F + exatidão da renda de referência). → **P2-5**.
+5. **AIMI**: ambos pagam e deduzem no Anexo F (Q9). Distribuir propriedade por herdeiros reduz o
+   AIMI (limite 600k/pessoa) — planeamento sucessório, só sinalizar. → **P3-5**.

@@ -21,7 +21,7 @@ import { Badge, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/compon
 import { geoOptionsFromBenchmarks, marketView, sum } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel } from "@/lib/format";
-import { EPSILON_EUR, lastDueMonthKey, toMonthKey } from "@/lib/arrears";
+import { EPSILON_EUR, isMonthSettled, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import type {
   Contract,
   Expense,
@@ -83,6 +83,10 @@ function buildContractHistory(
     monthSums.set(k, (monthSums.get(k) ?? 0) + p.amount);
   }
 
+  // MESMA base de comparação da página de Atrasos (renda de referência calibrada aos
+  // pagamentos, não `contract.rent`) — senão as duas vistas contradiziam-se no mesmo mês.
+  const expected = referenceRent(monthSums, contract.rent, lastDue);
+
   const startMonthKey = contract.start_date ? toMonthKey(contract.start_date) : null;
   const endMonthKey = contract.end_date ? toMonthKey(contract.end_date) : null;
   const startYear = startMonthKey
@@ -101,7 +105,7 @@ function buildContractHistory(
       // vence sempre, independentemente de existir pagamento nesse mês.
       if (!withinContract) {
         status = "fora";
-      } else if (paid >= contract.rent - EPSILON_EUR) {
+      } else if (isMonthSettled(paid, expected)) {
         status = "pago";
       } else if (paid >= EPSILON_EUR) {
         status = "parcial";
@@ -187,8 +191,13 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const benchmarks = (benchQ.data ?? []) as MarketBenchmark[];
   const geoOptions = geoOptionsFromBenchmarks(benchmarks);
 
+  // Horizonte de dados da CARTEIRA (não só desta fração): último mês devido não pode passar
+  // o último mês importado, senão a grelha marca meses ainda-não-importados como "em falta".
+  // Mesmo critério da página de Atrasos (dataHorizonMonth). Query barata: 1 linha.
+  const horizonCap = lastDueMonthKey(new Date());
+
   const contractIds = contracts.map((c) => c.id);
-  const [paymentsQ, receiptsQ, expensesQ, updatesQ] = await Promise.all([
+  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ] = await Promise.all([
     // Histórico COMPLETO (sem piso temporal) — a secção "Histórico de pagamentos" precisa
     // de todos os anos, não só dos últimos 12 meses (PLANO.md/CLAUDE.md: PostgREST corta a
     // 1000 linhas por defeito, daí o .limit() explícito e generoso).
@@ -214,12 +223,19 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           .in("contract_id", contractIds)
           .order("effective_date", { ascending: false })
       : Promise.resolve({ data: [] as RentUpdate[] }),
+    supabase
+      .from("payments")
+      .select("ref_month")
+      .lte("ref_month", horizonCap)
+      .order("ref_month", { ascending: false })
+      .limit(1),
   ]);
 
   const payments = (paymentsQ.data ?? []) as Payment[];
   const receipts = (receiptsQ.data ?? []) as Receipt[];
   const expenses = (expensesQ.data ?? []) as Expense[];
   const rentUpdates = (updatesQ.data ?? []) as RentUpdate[];
+  const portfolioHorizon = (horizonQ.data as { ref_month: string }[] | null)?.[0]?.ref_month ?? null;
 
   const active = contracts.find((c) => c.status === "ativo");
   const mv = marketView(property, active, benchmarks);
@@ -235,7 +251,8 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   // ---------- Histórico completo de pagamentos (Tarefa: "existe mais em atraso além dos
   // últimos 12 meses?"). Um bloco por contrato (fica "unificado" quando só há um). ----------
   const today = new Date();
-  const lastDue = lastDueMonthKey(today);
+  // Limitado ao horizonte de dados da carteira (ver query acima) — igual a Atrasos.
+  const lastDue = portfolioHorizon ? toMonthKey(portfolioHorizon) : lastDueMonthKey(today);
   const currentYear = today.getFullYear();
   const paymentsByContract = new Map<string, Payment[]>();
   for (const p of payments) {

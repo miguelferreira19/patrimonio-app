@@ -108,6 +108,19 @@ function MonthsGrid({ months }: { months: ArrearsMonthCell[] }) {
 
 const TABLE_COLS = 10;
 
+/** Renda contratada e, por baixo, o que o contrato realmente recebe por mês quando os dois
+ *  valores divergem (retenção na fonte na origem, ou renda atualizada sem recibos novos).
+ *  O desvio é mostrado como facto, não somado à dívida — ver referenceRent() em arrears.ts. */
+function RentCell({ rent, expectedRent }: { rent: number; expectedRent: number }) {
+  if (expectedRent >= rent - 1) return <>{fmtEur(rent)}</>;
+  return (
+    <>
+      {fmtEur(rent)}
+      <span className="block text-xs text-zinc-400">recebe {fmtEur(expectedRent)}</span>
+    </>
+  );
+}
+
 export function ArrearsClient({
   rows,
   landlords,
@@ -166,7 +179,7 @@ export function ArrearsClient({
         <StatCard
           label="Renda mensal em risco"
           value={fmtEur(summary.rentAtRisk)}
-          sub="soma das rendas dos contratos em atraso"
+          sub="valor que os contratos em atraso costumam receber"
           tone={nothingInArrears ? "green" : "amber"}
           icon={Wallet}
         />
@@ -187,8 +200,8 @@ export function ArrearsClient({
       </div>
 
       <Card
-        title="Esperado vs. recebido (12 meses)"
-        subtitle="Esperado = soma das rendas atuais dos contratos ativos (aproximação; não reconstrói rendas históricas)."
+        title="Esperado vs. recebido (12 meses fechados)"
+        subtitle="Esperado = rendas dos contratos já em vigor em cada mês, no valor que costumam receber (líquido de retenção na fonte). O mês corrente fica de fora — tem sempre recibos por emitir."
       >
         <ArrearsFlowChart data={chartData} />
       </Card>
@@ -294,7 +307,9 @@ export function ArrearsClient({
                               </Td>
                               <Td className="max-w-40 truncate">{row.tenantName}</Td>
                               <Td className="max-w-32 truncate">{row.landlordNames.join(", ") || "n/d"}</Td>
-                              <Td className="text-right tabular-nums">{fmtEur(row.rent)}</Td>
+                              <Td className="text-right tabular-nums">
+                                <RentCell rent={row.rent} expectedRent={row.expectedRent} />
+                              </Td>
                               <Td className="font-mono text-xs tabular-nums">
                                 {row.lastPaidMonth ? monthLabel(row.lastPaidMonth) : "nunca"}
                               </Td>
@@ -306,7 +321,7 @@ export function ArrearsClient({
                                   row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
                                 )}
                               >
-                                {fmtEur(row.debt)}
+                                {row.stale ? "·" : fmtEur(row.debt)}
                               </Td>
                               <Td>
                                 <div className="flex flex-wrap items-center gap-1">
@@ -314,6 +329,7 @@ export function ArrearsClient({
                                   {row.cadence !== null && (
                                     <Badge tone="amber">paga a cada ~{Math.round(row.cadence)} meses</Badge>
                                   )}
+                                  {row.stale && <Badge tone="amber">confirmar se cessou</Badge>}
                                 </div>
                               </Td>
                             </tr>
@@ -370,7 +386,9 @@ export function ArrearsClient({
                         <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-zinc-100 px-3 py-2.5 text-sm">
                           <div>
                             <p className="text-[11px] text-zinc-400">Renda</p>
-                            <p className="tabular-nums font-medium text-zinc-800">{fmtEur(row.rent)}</p>
+                            <p className="tabular-nums font-medium text-zinc-800">
+                              <RentCell rent={row.rent} expectedRent={row.expectedRent} />
+                            </p>
                           </div>
                           <div>
                             <p className="text-[11px] text-zinc-400">Último mês pago</p>
@@ -394,16 +412,19 @@ export function ArrearsClient({
                                 row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
                               )}
                             >
-                              {fmtEur(row.debt)}
+                              {row.stale ? "·" : fmtEur(row.debt)}
                             </p>
                           </div>
                           <div>
                             <p className="text-[11px] text-zinc-400">Senhorio(s)</p>
                             <p className="truncate text-zinc-700">{row.landlordNames.join(", ") || "n/d"}</p>
                           </div>
-                          {row.cadence !== null && (
-                            <div className="col-span-2">
-                              <Badge tone="amber">paga a cada ~{Math.round(row.cadence)} meses</Badge>
+                          {(row.cadence !== null || row.stale) && (
+                            <div className="col-span-2 flex flex-wrap gap-1">
+                              {row.cadence !== null && (
+                                <Badge tone="amber">paga a cada ~{Math.round(row.cadence)} meses</Badge>
+                              )}
+                              {row.stale && <Badge tone="amber">confirmar se cessou</Badge>}
                             </div>
                           )}
                         </div>
@@ -425,7 +446,11 @@ export function ArrearsClient({
           Baseado nos recibos e pagamentos registados. Rendas pagas em dinheiro sem recibo aparecem
           como atraso. Carência de 8 dias sobre o dia 1; dívida estimada limitada a 24 meses;
           contratos com cadência própria (ex.: pagamento trimestral) são assinalados e não contam
-          como atraso dentro do seu ritmo.
+          como atraso dentro do seu ritmo. Um mês conta como pago quando o valor recebido chega
+          ao que o contrato costuma receber (mediana dos últimos 24 meses), e não à renda
+          contratada: onde os dois divergem mostra-se &quot;recebe X&quot; — é retenção na fonte
+          ou uma atualização de renda ainda sem recibos novos, não dívida. Sem recibos há mais de
+          12 meses, o contrato é assinalado para confirmação em vez de acumular dívida.
         </p>
       </Card>
     </div>

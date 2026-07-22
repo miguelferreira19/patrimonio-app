@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "check:arrears": "tsc src/lib/arrears.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/arrears.check.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

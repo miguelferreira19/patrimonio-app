@@ -80,6 +80,20 @@ export default async function AdminPage() {
 
       <UsersCard profiles={profiles} meId={user.id} />
 
+      <Card title="Cópia de segurança">
+        <p className="text-sm text-zinc-600">
+          Descarrega a carteira toda num ficheiro Excel — frações, contratos, recibos, pagamentos,
+          despesas, senhorios e quotas, uma folha por tabela. Os dados vivem só no Supabase; guarda
+          uma cópia de vez em quando.
+        </p>
+        <a
+          href="/api/export"
+          className="mt-3 inline-block text-sm font-medium text-teal-700 hover:underline"
+        >
+          Descarregar .xlsx
+        </a>
+      </Card>
+
       <Card title="Notas">
         <ul className="list-disc space-y-1.5 pl-4 text-sm text-zinc-600">
           <li>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Target, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle2, DoorOpen, Target, TrendingUp, Wallet } from "lucide-react";
 import {
   CollectionRateChart,
   MonthlyFlowChart,
@@ -7,10 +7,18 @@ import {
   type MonthlyFlowDatum,
 } from "@/components/charts";
 import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import { contractActiveInMonth, expensesInMonth, marketView, monthRoll, sum } from "@/lib/calc";
-import { getSession } from "@/lib/data";
-import { currentMonthKey, fmtEur, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
-import type { Contract, Expense, Landlord, MarketBenchmark, Payment, Property } from "@/lib/types";
+import { expensesInMonth, marketView, monthRoll, sum } from "@/lib/calc";
+import { computeArrears } from "@/lib/arrears";
+import { fetchAllPayments, getSession } from "@/lib/data";
+import {
+  addMonthsKey,
+  currentMonthKey,
+  fmtEur,
+  fmtPct,
+  lastMonthsKeys,
+  monthLabel,
+} from "@/lib/format";
+import type { Contract, Expense, Landlord, MarketBenchmark, Property, Receipt } from "@/lib/types";
 import { DeviationBadge } from "./fracoes/properties-table";
 
 export const dynamic = "force-dynamic";
@@ -21,27 +29,27 @@ function collectionTone(taxa: number): "green" | "amber" | "red" {
   return "red";
 }
 
-interface LateAgg {
-  contract: Contract;
-  property: Property | undefined;
-  monthsLate: number;
-  totalLate: number;
-}
-
 export default async function DashboardPage() {
   const { supabase } = await getSession();
 
   const months = lastMonthsKeys(12);
   const fetchFloor = lastMonthsKeys(13)[0];
+  const thisMonth = currentMonthKey();
 
-  const [propsQ, contractsQ, landlordsQ, benchQ, paymentsQ, expensesQ] = await Promise.all([
-    supabase.from("properties").select("*"),
-    supabase.from("contracts").select("*"),
-    supabase.from("landlords").select("*"),
-    supabase.from("market_benchmarks").select("*"),
-    supabase.from("payments").select("*").gte("ref_month", fetchFloor),
-    supabase.from("expenses").select("*").gte("expense_date", fetchFloor),
-  ]);
+  const [propsQ, contractsQ, landlordsQ, benchQ, payments, expensesQ, receiptsMonthQ] =
+    await Promise.all([
+      supabase.from("properties").select("*"),
+      supabase.from("contracts").select("*"),
+      supabase.from("landlords").select("*"),
+      supabase.from("market_benchmarks").select("*"),
+      // Histórico COMPLETO e paginado (mesma fonte da tab de Atrasos) — os atrasos do dashboard
+      // passam pela mesma computeArrears, por isso precisam do histórico todo, não só de 12 meses.
+      fetchAllPayments(supabase),
+      supabase.from("expenses").select("*").gte("expense_date", fetchFloor),
+      // Checklist "Este mês": a fonte são os RECIBOS (o que foi emitido no Portal), não os
+      // pagamentos. Um mês só tem tantas linhas como contratos ativos — bem abaixo das 1000.
+      supabase.from("receipts").select("contract_id,pf_contract_no").eq("ref_month", thisMonth),
+    ]);
 
   const properties = (propsQ.data ?? []) as Property[];
   const contracts = (contractsQ.data ?? []) as Contract[];
@@ -49,7 +57,6 @@ export default async function DashboardPage() {
   // dashboard ainda não tem nenhum elemento que o mostre.
   const landlords = (landlordsQ.data ?? []) as Landlord[];
   const benchmarks = (benchQ.data ?? []) as MarketBenchmark[];
-  const payments = (paymentsQ.data ?? []) as Payment[];
   const expenses = (expensesQ.data ?? []) as Expense[];
 
   if (properties.length === 0) {
@@ -109,37 +116,57 @@ export default async function DashboardPage() {
   const currentAgg = monthAggs[monthAggs.length - 1];
 
   // ---------- Rendas em atraso ----------
-  // Mesma lógica de "falta" da grelha de Pagamentos (payments-grid.tsx: cellState):
-  // passado sem pagamento = falta; mês atual só é falta depois do dia de vencimento.
-  const current = currentMonthKey();
-  const today = todayISO();
-  const dayOfMonth = parseInt(today.slice(8, 10), 10);
-  const payMap = new Map(payments.map((p) => [`${p.contract_id}:${p.ref_month.slice(0, 7)}`, p]));
+  // Fonte ÚNICA: a MESMA computeArrears da página de Atrasos (renda de referência, horizonte de
+  // dados, cadência, contratos cessados sem baixa). Antes o dashboard tinha lógica própria
+  // (janela 12m, renda inteira por mês) que divergia da tab — daí os números não baterem certo.
+  const activeContracts = contracts.filter((c) => c.status === "ativo");
+  const { rows: arrearsRows, summary: arrearsSummary } = computeArrears(
+    activeContracts,
+    payments,
+    new Date(),
+  );
+  const lateRows = arrearsRows
+    .filter((r) => r.streak >= 1 && r.severity !== "ritmo_proprio")
+    .sort((a, b) => b.debt - a.debt || b.streak - a.streak)
+    .map((r) => ({
+      contractId: r.contractId,
+      property: propertiesById.get(r.propertyId),
+      tenantName: r.tenantName,
+      monthsLate: r.streak,
+      totalLate: r.debt,
+      stale: r.stale,
+    }));
 
-  function isLate(contract: Contract, m: string): boolean {
-    if (!contractActiveInMonth(contract, m)) return false;
-    if (payMap.has(`${contract.id}:${m.slice(0, 7)}`)) return false;
-    if (m < current) return true;
-    if (m === current) return dayOfMonth > contract.due_day;
-    return false;
+  // ---------- Este mês: recibos por emitir (P1-3) ----------
+  // Emitido = existe recibo do mês para o contrato. Os recibos importados trazem contract_id,
+  // mas os que ainda não foram reconciliados só têm o nº de contrato do Portal — aceitam-se os
+  // dois como prova de emissão.
+  const issued = new Set<string>();
+  for (const r of (receiptsMonthQ.data ?? []) as Array<Partial<Receipt>>) {
+    if (r.contract_id) issued.add(r.contract_id);
+    if (r.pf_contract_no) issued.add(r.pf_contract_no);
   }
-
-  const lateRows: LateAgg[] = contracts
-    .map((c) => {
-      let monthsLate = 0;
-      let totalLate = 0;
-      for (const m of months) {
-        if (isLate(c, m)) {
-          monthsLate += 1;
-          totalLate += c.rent;
-        }
+  const arrearsById = new Map(arrearsRows.map((r) => [r.contractId, r]));
+  const toIssue = activeContracts
+    .filter((c) => {
+      if (issued.has(c.id) || (c.pf_contract_no && issued.has(c.pf_contract_no))) return false;
+      // Contratos de cadência própria (ex.: trimestral) só entram no mês em que voltam a vencer.
+      const row = arrearsById.get(c.id);
+      const cadence = row?.cadence ?? 1;
+      if (cadence >= 2 && row?.lastPaidMonth) {
+        return addMonthsKey(row.lastPaidMonth, cadence) <= thisMonth;
       }
-      return { contract: c, property: propertiesById.get(c.property_id), monthsLate, totalLate };
+      return true;
     })
-    .filter((r) => r.monthsLate > 0)
-    .sort((a, b) => b.totalLate - a.totalLate);
+    .map((c) => ({ contract: c, property: propertiesById.get(c.property_id) }))
+    .sort((a, b) => (a.property?.name ?? "").localeCompare(b.property?.name ?? "", "pt"));
 
-  const totalLateAmount = sum(lateRows.map((r) => r.totalLate));
+  // ---------- Ocupação (P2-9) ----------
+  // Ocupada = tem contrato ativo. Deriva dos contratos e não de properties.status, que é um
+  // campo manual que fica desatualizado quando um contrato cessa.
+  const occupiedIds = new Set(activeContracts.map((c) => c.property_id));
+  const vacant = properties.filter((p) => !occupiedIds.has(p.id));
+  const occupancy = properties.length > 0 ? occupiedIds.size / properties.length : 0;
 
   // ---------- Vs. mercado ----------
   const marketRows = properties.map((p) => {
@@ -157,7 +184,7 @@ export default async function DashboardPage() {
     <div className="space-y-4">
       <PageHeader title="Dashboard" description={monthLabel(currentMonthKey())} />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatCard
           label="Recebido este mês"
           value={fmtEur(currentAgg.recebido)}
@@ -171,9 +198,9 @@ export default async function DashboardPage() {
         >
           <StatCard
             label="Rendas em falta"
-            value={lateRows.length}
-            sub={`${fmtEur(totalLateAmount)} total em falta · ver Atrasos`}
-            tone={lateRows.length > 0 ? "red" : "green"}
+            value={arrearsSummary.contractsInArrears}
+            sub={`${fmtEur(arrearsSummary.totalDebt)} de dívida estimada · ver Atrasos`}
+            tone={arrearsSummary.contractsInArrears > 0 ? "red" : "green"}
             icon={AlertCircle}
           />
         </Link>
@@ -191,7 +218,78 @@ export default async function DashboardPage() {
           tone="amber"
           icon={Target}
         />
+        <Link
+          href="/fracoes"
+          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+        >
+          <StatCard
+            label="Ocupação"
+            value={fmtPct(occupancy, 0)}
+            sub={
+              vacant.length === 0
+                ? `${properties.length} frações, todas arrendadas`
+                : `${vacant.length} sem contrato ativo: ${vacant
+                    .slice(0, 3)
+                    .map((p) => p.name)
+                    .join(", ")}${vacant.length > 3 ? "…" : ""}`
+            }
+            tone={vacant.length === 0 ? "green" : "zinc"}
+            icon={DoorOpen}
+          />
+        </Link>
       </div>
+
+      <Card
+        title="Este mês: recibos por emitir"
+        subtitle={`${monthLabel(thisMonth)} · contratos ativos ainda sem recibo emitido`}
+        actions={
+          <a
+            href="https://imoveis.portaldasfinancas.gov.pt/arrendamento/consultarRecibos.action"
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-medium text-teal-700 hover:underline"
+          >
+            Abrir Portal das Finanças
+          </a>
+        }
+      >
+        {toIssue.length === 0 ? (
+          <EmptyState icon={CheckCircle2}>
+            Todos os contratos ativos já têm recibo deste mês.
+          </EmptyState>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {toIssue.map(({ contract, property }) => (
+              <div
+                key={contract.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+              >
+                <div className="min-w-0">
+                  {property ? (
+                    <Link
+                      href={`/fracoes/${property.id}`}
+                      className="font-medium text-teal-700 hover:underline"
+                    >
+                      {property.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-zinc-700">?</span>
+                  )}
+                  <p className="truncate text-xs text-zinc-500">{contract.tenant_name}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="tabular-nums font-semibold text-zinc-900">
+                    {fmtEur(contract.rent)}
+                  </p>
+                  {contract.pf_contract_no && (
+                    <p className="font-mono text-xs text-zinc-400">{contract.pf_contract_no}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <Card title="Últimos 12 meses">
         <MonthlyFlowChart data={flowData} />
@@ -213,13 +311,13 @@ export default async function DashboardPage() {
                     <tr>
                       <Th>Fração</Th>
                       <Th>Inquilino</Th>
-                      <Th className="text-right">Meses em falta</Th>
-                      <Th className="text-right">€</Th>
+                      <Th className="text-right">Meses em atraso</Th>
+                      <Th className="text-right">Dívida estimada</Th>
                     </tr>
                   </thead>
                   <tbody>
                     {lateRows.map((r) => (
-                      <tr key={r.contract.id} className="hover:bg-zinc-50">
+                      <tr key={r.contractId} className="hover:bg-zinc-50">
                         <Td>
                           {r.property ? (
                             <Link
@@ -232,9 +330,11 @@ export default async function DashboardPage() {
                             "?"
                           )}
                         </Td>
-                        <Td>{r.contract.tenant_name}</Td>
+                        <Td>{r.tenantName}</Td>
                         <Td className="text-right tabular-nums">{r.monthsLate}</Td>
-                        <Td className="text-right tabular-nums text-red-700">{fmtEur(r.totalLate)}</Td>
+                        <Td className="text-right tabular-nums text-red-700">
+                          {r.stale ? "·" : fmtEur(r.totalLate)}
+                        </Td>
                       </tr>
                     ))}
                   </tbody>
@@ -243,7 +343,7 @@ export default async function DashboardPage() {
               <div className="space-y-2 md:hidden">
                 {lateRows.map((r) => (
                   <div
-                    key={r.contract.id}
+                    key={r.contractId}
                     className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
                   >
                     <div className="min-w-0">
@@ -257,10 +357,12 @@ export default async function DashboardPage() {
                       ) : (
                         <span className="font-medium text-zinc-700">?</span>
                       )}
-                      <p className="truncate text-xs text-zinc-500">{r.contract.tenant_name}</p>
+                      <p className="truncate text-xs text-zinc-500">{r.tenantName}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="tabular-nums font-semibold text-red-700">{fmtEur(r.totalLate)}</p>
+                      <p className="tabular-nums font-semibold text-red-700">
+                        {r.stale ? "·" : fmtEur(r.totalLate)}
+                      </p>
                       <p className="tabular-nums text-xs text-zinc-500">
                         {r.monthsLate} {r.monthsLate === 1 ? "mês" : "meses"}
                       </p>

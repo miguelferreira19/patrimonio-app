@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/ui";
 import { computeArrears, type ArrearsContractInput, type ArrearsPaymentInput } from "@/lib/arrears";
-import { getSession } from "@/lib/data";
+import { fetchAllPayments, getSession } from "@/lib/data";
 import { fmtEur } from "@/lib/format";
 import type { Landlord, Property, PropertyOwner } from "@/lib/types";
 import { ArrearsClient, type ArrearsViewRow } from "./arrears-client";
@@ -13,7 +13,7 @@ type ArrearsLandlordRow = Pick<Landlord, "id" | "name">;
 export default async function AtrasosPage() {
   const { supabase } = await getSession();
 
-  const [contractsQ, propsQ, ownersQ, landlordsQ, paymentsQ] = await Promise.all([
+  const [contractsQ, propsQ, ownersQ, landlordsQ, allPayments] = await Promise.all([
     supabase
       .from("contracts")
       .select("id,rent,start_date,property_id,tenant_name,pf_contract_no")
@@ -21,17 +21,17 @@ export default async function AtrasosPage() {
     supabase.from("properties").select("id,name,matriz_article"),
     supabase.from("property_owners").select("*"),
     supabase.from("landlords").select("id,name").order("name"),
-    // Sem .limit() explícito o PostgREST corta a 1000 linhas por defeito — a tabela já
-    // tem >5000 (CLAUDE.md). Aqui é preciso o histórico COMPLETO de pagamentos (não só
-    // os últimos 12 meses como em Pagamentos): o último mês pago pode ser há anos.
-    supabase.from("payments").select("contract_id,ref_month,amount").limit(50000),
+    // Histórico COMPLETO de pagamentos (o último mês pago pode ser há anos). Paginado: o
+    // Supabase corta a resposta a ~1000 linhas mesmo com .limit() alto, e a tabela tem >5000
+    // — sem paginar, contratos inteiros ficavam sem pagamentos e apareciam como "nunca".
+    fetchAllPayments(supabase),
   ]);
 
   const contracts = (contractsQ.data ?? []) as ArrearsContractInput[];
   const properties = (propsQ.data ?? []) as ArrearsPropertyRow[];
   const owners = (ownersQ.data ?? []) as PropertyOwner[];
   const landlords = (landlordsQ.data ?? []) as ArrearsLandlordRow[];
-  const payments = (paymentsQ.data ?? []) as ArrearsPaymentInput[];
+  const payments = allPayments as ArrearsPaymentInput[];
 
   const { rows, summary } = computeArrears(contracts, payments, new Date());
 
