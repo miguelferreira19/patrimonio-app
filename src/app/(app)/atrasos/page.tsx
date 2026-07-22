@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui";
 import { computeArrears, type ArrearsContractInput, type ArrearsPaymentInput } from "@/lib/arrears";
 import { fetchAllPayments, getSession } from "@/lib/data";
@@ -64,7 +66,20 @@ export default async function AtrasosPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Atrasos" description={description} />
+      <PageHeader
+        eyebrow="Cobrança"
+        title="Rendas em atraso"
+        description={description}
+        actions={
+          <Link
+            href="/pagamentos"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+          >
+            <Plus size={15} strokeWidth={2} />
+            Registar pagamento
+          </Link>
+        }
+      />
       <ArrearsClient rows={viewRows} landlords={landlords} summary={summary} />
     </div>
   );

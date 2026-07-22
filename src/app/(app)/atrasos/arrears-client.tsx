@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { ArrearsFlowChart } from "@/components/charts";
 import { Badge, Card, cn, EmptyState, Input, Select, StatCard, Table, Td, Th } from "@/components/ui";
-import { fmtEur, monthLabel } from "@/lib/format";
+import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 import {
   SEVERITY_LABEL,
   SEVERITY_RANK,
@@ -167,6 +167,13 @@ export function ArrearsClient({
 
   const nothingInArrears = summary.contractsInArrears === 0;
 
+  // Taxa de cobrança dos 12 meses fechados: a mesma série do gráfico, agregada.
+  const collection12m = useMemo(() => {
+    const esperado = summary.monthly.reduce((a, m) => a + m.esperado, 0);
+    const recebido = summary.monthly.reduce((a, m) => a + m.recebido, 0);
+    return esperado > 0 ? recebido / esperado : 0;
+  }, [summary.monthly]);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -191,10 +198,14 @@ export function ArrearsClient({
           icon={CircleDollarSign}
         />
         <StatCard
-          label="Maior atraso"
-          value={summary.worst ? `${summary.worst.streak} meses` : "0 meses"}
-          sub={worstRow ? `${worstRow.tenantName} · ${worstRow.propertyName}` : "Sem contratos em atraso"}
-          tone={nothingInArrears ? "green" : "red"}
+          label="Taxa de cobrança 12m"
+          value={fmtPct(collection12m, 0)}
+          sub={
+            summary.worst && worstRow
+              ? `maior atraso: ${summary.worst.streak} meses · ${worstRow.tenantName}`
+              : "sem contratos em atraso"
+          }
+          tone={collection12m >= 1 ? "green" : collection12m >= 0.8 ? "amber" : "red"}
           icon={CalendarClock}
         />
       </div>

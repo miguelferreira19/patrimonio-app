@@ -1,7 +1,17 @@
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, DoorOpen, Target, TrendingUp, Wallet } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  DoorOpen,
+  Download,
+  Plus,
+  Target,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import {
   CollectionRateChart,
+  FlowLegend,
   MonthlyFlowChart,
   type CollectionRateDatum,
   type MonthlyFlowDatum,
@@ -29,8 +39,16 @@ function collectionTone(taxa: number): "green" | "amber" | "red" {
   return "red";
 }
 
+// Sem nome: o perfil só garante email, e "Bom dia, migue@..." seria pior que nada.
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 13) return "Bom dia";
+  if (h < 20) return "Boa tarde";
+  return "Boa noite";
+}
+
 export default async function DashboardPage() {
-  const { supabase } = await getSession();
+  const { supabase, isAdmin } = await getSession();
 
   const months = lastMonthsKeys(12);
   const fetchFloor = lastMonthsKeys(13)[0];
@@ -103,12 +121,11 @@ export default async function DashboardPage() {
   });
 
   const flowData: MonthlyFlowDatum[] = monthAggs.map(
-    ({ month, label, esperado, recebido, despesas, liquido }) => ({
+    ({ month, label, esperado, recebido, liquido }) => ({
       month,
       label,
       esperado,
       recebido,
-      despesas,
       liquido,
     }),
   );
@@ -180,9 +197,45 @@ export default async function DashboardPage() {
     .sort((a, b) => (a.mv.deviation ?? 0) - (b.mv.deviation ?? 0))
     .slice(0, 5);
 
+  // Resumo em linguagem natural: o stakeholder não-técnico lê a frase, não os KPIs.
+  // Sai dos mesmos números que os cartões mostram — não há aqui nenhum cálculo novo.
+  const heroSummary = [
+    `Cobraste ${fmtPct(currentAgg.taxa, 0)} do esperado este mês.`,
+    arrearsSummary.contractsInArrears > 0
+      ? `${arrearsSummary.contractsInArrears} ${arrearsSummary.contractsInArrears === 1 ? "contrato está" : "contratos estão"} em atraso.`
+      : "Nenhum contrato está em atraso.",
+    toIssue.length > 0
+      ? `Faltam ${toIssue.length} ${toIssue.length === 1 ? "recibo" : "recibos"} por emitir.`
+      : "Os recibos do mês estão todos emitidos.",
+  ].join(" ");
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Dashboard" description={monthLabel(currentMonthKey())} />
+      <PageHeader
+        eyebrow={monthLabel(thisMonth)}
+        title={greeting()}
+        description={heroSummary}
+        actions={
+          <>
+            {isAdmin && (
+              <a
+                href="/api/export"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+              >
+                <Download size={15} strokeWidth={1.75} />
+                Exportar
+              </a>
+            )}
+            <Link
+              href="/pagamentos"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+            >
+              <Plus size={15} strokeWidth={2} />
+              Registar pagamento
+            </Link>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatCard
@@ -291,7 +344,7 @@ export default async function DashboardPage() {
         )}
       </Card>
 
-      <Card title="Últimos 12 meses">
+      <Card title="Últimos 12 meses" actions={<FlowLegend />}>
         <MonthlyFlowChart data={flowData} />
         <div className="mt-4 border-t border-zinc-100 pt-3">
           <p className="mb-1 text-xs font-medium text-zinc-500">Taxa de cobrança mensal</p>

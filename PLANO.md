@@ -24,8 +24,8 @@ análises sempre em ótica de família (valores por inteiro).
 - Redesign visual (2026-07-19): design system coerente, ver CLAUDE.md §Design system.
 - Página de Atrasos com metodologia própria (ver §5).
 - 2026-07-22: checklist "Este mês" de recibos por emitir (P1-3), StatCard de ocupação (P2-9
-  parcial), backup `.xlsx` da carteira em Admin (P1-7), página **Saúde dos dados** (P1-5) e
-  atalho de pagamento em dinheiro (P1-2). Em produção.
+  parcial), backup `.xlsx` da carteira em Admin (P1-7), página **Saúde dos dados** (P1-5),
+  atalho de pagamento em dinheiro (P1-2), CI no GitHub (P1-6) e **redesign v2** (§10). Em produção.
 
 **Pendências imediatas de dados (não de código):**
 - Tio Ilídio: exports do Portal ainda não existem em `dados/Tio/` — quando existirem, correr o
@@ -393,3 +393,39 @@ ENGLOBAMENTO; AIMI 1.314€ (VPT 1,39M, usa o limite de casal 1,2M). Mais-valia 
    modelada (crédito no Anexo F + exatidão da renda de referência). → **P2-5**.
 5. **AIMI**: ambos pagam e deduzem no Anexo F (Q9). Distribuir propriedade por herdeiros reduz o
    AIMI (limite 600k/pessoa) — planeamento sucessório, só sinalizar. → **P3-5**.
+
+## 10. Redesign v2 (2026-07-22) — handoff do Claude Design
+
+Fonte: `Melhoria visual património-app/` (README de handoff + 3 protótipos `.dc.html`). Os
+protótipos são REFERÊNCIA, não código: o alvo foi recriado com as primitivas existentes.
+
+**Partilhado (chega às 3 páginas de uma vez):**
+- `ui.tsx` · `PageHeader` ganhou `eyebrow` — com ele entra em modo "hero" (sobre-título a teal,
+  h1 30px, resumo até 520px, `animate-rise`); sem ele fica igual ao que era, por isso as páginas
+  não redesenhadas não mudaram.
+- `ui.tsx` · `Card` e `StatCard` a `rounded-[14px]`; StatCard com hover-lift, valor 27px e caixa
+  de ícone COLORIDA POR TOM (antes era sempre teal).
+- `globals.css` · keyframe `rise` + `prefers-reduced-motion` a desligar as três animações.
+- `layout.tsx` · main a `max-w-[1360px]`, padding 32/36.
+
+**Gráficos (`charts.tsx`):** o gráfico principal passou a **Bruto vs Líquido** (a série Despesas
+saiu, por pedido do cliente: a despesa lê-se na distância entre as duas barras). Líquido usa o
+mesmo hue a 42%, não um hue novo — é o mesmo dinheiro depois das despesas. Legenda saiu do
+Recharts para o header do cartão (`<FlowLegend />` em `actions`). Constantes mortas removidas
+(COLOR_DESPESAS/LIQUIDO/SURFACE) e `despesas` saiu de `MonthlyFlowDatum`.
+
+**Páginas:** Dashboard com hero (saudação por hora do dia + resumo em linguagem natural derivado
+dos KPIs) e ações Exportar (só admin → `/api/export`) + Registar pagamento; Atrasos com hero
+"Cobrança" e o 4.º KPI trocado de "Maior atraso" para **Taxa de cobrança 12m** (o maior atraso
+passou para o `sub`); Frações com hero "Portefólio" e 4 KPIs novos (total, arrendadas, ocupação,
+renda média por m²).
+
+**Desvio consciente ao handoff:** o spec pedia KPIs a 1 coluna abaixo de 560px; ficaram a 2, que
+é o padrão de mobile que a app adotou na sessão de usabilidade e evita uma coluna de 5 cartões
+altíssima. Reverter é trocar `grid-cols-2` por `grid-cols-1 min-[560px]:grid-cols-2`.
+
+**Validação:** com login não é possível (ver §2). Foi usada uma página temporária em
+`/login/debug` com dados FABRICADOS (sem Supabase, logo sem RLS) e verificados os estilos
+computados contra o spec: h1 30px/600, eyebrow 12px `.06em` teal-700, cartões 14px, KPI
+27px tabular-nums, label 11px `.04em`. Mobile a 375px: 2 colunas, sem overflow horizontal,
+consola limpa. A página foi apagada antes do deploy.

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fafafa;color:#18181b;font-family:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#0f766e;text-decoration:none}
+a:hover{color:#115e59}
+.tnum{font-variant-numeric:tabular-nums}
+.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes growbar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.kpi:hover{box-shadow:0 8px 24px -8px rgba(15,118,110,.22);transform:translateY(-2px)}
+.navlink:hover{background:rgba(255,255,255,.05);color:#f4f4f5}
+.row:hover{background:#fafafa}
+.issue:hover{border-color:#5eead4;box-shadow:0 4px 12px -6px rgba(15,118,110,.25)}
+@media(max-width:900px){.shell{grid-template-columns:1fr !important}.rail{display:none !important}.topbar{display:flex !important}.kpigrid{grid-template-columns:repeat(2,1fr) !important}.twocol{grid-template-columns:1fr !important}.main{padding:16px !important}.hero{flex-direction:column !important;align-items:flex-start !important}}
+@media(max-width:560px){.kpigrid{grid-template-columns:1fr !important}}
+</style>
+</helmet>
+<div class="shell" style="display:grid;grid-template-columns:248px 1fr;min-height:100vh">
+
+  <aside class="rail" style="position:sticky;top:0;height:100vh;background:#09090b;display:flex;flex-direction:column;padding:20px 12px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px">
+      <span style="display:flex;height:34px;width:34px;align-items:center;justify-content:center;border-radius:9px;background:linear-gradient(135deg,rgba(20,184,166,.28),rgba(20,184,166,.1));border:1px solid rgba(45,212,191,.25)"><span style="font-weight:700;color:#5eead4;font-size:15px">P</span></span>
+      <div style="min-width:0">
+        <p style="margin:0;font-size:14px;font-weight:600;color:#fff">Património</p>
+        <p style="margin:0;font-size:11px;color:#71717a">Gestão familiar</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:22px;flex:1;overflow-y:auto">
+      <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="3">
+        <div>
+          <p style="margin:0 0 6px;padding:0 12px;font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#52525b">{{ g.label }}</p>
+          <nav style="display:flex;flex-direction:column;gap:2px">
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+              <a class="navlink" href="{{ it.href }}" style="{{ it.style }}"><span style="width:18px;height:18px;display:inline-flex;flex:none">{{ it.icon }}</span><span>{{ it.label }}</span></a>
+            </sc-for>
+          </nav>
+        </div>
+      </sc-for>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.08);padding:14px 8px 4px;margin-top:12px">
+      <p style="margin:0;font-size:12px;color:#71717a">tio.antonio@familia.pt</p>
+      <span style="display:inline-flex;margin-top:7px;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:500;background:rgba(20,184,166,.1);color:#5eead4;border:1px solid rgba(45,212,191,.2)">Administrador</span>
+    </div>
+  </aside>
+
+  <div style="display:flex;flex-direction:column;min-width:0">
+    <header class="topbar" style="display:none;align-items:center;justify-content:space-between;height:56px;padding:0 16px;background:#09090b;position:sticky;top:0;z-index:20">
+      <div style="display:flex;align-items:center;gap:9px"><span style="display:flex;height:28px;width:28px;align-items:center;justify-content:center;border-radius:8px;background:rgba(20,184,166,.15);font-weight:700;color:#5eead4;font-size:13px">P</span><span style="font-size:14px;font-weight:600;color:#fff">Património</span></div>
+      <span style="color:#a1a1aa">☰</span>
+    </header>
+
+    <main class="main" style="max-width:1360px;width:100%;margin:0 auto;padding:32px 36px 64px">
+
+      <div class="hero" style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:26px;animation:rise .5s ease both">
+        <div>
+          <p style="margin:0;font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:{{ accentColor }}">{{ monthLabel }}</p>
+          <h1 style="margin:6px 0 0;font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1">Bom dia, António</h1>
+          <p style="margin:8px 0 0;font-size:14px;color:#71717a;max-width:520px;text-wrap:pretty">{{ heroSummary }}</p>
+        </div>
+        <div style="display:flex;gap:10px;flex:none">
+          <button style="height:38px;padding:0 15px;border-radius:10px;border:1px solid #d4d4d8;background:#fff;font:500 13px/1 'Geist';color:#3f3f46;cursor:pointer">Exportar</button>
+          <button style="height:38px;padding:0 16px;border-radius:10px;border:none;background:{{ accentColor }};color:#fff;font:500 13px/1 'Geist';cursor:pointer;box-shadow:0 6px 16px -6px rgba(0,0,0,.35)">+ Novo pagamento</button>
+        </div>
+      </div>
+
+      <div class="kpigrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="5">
+          <div class="kpi" style="{{ k.wrapStyle }}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <p style="margin:0;font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#71717a">{{ k.label }}</p>
+              <span style="{{ k.iconWrap }}">{{ k.icon }}</span>
+            </div>
+            <p style="margin:10px 0 0;font-size:27px;font-weight:600;letter-spacing:-.02em;{{ k.valueColor }}" class="tnum">{{ k.value }}</p>
+            <p style="margin:8px 0 0;font-size:12px;color:#71717a;line-height:1.35">{{ k.sub }}</p>
+          </div>
+        </sc-for>
+      </div>
+
+      <section style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:16px;overflow:hidden">
+        <header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:16px 18px;border-bottom:1px solid #f4f4f5">
+          <div><h2 style="margin:0;font-size:14px;font-weight:600">Este mês: recibos por emitir</h2><p style="margin:3px 0 0;font-size:12px;color:#a1a1aa">{{ monthLabel }} · contratos ativos ainda sem recibo</p></div>
+          <a href="#" style="font-size:13px;font-weight:500">Abrir Portal das Finanças →</a>
+        </header>
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" class="twocol">
+          <sc-for list="{{ toIssue }}" as="t" hint-placeholder-count="4">
+            <div class="issue" style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e4e4e7;border-radius:11px;padding:12px 14px;transition:.15s">
+              <div style="min-width:0"><a href="#" style="font-weight:600;font-size:14px">{{ t.name }}</a><p style="margin:2px 0 0;font-size:12px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.tenant }}</p></div>
+              <div style="text-align:right;flex:none"><p style="margin:0;font-weight:600;font-size:15px" class="tnum">{{ t.rent }}</p><p style="margin:2px 0 0;font-size:11px;color:#c4c4c8" class="mono">{{ t.pf }}</p></div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:16px">
+        <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #f4f4f5">
+          <h2 style="margin:0;font-size:14px;font-weight:600">Últimos 12 meses</h2>
+          <div style="display:flex;gap:14px;font-size:11px;color:#71717a;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:{{ accentColor }}"></span>Bruto</span>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:{{ accentColor }};opacity:.42"></span>Líquido</span>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:0;border-top:2px dashed #a1a1aa"></span>Esperado</span>
+          </div>
+        </header>
+        <div style="padding:18px 18px 6px">{{ flowChart }}</div>
+        <div style="padding:4px 18px 18px;border-top:1px solid #f4f4f5;margin-top:6px">
+          <p style="margin:14px 0 8px;font-size:12px;font-weight:500;color:#71717a">Taxa de cobrança mensal</p>
+          <div style="display:flex;align-items:flex-end;gap:2.2%;height:88px">
+            <sc-for list="{{ flow }}" as="f" hint-placeholder-count="12">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;justify-content:flex-end;height:100%">
+                <div style="width:46%;min-height:2px;border-radius:3px 3px 0 0;height:{{ f.ratePct }};background:{{ f.rateColor }};transform-origin:bottom;animation:growbar .6s ease both"></div>
+                <span style="font-size:9px;color:#a1a1aa">{{ f.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#71717a;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:999px;background:#0ca30c"></span>≥ 100%</span>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:999px;background:#fab219"></span>80–99%</span>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:999px;background:#d03b3b"></span>&lt; 80%</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="twocol" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <section style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+          <header style="padding:16px 18px;border-bottom:1px solid #f4f4f5"><h2 style="margin:0;font-size:14px;font-weight:600">Rendas em atraso</h2></header>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr>
+              <th style="text-align:left;padding:9px 18px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Fração</th>
+              <th style="text-align:left;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Inquilino</th>
+              <th style="text-align:right;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Meses</th>
+              <th style="text-align:right;padding:9px 18px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Dívida</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ arrears }}" as="ar" hint-placeholder-count="3">
+                <tr class="row">
+                  <td style="padding:11px 18px;border-bottom:1px solid #f7f7f8"><a href="#" style="font-weight:500">{{ ar.name }}</a></td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8;color:#52525b">{{ ar.tenant }}</td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8;text-align:right;color:#3f3f46" class="tnum">{{ ar.months }}</td>
+                  <td style="padding:11px 18px;border-bottom:1px solid #f7f7f8;text-align:right;font-weight:600;color:#b91c1c" class="tnum">{{ ar.debt }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+
+        <section style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+          <header style="padding:16px 18px;border-bottom:1px solid #f4f4f5"><h2 style="margin:0;font-size:14px;font-weight:600">Mais abaixo do mercado</h2></header>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr>
+              <th style="text-align:left;padding:9px 18px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Fração</th>
+              <th style="text-align:left;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Desvio</th>
+              <th style="text-align:right;padding:9px 18px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Potencial/mês</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ market }}" as="mk" hint-placeholder-count="4">
+                <tr class="row">
+                  <td style="padding:11px 18px;border-bottom:1px solid #f7f7f8"><a href="#" style="font-weight:500">{{ mk.name }}</a></td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8"><span style="display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;background:#fef2f2;color:#b91c1c;border:1px solid rgba(220,38,38,.2)" class="tnum">{{ mk.dev }}</span></td>
+                  <td style="padding:11px 18px;border-bottom:1px solid #f7f7f8;text-align:right;font-weight:600;color:#b45309" class="tnum">{{ mk.pot }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <p style="margin:22px 0 0;font-size:12px;color:#a1a1aa">Ver também <a href="#">Mercado</a> e <a href="#">Pagamentos</a>.</p>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: 1280, &quot;height&quot;: 900},
+  &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#0f766e&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#0f766e&quot;, &quot;#4f46e5&quot;, &quot;#b45309&quot;, &quot;#334155&quot;], &quot;section&quot;: &quot;Aparência&quot;},
+  &quot;chartType&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;Barras&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;Barras&quot;, &quot;Área&quot;], &quot;section&quot;: &quot;Gráfico&quot;},
+  &quot;showTargetLine&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Gráfico&quot;}
+}">
+const ic = {
+  dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  building:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20M10 6h.01M14 6h.01M10 10h.01M14 10h.01M10 14h.01M14 14h.01"/></svg>',
+  coins:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  receipt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>',
+  trend:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>',
+  steth:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M4 3v6a5 5 0 0 0 10 0V3M6 3h-2M12 3h2M9 14v3a4 4 0 0 0 8 0v-1"/><circle cx="20" cy="10" r="2"/></svg>',
+  wallet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12a2 2 0 0 0-2-2h-4a2 2 0 0 0 0 4h4a2 2 0 0 0 2-2Z"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  door:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><path d="M13 4h3a2 2 0 0 1 2 2v14M2 20h20M13 20V4L6 5.5V20M10 12v.01"/></svg>',
+};
+const active='display:flex;align-items:center;gap:11px;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;color:#fff;background:rgba(255,255,255,.07);position:relative;box-shadow:inset 2px 0 0 #2dd4bf';
+const idle='display:flex;align-items:center;gap:11px;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;color:#a1a1aa;transition:.15s';
+
+class Component extends DCLogic {
+  renderVals() {
+    const svgEl = s => React.createElement('span',{style:{display:'inline-flex',alignItems:'center',justifyContent:'center'},dangerouslySetInnerHTML:{__html:s}});
+    Object.keys(ic).forEach(k=>{ if(typeof ic[k]==='string') ic[k]=svgEl(ic[k]); });
+    const eur = (v,d=0)=>new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:d,maximumFractionDigits:d}).format(v);
+    const navGroups = [
+      {label:'Visão geral', items:[{label:'Dashboard',href:'Dashboard.dc.html',icon:ic.dash,style:active}]},
+      {label:'Gestão', items:[{label:'Frações',href:'Fracoes.dc.html',icon:ic.building,style:idle},{label:'Pagamentos',href:'#',icon:ic.coins,style:idle},{label:'Atrasos',href:'Atrasos.dc.html',icon:ic.clock,style:idle},{label:'Despesas',href:'#',icon:ic.receipt,style:idle}]},
+      {label:'Referência', items:[{label:'Mercado',href:'#',icon:ic.trend,style:idle},{label:'Senhorios',href:'#',icon:ic.users,style:idle},{label:'Saúde dos dados',href:'#',icon:ic.steth,style:idle}]},
+    ];
+    const kpiBase='background:#fff;border:1px solid #e4e4e7;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:.2s;cursor:default';
+    const iconWrap=(bg,c)=>`display:flex;height:32px;width:32px;flex:none;align-items:center;justify-content:center;border-radius:9px;background:${bg};color:${c}`;
+    const kpis = [
+      {label:'Recebido este mês', value:eur(4280), sub:'de €4.680 esperados · taxa 91%', valueColor:'color:#b45309', icon:ic.wallet, iconWrap:iconWrap('#fef7e6','#b45309'), wrapStyle:kpiBase},
+      {label:'Rendas em falta', value:'2', sub:'€1.240 de dívida estimada · ver Atrasos', valueColor:'color:#b91c1c', icon:ic.alert, iconWrap:iconWrap('#fef2f2','#b91c1c'), wrapStyle:kpiBase},
+      {label:'Lucro do mês', value:eur(3510), sub:'despesas: €770', valueColor:'color:#0f766e', icon:ic.trend, iconWrap:iconWrap('#f0fdfa','#0f766e'), wrapStyle:kpiBase},
+      {label:'Potencial mercado', value:'+'+eur(620), sub:'por mês, se rendas à mediana INE', valueColor:'color:#b45309', icon:ic.target, iconWrap:iconWrap('#fef7e6','#b45309'), wrapStyle:kpiBase},
+      {label:'Ocupação', value:'92%', sub:'12 frações · 1 sem contrato: Loja B', valueColor:'color:#18181b', icon:ic.door, iconWrap:iconWrap('#f4f4f5','#52525b'), wrapStyle:kpiBase},
+    ];
+    const toIssue = [
+      {name:'Rua Augusta, 3º Dto',tenant:'Maria Fernandes',rent:eur(720),pf:'PF-118342'},
+      {name:'Av. Roma, 5º Esq',tenant:'João Silva',rent:eur(650),pf:'PF-118210'},
+      {name:'Loja Baixa nº12',tenant:'Padaria Central Lda',rent:eur(980),pf:'PF-117905'},
+      {name:'Alameda, 2º Fte',tenant:'Ana Costa',rent:eur(540),pf:'PF-118501'},
+    ];
+    const raw=[
+      {label:'ago',rec:3900,desp:600,rate:.98},{label:'set',rec:4100,desp:820,rate:1.0},
+      {label:'out',rec:3600,desp:540,rate:.83},{label:'nov',rec:4200,desp:700,rate:1.0},
+      {label:'dez',rec:4680,desp:1100,rate:1.0},{label:'jan 25',rec:3200,desp:650,rate:.74},
+      {label:'fev',rec:4300,desp:580,rate:1.0},{label:'mar',rec:4100,desp:900,rate:.95},
+      {label:'abr',rec:4680,desp:620,rate:1.0},{label:'mai',rec:4400,desp:730,rate:1.0},
+      {label:'jun',rec:3950,desp:560,rate:.88},{label:'jul',rec:4280,desp:770,rate:.91},
+    ];
+    const maxV=Math.max(...raw.map(r=>Math.max(r.rec,r.desp)));
+    const top=5000;
+    const rc=t=>t>=1?'#0ca30c':t>=.8?'#fab219':'#d03b3b';
+    const flow = raw.map(r=>({label:r.label, recPct:(r.rec/top*100).toFixed(1)+'%', despPct:(r.desp/top*100).toFixed(1)+'%', ratePct:(Math.min(r.rate,1.05)/1.05*100).toFixed(0)+'%', rateColor:rc(r.rate)}));
+    const gridLines=['€5.000','€3.750','€2.500','€1.250'];
+    const arrears=[
+      {name:'Rua Augusta, 3º Dto',tenant:'Maria Fernandes',months:2,debt:eur(1440)},
+      {name:'Av. Roma, 5º Esq',tenant:'João Silva',months:1,debt:eur(650)},
+    ];
+    const market=[
+      {name:'Loja Baixa nº12',dev:'−18%',pot:'+'+eur(210)},
+      {name:'Alameda, 2º Fte',dev:'−14%',pot:'+'+eur(150)},
+      {name:'Rua Augusta, 3º Dto',dev:'−9%',pot:'+'+eur(120)},
+      {name:'Av. Roma, 5º Esq',dev:'−6%',pot:'+'+eur(90)},
+    ];
+    // ---------- Tweaks ----------
+    const A = this.props.accent ?? '#0f766e';
+    const chartType = this.props.chartType ?? 'Barras';
+    const showTarget = this.props.showTargetLine ?? true;
+    const dark = c => { const n=parseInt(c.slice(1),16); const r=Math.max(0,((n>>16)&255)-24),g=Math.max(0,((n>>8)&255)-24),b=Math.max(0,(n&255)-24); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); };
+    const A2 = dark(A);
+
+    // ---------- Gráfico fluxo (SVG) ----------
+    const h = React.createElement;
+    const W=800,H=260,L=58,Rm=14,T=12,B=28, pw=W-L-Rm, ph=H-T-B, topV=5000, n=raw.length;
+    const cx=i=>L+pw*(i+0.5)/n, yv=v=>T+ph*(1-v/topV);
+    const kids=[];
+    [0,1250,2500,3750,5000].forEach((gval,gi)=>{
+      const y=yv(gval);
+      kids.push(h('line',{key:'g'+gi,x1:L,x2:W-Rm,y1:y,y2:y,stroke:'#f1f1f3',strokeWidth:1}));
+      kids.push(h('text',{key:'gt'+gi,x:L-8,y:y+3,textAnchor:'end',fontSize:10,fill:'#c4c4c8',fontFamily:'Geist Mono,monospace'},'€'+(gval/1000).toLocaleString('pt-PT')+(gval?'k':'')));
+    });
+    if(chartType==='Área'){
+      const pts=raw.map((r,i)=>`${cx(i)},${yv(r.rec)}`).join(' ');
+      kids.push(h('polygon',{key:'af',points:`${L},${yv(0)} ${pts} ${W-Rm},${yv(0)}`,fill:A,opacity:0.12}));
+      kids.push(h('polyline',{key:'al',points:pts,fill:'none',stroke:A,strokeWidth:2.5,strokeLinejoin:'round',strokeLinecap:'round'}));
+      raw.forEach((r,i)=>kids.push(h('circle',{key:'ad'+i,cx:cx(i),cy:yv(r.rec),r:3,fill:'#fff',stroke:A,strokeWidth:2})));
+      const lp=raw.map((r,i)=>`${cx(i)},${yv(r.rec-r.desp)}`).join(' ');
+      kids.push(h('polyline',{key:'ll',points:lp,fill:'none',stroke:A2,strokeWidth:1.5,strokeDasharray:'1 0',strokeLinejoin:'round',opacity:0.55}));
+    } else {
+      const bw=(pw/n)*0.62, half=bw/2-1.5;
+      raw.forEach((r,i)=>{
+        const x=cx(i);
+        kids.push(h('rect',{key:'br'+i,x:x-half-1.5,y:yv(r.rec),width:half,height:yv(0)-yv(r.rec),rx:3,fill:A}));
+        kids.push(h('rect',{key:'bl'+i,x:x+1.5,y:yv(r.rec-r.desp),width:half,height:yv(0)-yv(r.rec-r.desp),rx:3,fill:A,opacity:0.42}));
+      });
+    }
+    if(showTarget){
+      const exp=raw.map((r,i)=>`${cx(i)},${yv(r.rec/(r.rate||1))}`).join(' ');
+      kids.push(h('polyline',{key:'exp',points:exp,fill:'none',stroke:'#a1a1aa',strokeWidth:1.5,strokeDasharray:'4 3',strokeLinecap:'round'}));
+    }
+    raw.forEach((r,i)=>kids.push(h('text',{key:'x'+i,x:cx(i),y:H-8,textAnchor:'middle',fontSize:10,fill:'#a1a1aa',fontFamily:'Geist,sans-serif'},r.label)));
+    const flowChart=h('svg',{viewBox:`0 0 ${W} ${H}`,width:'100%',height:260,preserveAspectRatio:'none',style:{display:'block',overflow:'visible'}},kids);
+
+    return {monthLabel:'julho 2025', accentColor:A, accentDark:A2, flowChart, showTarget, heroSummary:'Cobraste 91% do esperado este mês. Há 2 rendas em atraso e 4 recibos por emitir — trata destes hoje para fechar o mês a 100%.', navGroups, kpis, toIssue, flow, gridLines, arrears, market};
+  }
+}
+</script>
+</body>
+</html>

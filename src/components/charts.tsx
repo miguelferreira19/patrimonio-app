@@ -27,12 +27,9 @@ import { fmtEur, fmtPct } from "@/lib/format";
 
 // ---------- Paleta ----------
 const COLOR_RECEBIDO = "#0f766e"; // teal-700 — accent da app; contraste ~5.6:1 em branco
-const COLOR_DESPESAS = "#71717a"; // zinc-500 — contexto neutro; contraste ~4.8:1
-const COLOR_LIQUIDO = "#27272a"; // zinc-800 — "linha de fundo" (tinta escura)
 const COLOR_ESPERADO = "#a1a1aa"; // zinc-400 — referência tracejada, recessiva por design
 const COLOR_GRID = "#e4e4e7"; // zinc-200 — grelha/eixo hairline
 const COLOR_MUTED_TEXT = "#71717a"; // zinc-500 — texto de eixos
-const COLOR_SURFACE = "#ffffff"; // cartões da app são bg-white
 
 // Paleta de estado fixa (dataviz/references/palette.md) — reservada à taxa de cobrança,
 // que é genuinamente um estado (cumpriu/não cumpriu), ao contrário de despesas/líquido.
@@ -42,17 +39,20 @@ const COLOR_CRITICAL = "#d03b3b";
 
 const SERIES_ORDER: Record<string, number> = {
   recebido: 0,
-  despesas: 1,
-  liquido: 2,
-  esperado: 3,
+  liquido: 1,
+  esperado: 2,
 };
+
+// Líquido = o MESMO dinheiro, depois das despesas: mesma cor a 42% em vez de um hue novo.
+// Duas barras do mesmo hue leem-se como "de X sobra Y"; um hue diferente sugeriria uma
+// grandeza independente, que não é o caso.
+const COLOR_LIQUIDO_BAR = "rgba(15,118,110,0.42)";
 
 export interface MonthlyFlowDatum {
   month: string;
   label: string;
   esperado: number;
   recebido: number;
-  despesas: number;
   liquido: number;
 }
 
@@ -101,10 +101,31 @@ function FlowTooltip({ active, payload, label }: TooltipProps<number, string>) {
   );
 }
 
+/** Legenda do gráfico de fluxo, para o header do cartão (o cliente pediu-a lá em cima). */
+export function FlowLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[11px] text-zinc-500">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: COLOR_RECEBIDO }} />
+        Bruto
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: COLOR_LIQUIDO_BAR }} />
+        Líquido
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-0 w-3.5 border-t-2 border-dashed" style={{ borderColor: COLOR_ESPERADO }} />
+        Esperado
+      </span>
+    </div>
+  );
+}
+
 /**
- * Gráfico principal do dashboard: 12 meses, barras para recebido/despesas, linha
- * para o líquido (recebido − despesas) e referência tracejada para o esperado, de
- * forma a ver-se o gap de cobrança (bar vs. linha-alvo) num único eixo (tudo em €).
+ * Gráfico principal do dashboard: 12 meses, barras Bruto (recebido) vs Líquido
+ * (recebido − despesas) e referência tracejada para o esperado — tudo em € num só eixo.
+ * A série "Despesas" saiu por pedido do cliente: o que interessa comparar é quanto
+ * entrou e quanto sobrou, e a despesa já está implícita na distância entre as duas barras.
  */
 export function MonthlyFlowChart({ data }: { data: MonthlyFlowDatum[] }) {
   return (
@@ -125,8 +146,8 @@ export function MonthlyFlowChart({ data }: { data: MonthlyFlowDatum[] }) {
           width={72}
         />
         <ReferenceLine y={0} stroke={COLOR_GRID} />
-        <Bar dataKey="recebido" name="Recebido" fill={COLOR_RECEBIDO} radius={[4, 4, 0, 0]} barSize={18} />
-        <Bar dataKey="despesas" name="Despesas" fill={COLOR_DESPESAS} radius={[4, 4, 0, 0]} barSize={18} />
+        <Bar dataKey="recebido" name="Bruto" fill={COLOR_RECEBIDO} radius={[3, 3, 0, 0]} barSize={18} />
+        <Bar dataKey="liquido" name="Líquido" fill={COLOR_LIQUIDO_BAR} radius={[3, 3, 0, 0]} barSize={18} />
         <Line
           dataKey="esperado"
           name="Esperado"
@@ -139,24 +160,7 @@ export function MonthlyFlowChart({ data }: { data: MonthlyFlowDatum[] }) {
           dot={false}
           activeDot={false}
         />
-        <Line
-          dataKey="liquido"
-          name="Líquido"
-          type="monotone"
-          stroke={COLOR_LIQUIDO}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          dot={{ r: 4, fill: COLOR_LIQUIDO, stroke: COLOR_SURFACE, strokeWidth: 2 }}
-          activeDot={{ r: 5 }}
-        />
         <Tooltip content={<FlowTooltip />} cursor={{ fill: COLOR_GRID, opacity: 0.5 }} />
-        <Legend
-          verticalAlign="bottom"
-          align="center"
-          iconSize={10}
-          wrapperStyle={{ fontSize: 12, color: COLOR_MUTED_TEXT, paddingTop: 12 }}
-        />
       </ComposedChart>
     </ResponsiveContainer>
   );

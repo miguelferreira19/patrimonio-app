@@ -52,3 +52,27 @@ body {
 .animate-modal-in {
   animation: modal-in 150ms ease-out;
 }
+
+/* Entrada do cabeçalho hero. Uma vez, no mount — nunca em loop. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 500ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-modal-in,
+  .animate-overlay-in {
+    animation: none;
+  }
+}

@@ -13,22 +13,47 @@ export function cn(...inputs: ClassValue[]) {
 
 // ---------- Cabeçalho de página ----------
 // Título + descrição + ações à direita, para ritmo uniforme entre páginas.
+// `eyebrow` liga o modo "hero" do redesign: sobre-título a acento, h1 maior e resumo em
+// linguagem natural. Sem eyebrow o cabeçalho fica como estava (páginas não redesenhadas).
 export function PageHeader({
+  eyebrow,
   title,
   description,
   actions,
   className,
 }: {
+  eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }) {
+  const hero = Boolean(eyebrow);
   return (
-    <div className={cn("flex flex-wrap items-start justify-between gap-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-start justify-between gap-3",
+        hero && "animate-rise items-end gap-6",
+        className,
+      )}
+    >
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-900 md:text-2xl">{title}</h1>
-        {description && <p className="mt-1 text-sm text-zinc-500">{description}</p>}
+        {eyebrow && (
+          <p className="text-xs font-medium uppercase tracking-[0.06em] text-teal-700">{eyebrow}</p>
+        )}
+        <h1
+          className={cn(
+            "font-semibold tracking-tight text-zinc-900",
+            hero ? "mt-1.5 text-2xl leading-tight md:text-3xl" : "text-xl md:text-2xl",
+          )}
+        >
+          {title}
+        </h1>
+        {description && (
+          <p className={cn("mt-2 text-sm text-zinc-500", hero && "max-w-[520px] text-pretty")}>
+            {description}
+          </p>
+        )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -50,7 +75,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-lg border border-zinc-200 bg-white shadow-xs", className)}>
+    <section className={cn("rounded-[14px] border border-zinc-200 bg-white shadow-xs", className)}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3">
           <div>
@@ -257,17 +282,31 @@ export function StatCard({
     teal: "text-teal-700",
     amber: "text-amber-700",
   };
+  // A caixa do ícone acompanha o tom do valor — o cartão passa o estado antes de se ler
+  // o número, sem que a cor seja o único portador do significado (o `sub` diz-no por extenso).
+  const iconTones = {
+    zinc: "bg-zinc-100 text-zinc-500",
+    green: "bg-emerald-50 text-emerald-700",
+    red: "bg-red-50 text-red-700",
+    teal: "bg-teal-50 text-teal-700",
+    amber: "bg-amber-50 text-amber-700",
+  };
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-xs">
+    <div className="h-full rounded-[14px] border border-zinc-200 bg-white p-4 shadow-xs transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-8px_rgba(15,118,110,0.22)]">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-zinc-500">{label}</p>
         {Icon && (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px]",
+              iconTones[tone],
+            )}
+          >
             <Icon size={16} strokeWidth={1.75} />
           </span>
         )}
       </div>
-      <p className={cn("mt-1.5 text-2xl font-semibold tracking-tight tabular-nums md:text-3xl", tones[tone])}>
+      <p className={cn("mt-2.5 text-[27px] font-semibold leading-none tracking-tight tabular-nums", tones[tone])}>
         {value}
       </p>
       {delta && (

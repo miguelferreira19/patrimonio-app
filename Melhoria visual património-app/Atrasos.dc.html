@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fafafa;color:#18181b;font-family:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#0f766e;text-decoration:none}a:hover{color:#115e59}
+.tnum{font-variant-numeric:tabular-nums}.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes growbar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.kpi:hover{box-shadow:0 8px 24px -8px rgba(0,0,0,.14);transform:translateY(-2px)}
+.navlink:hover{background:rgba(255,255,255,.05);color:#f4f4f5}
+.row:hover{background:#fafafa}
+@media(max-width:900px){.shell{grid-template-columns:1fr !important}.rail{display:none !important}.topbar{display:flex !important}.kpigrid{grid-template-columns:repeat(2,1fr) !important}.main{padding:16px !important}.hero{flex-direction:column !important;align-items:flex-start !important}.desk{display:none !important}.cards{display:flex !important}}
+@media(min-width:901px){.cards{display:none}}
+@media(max-width:560px){.kpigrid{grid-template-columns:1fr !important}}
+</style>
+</helmet>
+<div class="shell" style="display:grid;grid-template-columns:248px 1fr;min-height:100vh">
+  <aside class="rail" style="position:sticky;top:0;height:100vh;background:#09090b;display:flex;flex-direction:column;padding:20px 12px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px">
+      <span style="display:flex;height:34px;width:34px;align-items:center;justify-content:center;border-radius:9px;background:linear-gradient(135deg,rgba(20,184,166,.28),rgba(20,184,166,.1));border:1px solid rgba(45,212,191,.25)"><span style="font-weight:700;color:#5eead4;font-size:15px">P</span></span>
+      <div style="min-width:0"><p style="margin:0;font-size:14px;font-weight:600;color:#fff">Património</p><p style="margin:0;font-size:11px;color:#71717a">Gestão familiar</p></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:22px;flex:1;overflow-y:auto">
+      <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="3">
+        <div>
+          <p style="margin:0 0 6px;padding:0 12px;font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#52525b">{{ g.label }}</p>
+          <nav style="display:flex;flex-direction:column;gap:2px">
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+              <a class="navlink" href="{{ it.href }}" style="{{ it.style }}"><span style="width:18px;height:18px;display:inline-flex;flex:none">{{ it.icon }}</span><span>{{ it.label }}</span></a>
+            </sc-for>
+          </nav>
+        </div>
+      </sc-for>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.08);padding:14px 8px 4px;margin-top:12px">
+      <p style="margin:0;font-size:12px;color:#71717a">tio.antonio@familia.pt</p>
+      <span style="display:inline-flex;margin-top:7px;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:500;background:rgba(20,184,166,.1);color:#5eead4;border:1px solid rgba(45,212,191,.2)">Administrador</span>
+    </div>
+  </aside>
+  <div style="display:flex;flex-direction:column;min-width:0">
+    <header class="topbar" style="display:none;align-items:center;justify-content:space-between;height:56px;padding:0 16px;background:#09090b;position:sticky;top:0;z-index:20">
+      <div style="display:flex;align-items:center;gap:9px"><span style="display:flex;height:28px;width:28px;align-items:center;justify-content:center;border-radius:8px;background:rgba(20,184,166,.15);font-weight:700;color:#5eead4;font-size:13px">P</span><span style="font-size:14px;font-weight:600;color:#fff">Atrasos</span></div>
+      <span style="color:#a1a1aa">☰</span>
+    </header>
+    <main class="main" style="max-width:1360px;width:100%;margin:0 auto;padding:32px 36px 64px">
+      <div class="hero" style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:26px;animation:rise .5s ease both">
+        <div>
+          <p style="margin:0;font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:{{ accentColor }}">Cobrança</p>
+          <h1 style="margin:6px 0 0;font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1">Rendas em atraso</h1>
+          <p style="margin:8px 0 0;font-size:14px;color:#71717a;max-width:560px;text-wrap:pretty">{{ heroSummary }}</p>
+        </div>
+        <button style="height:38px;padding:0 16px;border-radius:10px;border:none;background:{{ accentColor }};color:#fff;font:500 13px/1 'Geist';cursor:pointer;box-shadow:0 6px 16px -6px rgba(0,0,0,.35);flex:none">Registar pagamento</button>
+      </div>
+      <div class="kpigrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div class="kpi" style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:.2s">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <p style="margin:0;font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#71717a">{{ k.label }}</p>
+              <span style="{{ k.iconWrap }}">{{ k.icon }}</span>
+            </div>
+            <p style="margin:10px 0 0;font-size:27px;font-weight:600;letter-spacing:-.02em;{{ k.valueColor }}" class="tnum">{{ k.value }}</p>
+            <p style="margin:8px 0 0;font-size:12px;color:#71717a;line-height:1.35">{{ k.sub }}</p>
+          </div>
+        </sc-for>
+      </div>
+      <section style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:16px">
+        <header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:16px 18px;border-bottom:1px solid #f4f4f5">
+          <h2 style="margin:0;font-size:14px;font-weight:600">Recebido vs. esperado — 12 meses</h2>
+          <div style="display:flex;gap:14px;font-size:11px;color:#71717a;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:{{ accentColor }}"></span>Recebido</span>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:0;border-top:2px dashed #a1a1aa"></span>Esperado</span>
+          </div>
+        </header>
+        <div style="padding:18px 18px 6px">{{ flowChart }}</div>
+      </section>
+      <section style="background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden">
+        <header style="padding:16px 18px;border-bottom:1px solid #f4f4f5"><h2 style="margin:0;font-size:14px;font-weight:600">Contratos em atraso</h2></header>
+        <div class="desk">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr>
+              <th style="text-align:left;padding:9px 18px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Fração</th>
+              <th style="text-align:left;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Inquilino</th>
+              <th style="text-align:left;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Último pago</th>
+              <th style="text-align:right;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Meses</th>
+              <th style="text-align:right;padding:9px 8px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Dívida</th>
+              <th style="text-align:left;padding:9px 18px;font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:#a1a1aa;border-bottom:1px solid #f1f1f3">Estado</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ arrears }}" as="ar" hint-placeholder-count="4">
+                <tr class="row">
+                  <td style="padding:11px 18px;border-bottom:1px solid #f7f7f8"><a href="#" style="font-weight:500">{{ ar.name }}</a></td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8;color:#52525b">{{ ar.tenant }}</td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8;color:#52525b" class="tnum">{{ ar.lastPaid }}</td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8;text-align:right;color:#3f3f46" class="tnum">{{ ar.months }}</td>
+                  <td style="padding:11px 8px;border-bottom:1px solid #f7f7f8;text-align:right;font-weight:600;color:#b91c1c" class="tnum">{{ ar.debt }}</td>
+                  <td style="padding:11px 18px;border-bottom:1px solid #f7f7f8"><span style="{{ ar.sevStyle }}">{{ ar.sev }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div class="cards" style="display:none;flex-direction:column;gap:10px;padding:16px">
+          <sc-for list="{{ arrears }}" as="ar" hint-placeholder-count="4">
+            <div style="border:1px solid #e4e4e7;border-radius:11px;padding:13px 14px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px"><a href="#" style="font-weight:600;font-size:14px">{{ ar.name }}</a><span style="{{ ar.sevStyle }}">{{ ar.sev }}</span></div>
+              <p style="margin:2px 0 0;font-size:12px;color:#a1a1aa">{{ ar.tenant }}</p>
+              <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px"><span style="color:#71717a">{{ ar.months }} meses · desde {{ ar.lastPaid }}</span><span style="font-weight:600;color:#b91c1c" class="tnum">{{ ar.debt }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {&quot;width&quot;: 1280, &quot;height&quot;: 820},
+  &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#0f766e&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#0f766e&quot;, &quot;#4f46e5&quot;, &quot;#b45309&quot;, &quot;#334155&quot;], &quot;section&quot;: &quot;Aparência&quot;}
+}">
+const ic = {
+  dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  building:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20M10 6h.01M14 6h.01M10 10h.01M14 10h.01M10 14h.01M14 14h.01"/></svg>',
+  coins:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  receipt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>',
+  trend:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>',
+  steth:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="18" height="18"><path d="M4 3v6a5 5 0 0 0 10 0V3M6 3h-2M12 3h2M9 14v3a4 4 0 0 0 8 0v-1"/><circle cx="20" cy="10" r="2"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>',
+  euro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><path d="M18 7a7 7 0 1 0 0 10M5 10h9M5 14h9"/></svg>',
+  pct:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" width="17" height="17"><path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg>',
+};
+const idle='display:flex;align-items:center;gap:11px;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;color:#a1a1aa;transition:.15s';
+const active='display:flex;align-items:center;gap:11px;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;color:#fff;background:rgba(255,255,255,.07);box-shadow:inset 2px 0 0 #2dd4bf';
+class Component extends DCLogic {
+  renderVals() {
+    const svgEl = s => React.createElement('span',{style:{display:'inline-flex',alignItems:'center',justifyContent:'center'},dangerouslySetInnerHTML:{__html:s}});
+    Object.keys(ic).forEach(k=>{ if(typeof ic[k]==='string') ic[k]=svgEl(ic[k]); });
+    const A = this.props.accent ?? '#0f766e';
+    const eur=(v,d=0)=>new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:d,maximumFractionDigits:d}).format(v);
+    const navGroups=[
+      {label:'Visão geral',items:[{label:'Dashboard',href:'Dashboard.dc.html',icon:ic.dash,style:idle}]},
+      {label:'Gestão',items:[{label:'Frações',href:'Fracoes.dc.html',icon:ic.building,style:idle},{label:'Pagamentos',href:'#',icon:ic.coins,style:idle},{label:'Atrasos',href:'Atrasos.dc.html',icon:ic.clock,style:active},{label:'Despesas',href:'#',icon:ic.receipt,style:idle}]},
+      {label:'Referência',items:[{label:'Mercado',href:'#',icon:ic.trend,style:idle},{label:'Senhorios',href:'#',icon:ic.users,style:idle},{label:'Saúde dos dados',href:'#',icon:ic.steth,style:idle}]},
+    ];
+    const iw=(bg,c)=>`display:flex;height:32px;width:32px;flex:none;align-items:center;justify-content:center;border-radius:9px;background:${bg};color:${c}`;
+    const kpis=[
+      {label:'Contratos em atraso',value:'2',sub:'de 11 contratos ativos',valueColor:'color:#b91c1c',icon:ic.alert,iconWrap:iw('#fef2f2','#b91c1c')},
+      {label:'Dívida estimada',value:eur(2090),sub:'acumulada até hoje',valueColor:'color:#b91c1c',icon:ic.euro,iconWrap:iw('#fef2f2','#b91c1c')},
+      {label:'Renda em risco',value:eur(1370),sub:'renda mensal dos contratos em atraso',valueColor:'color:#b45309',icon:ic.clock,iconWrap:iw('#fef7e6','#b45309')},
+      {label:'Taxa cobrança 12m',value:'93%',sub:'média dos últimos 12 meses',valueColor:'color:#18181b',icon:ic.pct,iconWrap:iw('#f4f4f5','#52525b')},
+    ];
+    const raw=[
+      {label:'ago',rec:3900,exp:4100},{label:'set',rec:4100,exp:4100},{label:'out',rec:3600,exp:4300},
+      {label:'nov',rec:4200,exp:4200},{label:'dez',rec:4680,exp:4680},{label:'jan 25',rec:3200,exp:4300},
+      {label:'fev',rec:4300,exp:4300},{label:'mar',rec:4100,exp:4300},{label:'abr',rec:4680,exp:4680},
+      {label:'mai',rec:4400,exp:4400},{label:'jun',rec:3950,exp:4500},{label:'jul',rec:4280,exp:4680},
+    ];
+    const h=React.createElement, W=800,H=260,L=58,Rm=14,T=12,B=28,pw=W-L-Rm,ph=H-T-B,topV=5000,n=raw.length;
+    const cx=i=>L+pw*(i+0.5)/n, yv=v=>T+ph*(1-v/topV);
+    const kids=[];
+    [0,1250,2500,3750,5000].forEach((g,gi)=>{const y=yv(g);kids.push(h('line',{key:'g'+gi,x1:L,x2:W-Rm,y1:y,y2:y,stroke:'#f1f1f3'}));kids.push(h('text',{key:'gt'+gi,x:L-8,y:y+3,textAnchor:'end',fontSize:10,fill:'#c4c4c8',fontFamily:'Geist Mono,monospace'},'€'+(g/1000)+(g?'k':'')));});
+    const bw=(pw/n)*0.5;
+    raw.forEach((r,i)=>kids.push(h('rect',{key:'b'+i,x:cx(i)-bw/2,y:yv(r.rec),width:bw,height:yv(0)-yv(r.rec),rx:3,fill:A})));
+    const exp=raw.map((r,i)=>`${cx(i)},${yv(r.exp)}`).join(' ');
+    kids.push(h('polyline',{key:'exp',points:exp,fill:'none',stroke:'#a1a1aa',strokeWidth:1.5,strokeDasharray:'4 3',strokeLinecap:'round'}));
+    raw.forEach((r,i)=>kids.push(h('text',{key:'x'+i,x:cx(i),y:H-8,textAnchor:'middle',fontSize:10,fill:'#a1a1aa',fontFamily:'Geist,sans-serif'},r.label)));
+    const flowChart=h('svg',{viewBox:`0 0 ${W} ${H}`,width:'100%',height:260,preserveAspectRatio:'none',style:{display:'block',overflow:'visible'}},kids);
+    const sev=(txt,bg,c,bc)=>`display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;background:${bg};color:${c};border:1px solid ${bc}`;
+    const critical=sev('','#fef2f2','#b91c1c','rgba(220,38,38,.2)'), warn=sev('','#fef7e6','#b45309','rgba(180,83,9,.2)');
+    const arrears=[
+      {name:'Rua Augusta, 3º Dto',tenant:'Maria Fernandes',lastPaid:'mai 25',months:2,debt:eur(1440),sev:'Crítico',sevStyle:critical},
+      {name:'Av. Roma, 5º Esq',tenant:'João Silva',lastPaid:'jun 25',months:1,debt:eur(650),sev:'Em atraso',sevStyle:warn},
+    ];
+    return {accentColor:A, heroSummary:'2 contratos ativos têm rendas por regularizar, num total estimado de €2.090. A renda mensal em risco é de €1.370 — contacta os inquilinos antes do fecho do mês.', navGroups, kpis, flowChart, arrears};
+  }
+}
+</script>
+</body>
+</html>

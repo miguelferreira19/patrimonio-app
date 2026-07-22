@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-zinc-50">
       <AppNav role={role} email={user.email ?? null} />
-      <main className="mx-auto max-w-[1400px] p-4 pb-16 md:ml-60 md:p-8">
+      <main className="mx-auto max-w-[1360px] p-4 pb-16 md:ml-60 md:px-9 md:pb-16 md:pt-8">
         {error && (
           <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
             <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
