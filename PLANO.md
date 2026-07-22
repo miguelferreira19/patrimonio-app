@@ -171,6 +171,25 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - FALTA (opcional): Supabase Auth → definir Site URL para o domínio se um dia se usarem links
   por email (password login funciona sem isso).
 
+**P0-5 · Fechar o registo de contas no Supabase** (AÇÃO DO UTILIZADOR — segurança, prioridade máxima)
+- **Problema (encontrado 2026-07-22):** o registo público de contas está ABERTO
+  (`GET /auth/v1/settings` devolve `"disable_signup": false`). Como a anon key é pública por
+  design — vai no bundle JS do site em produção, não é o repo que a expõe — e o RLS dá
+  `for select to authenticated using (true)` a TODAS as tabelas (schema.sql, bloco do loop de
+  políticas), qualquer pessoa na internet se pode registar, confirmar o email no próprio inbox
+  e ler a carteira inteira: frações, contratos, nomes e NIFs de inquilinos, rendas, recibos, VPT.
+  O 1.º utilizador já existe (é admin), por isso um registo novo entraria como viewer — mas
+  viewer LÊ TUDO. Tornar o repo privado não mitiga nada disto.
+- **Fix:** Supabase → Authentication → Sign In / Providers → Email → desligar "Allow new users
+  to sign up" (nalgumas versões: Authentication → Settings → "Allow new users to sign up").
+  Depois: Authentication → Users, confirmar que só lá está a conta do utilizador.
+- Custo zero em funcionalidade: as contas da família criam-se à mão em Authentication → Add user
+  (é exatamente o fluxo do P0-4) e o ecrã de login nunca teve botão de registo — a porta aberta
+  era a API do Supabase, não a UI.
+- Aceitação: `curl "<url>/auth/v1/settings?apikey=<anon>"` devolve `"disable_signup": true`.
+- Se um dia se quiser abrir o registo, o RLS tem de deixar de ser `using (true)` e passar a
+  filtrar por senhorio/perfil — hoje não filtra nada.
+
 **P0-4 · Contas da família (viewers)**
 - Objetivo: criar utilizadores para pai/tio/avô (viewers) via Admin → utilizadores; testar que
   viewer não consegue escrever (RLS) e que a UI esconde botões de escrita. Aceitação: 2.º login
@@ -326,6 +345,12 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
   `src/app/login/debug/page.tsx` (o middleware deixa passar tudo o que começa por /login).
 - `dados/` é gitignored e contém dados pessoais — nunca sair daí.
 - Sem commits/push sem pedido explícito do utilizador.
+- **A anon key é pública e o repo não é a fronteira de segurança.** Ela viaja no bundle JS do
+  site em produção; privado ou público, o repo não muda a exposição. Quem protege os dados é
+  (1) o registo de contas estar FECHADO e (2) o RLS. Como o RLS é `using (true)` para qualquer
+  autenticado, uma conta = leitura total da carteira. Qualquer alteração a auth ou a políticas
+  passa por aqui primeiro — ver P0-5.
+- Repo GitHub privado por decisão: não guarda dados, mas revela a estrutura da carteira.
 
 ## 8. Como orquestrar modelos económicos neste projeto
 
