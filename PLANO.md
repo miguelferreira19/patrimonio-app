@@ -46,7 +46,8 @@ análises sempre em ótica de família (valores por inteiro).
 - `npm run check` = self-checks puros (atrasos + saúde dos dados), sem BD nem framework.
 - Smoke sem login NÃO chega para validar páginas com dados: o `anon` não tem GRANT em
   `payments` e `fetchAllPayments` rebenta (42501). Validar autenticado, em dev ou produção.
-- Deploy: ainda NÃO há commits nem repo remoto (decisão pendente do utilizador) — ver P0-3.
+- Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node). Repo em
+  https://github.com/miguelferreira19/patrimonio-app; ligar o repo no Vercel torna-o automático.
 - Supabase SQL Editor = via de administração de dados (corre como superuser, ignora RLS).
 - Python (para `dados/`): pandas, xlrd, openpyxl já instalados no ambiente do utilizador.
 
