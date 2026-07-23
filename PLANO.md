@@ -172,7 +172,7 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - FALTA (opcional): Supabase Auth → definir Site URL para o domínio se um dia se usarem links
   por email (password login funciona sem isso).
 
-**P0-5 · Fechar o registo de contas no Supabase** (AÇÃO DO UTILIZADOR — segurança, prioridade máxima)
+**P0-5 · Fechar o registo de contas no Supabase** — ✅ FEITO (utilizador, 2026-07-23)
 - **Problema (encontrado 2026-07-22):** o registo público de contas está ABERTO
   (`GET /auth/v1/settings` devolve `"disable_signup": false`). Como a anon key é pública por
   design — vai no bundle JS do site em produção, não é o repo que a expõe — e o RLS dá
@@ -190,6 +190,8 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - Aceitação: `curl "<url>/auth/v1/settings?apikey=<anon>"` devolve `"disable_signup": true`.
 - Se um dia se quiser abrir o registo, o RLS tem de deixar de ser `using (true)` e passar a
   filtrar por senhorio/perfil — hoje não filtra nada.
+- Confirmado 2026-07-23: signup desligado e lista de utilizadores em Authentication → Users
+  revista pelo utilizador (só as contas pretendidas).
 
 **P0-4 · Contas da família (viewers)**
 - Objetivo: criar utilizadores para pai/tio/avô (viewers) via Admin → utilizadores; testar que
@@ -198,17 +200,17 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 
 ### P1 — valor rápido
 
-**P1-1 · Alertas de coeficiente anual de rendas**
-- Objetivo: quando sai o coeficiente anual (ex.: 1,0216 para 2026), sugerir a renda atualizável
-  por contrato e registar a atualização.
-- Ficheiros: `update_coefficients` (tabela já existe), nova secção em Admin para inserir o
-  coeficiente do ano; em Contratos/Frações, badge "renda atualizável desde MM/AAAA" +
-  ação admin "aplicar" que escreve em `rent_updates` e atualiza `contracts.rent`.
-- Passos: server action `applyRentUpdate(contract_id, coefficient_year)`; cálculo = renda ×
-  coeficiente (arredondar a 2 casas, regra: só aplicável 12 meses depois da última atualização/
-  início; mostrar data-base). Aceitação: aplicar num contrato de teste cria rent_update com
-  old/new e reason='coeficiente'; grelha de pagamentos passa a esperar a nova renda no mês certo.
-- Armadilhas: NÃO aplicar automaticamente a todos — sempre ação explícita por contrato.
+**P1-1 · Alertas de coeficiente anual de rendas** — ✅ FEITO 2026-07-23
+- `saveUpdateCoefficient` (crud.ts) + `CoefficientsCard` em Admin (ano+coeficiente, upsert por
+  ano). `rentUpdateEligibility` (calc.ts, puro + `calc.check.ts`/`npm run check:calc`): data-base
+  = última `rent_updates.effective_date` do contrato ou `start_date`; elegível 12 meses depois;
+  sugestão = renda × coeficiente mais recente (arredondada a 2 casas). Fração ativa mostra badge
+  "Atualizável desde MM/AAAA · sugestão X€" e pré-preenche o modal `RentUpdateButton`
+  (`applyRentUpdate`, já existia) — sempre ação explícita por contrato, nunca automática.
+- Ficheiros: `src/lib/calc.ts`, `src/lib/calc.check.ts`, `src/lib/actions/crud.ts`,
+  `src/app/(app)/admin/coefficients-card.tsx`, `src/app/(app)/admin/page.tsx`,
+  `src/app/(app)/fracoes/[id]/page.tsx`, `src/components/forms.tsx`. Build + `npm run check` OK.
+- Falta (não bloqueia): mesma badge na lista de Frações/Pagamentos (hoje só na ficha da fração).
 
 **P1-2 · Registo rápido de pagamentos em dinheiro** — ✅ FEITO 2026-07-22
 - Botão "Em dinheiro" no modal da grelha de Pagamentos (só em meses ainda sem pagamento): grava

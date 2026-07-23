@@ -8,7 +8,8 @@
     "start": "next start",
     "check:arrears": "tsc src/lib/arrears.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/arrears.check.js",
     "check:health": "tsc src/lib/health.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/health.check.js",
-    "check": "npm run check:arrears && npm run check:health"
+    "check:calc": "tsc src/lib/calc.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/calc.check.js",
+    "check": "npm run check:arrears && npm run check:health && npm run check:calc"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

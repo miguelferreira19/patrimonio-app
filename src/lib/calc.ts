@@ -1,5 +1,5 @@
 // Cálculos de negócio: rendas esperadas, desvios ao mercado, yields.
-import type { Contract, Expense, MarketBenchmark, Payment, Property } from "./types";
+import type { Contract, Expense, MarketBenchmark, Payment, Property, RentUpdate, UpdateCoefficient } from "./types";
 import { endOfMonthISO } from "./format";
 
 /**
@@ -121,6 +121,39 @@ export function sum(values: Array<number | null | undefined>): number {
   let t = 0;
   for (const v of values) t += v ?? 0;
   return t;
+}
+
+export interface RentEligibility {
+  eligible: boolean;
+  baseDate: string | null; // último rent_update ou início do contrato — data-base da contagem
+  eligibleSince: string | null; // baseDate + 12 meses
+  suggestedRent: number | null; // renda × coeficiente do ano mais recente
+}
+
+/**
+ * Elegibilidade para aplicar o coeficiente anual (P1-1): só 12 meses depois da
+ * última atualização de renda (ou do início do contrato, na falta de uma).
+ */
+export function rentUpdateEligibility(
+  contract: Contract,
+  rentUpdates: RentUpdate[],
+  coefficients: UpdateCoefficient[],
+  todayISO: string,
+): RentEligibility {
+  const lastUpdate = rentUpdates
+    .filter((u) => u.contract_id === contract.id)
+    .sort((a, b) => b.effective_date.localeCompare(a.effective_date))[0];
+  const baseDate = lastUpdate?.effective_date ?? contract.start_date ?? null;
+  if (!baseDate) return { eligible: false, baseDate: null, eligibleSince: null, suggestedRent: null };
+
+  const base = new Date(baseDate);
+  base.setMonth(base.getMonth() + 12);
+  const eligibleSince = base.toISOString().slice(0, 10);
+
+  const latestCoef = coefficients.slice().sort((a, b) => b.year - a.year)[0];
+  const suggestedRent = latestCoef ? Math.round(contract.rent * latestCoef.coefficient * 100) / 100 : null;
+
+  return { eligible: todayISO >= eligibleSince, baseDate, eligibleSince, suggestedRent };
 }
 
 /** Lista de territórios (freguesias/concelhos) disponível nos benchmarks, para o formulário da fração. */

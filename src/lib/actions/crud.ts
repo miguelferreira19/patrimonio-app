@@ -325,6 +325,24 @@ export async function deleteExpense(id: string): Promise<ActionResult> {
   }
 }
 
+// ---------- Coeficientes de atualização de rendas ----------
+export async function saveUpdateCoefficient(input: {
+  year: number;
+  coefficient: number;
+}): Promise<ActionResult> {
+  try {
+    const { supabase } = await requireAdmin();
+    const { error } = await supabase
+      .from("update_coefficients")
+      .upsert({ year: input.year, coefficient: input.coefficient });
+    if (error) throw new Error(error.message);
+    refresh();
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 // ---------- Utilizadores ----------
 export async function setProfileRole(input: { id: string; role: Role }): Promise<ActionResult> {
   try {

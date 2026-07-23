@@ -18,9 +18,9 @@ import {
   RentUpdateButton,
 } from "@/components/forms";
 import { Badge, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { geoOptionsFromBenchmarks, marketView, sum } from "@/lib/calc";
+import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum } from "@/lib/calc";
 import { getSession } from "@/lib/data";
-import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel } from "@/lib/format";
+import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
 import { EPSILON_EUR, isMonthSettled, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import type {
   Contract,
@@ -32,6 +32,7 @@ import type {
   PropertyOwner,
   Receipt,
   RentUpdate,
+  UpdateCoefficient,
 } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
 import { DeviationBadge } from "../properties-table";
@@ -197,7 +198,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const horizonCap = lastDueMonthKey(new Date());
 
   const contractIds = contracts.map((c) => c.id);
-  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ] = await Promise.all([
+  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ, coefficientsQ] = await Promise.all([
     // Histórico COMPLETO (sem piso temporal) — a secção "Histórico de pagamentos" precisa
     // de todos os anos, não só dos últimos 12 meses (PLANO.md/CLAUDE.md: PostgREST corta a
     // 1000 linhas por defeito, daí o .limit() explícito e generoso).
@@ -229,15 +230,20 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
       .lte("ref_month", horizonCap)
       .order("ref_month", { ascending: false })
       .limit(1),
+    supabase.from("update_coefficients").select("*"),
   ]);
 
   const payments = (paymentsQ.data ?? []) as Payment[];
   const receipts = (receiptsQ.data ?? []) as Receipt[];
   const expenses = (expensesQ.data ?? []) as Expense[];
   const rentUpdates = (updatesQ.data ?? []) as RentUpdate[];
+  const coefficients = (coefficientsQ.data ?? []) as UpdateCoefficient[];
   const portfolioHorizon = (horizonQ.data as { ref_month: string }[] | null)?.[0]?.ref_month ?? null;
 
   const active = contracts.find((c) => c.status === "ativo");
+  const rentEligibility = active
+    ? rentUpdateEligibility(active, rentUpdates, coefficients, todayISO())
+    : null;
   const mv = marketView(property, active, benchmarks);
   const landlordById = new Map(landlords.map((l) => [l.id, l]));
 
@@ -335,7 +341,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           actions={
             isAdmin && (
               <div className="flex flex-wrap gap-2">
-                {active && <RentUpdateButton contract={{ id: active.id, rent: active.rent }} />}
+                {active && (
+                  <RentUpdateButton
+                    contract={{ id: active.id, rent: active.rent }}
+                    suggestedRent={rentEligibility?.eligible ? rentEligibility.suggestedRent ?? undefined : undefined}
+                  />
+                )}
                 {active && <ContractFormButton propertyId={property.id} contract={active} />}
                 {active && <EndContractButton contractId={active.id} />}
                 {!active && <ContractFormButton propertyId={property.id} />}
@@ -352,6 +363,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
               <div>
                 <dt className="text-xs text-zinc-500">Renda mensal</dt>
                 <dd className="font-semibold tabular-nums text-teal-700">{fmtEur(active.rent, 2)}</dd>
+                {rentEligibility?.eligible && (
+                  <Badge tone="amber" className="mt-1">
+                    Atualizável desde {monthLabel(rentEligibility.eligibleSince!)}
+                    {rentEligibility.suggestedRent && ` · sugestão ${fmtEur(rentEligibility.suggestedRent, 2)}`}
+                  </Badge>
+                )}
               </div>
               <div>
                 <dt className="text-xs text-zinc-500">Início</dt>

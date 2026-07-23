@@ -415,10 +415,17 @@ export function ContractFormButton({
   );
 }
 
-export function RentUpdateButton({ contract }: { contract: { id: string; rent: number } }) {
+export function RentUpdateButton({
+  contract,
+  suggestedRent,
+}: {
+  contract: { id: string; rent: number };
+  /** Renda sugerida pelo coeficiente anual (P1-1), quando o contrato já está elegível. */
+  suggestedRent?: number;
+}) {
   const [open, setOpen] = useState(false);
   const { pending, error, run } = useAction();
-  const [newRent, setNewRent] = useState("");
+  const [newRent, setNewRent] = useState(suggestedRent ? String(suggestedRent) : "");
   const [date, setDate] = useState(todayISO());
   const [reason, setReason] = useState<"coeficiente" | "acordo" | "novo_contrato" | "outro">("coeficiente");
 
@@ -441,6 +448,13 @@ export function RentUpdateButton({ contract }: { contract: { id: string; rent: n
         <form onSubmit={submit} className="space-y-3">
           <p className="text-sm text-zinc-600">
             Renda atual: <strong className="tabular-nums">{contract.rent.toLocaleString("pt-PT")} €</strong>
+            {suggestedRent && (
+              <>
+                {" "}
+                · sugestão pelo coeficiente anual:{" "}
+                <strong className="tabular-nums">{suggestedRent.toLocaleString("pt-PT")} €</strong>
+              </>
+            )}
           </p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Nova renda (€) *">
