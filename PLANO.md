@@ -150,10 +150,15 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 
 ### P0 — fundações (fazer primeiro)
 
-**P0-1 · Importar o Tio Ilídio** (bloqueado por dados do utilizador)
-- Seguir §4 com `dados/Tio/`. Aceitação: SELECTs de verificação = Analise_Tio.md; frações em
-  compropriedade com o Pai NÃO duplicam (dedupe por matriz/receipt_number fazem o trabalho);
-  quota família por imóvel ~100% no consolidado (`python dados/analise_senhorio.py` sem args).
+**P0-1 · Importar o Tio Ilídio** — BLOQUEADO indefinidamente (2026-07-23: o utilizador não vai
+  ter acesso aos exports do Portal do Tio).
+- Confirmado pelo utilizador: "tudo o que o António tem é igual para o Ilídio" — mas o CSV de
+  património predial do Pai mostra quota=100% na generalidade das frações (só `182341-U-6004` e
+  `182301-R-401` têm quota 1/3, ver `dados/Analise_Pai.md` §"Quotas minoritárias"), ou seja os
+  dados hoje na BD NÃO indicam compropriedade generalizada Pai/Tio — não assumir percentagens sem
+  confirmação. Se um dia aparecerem os exports, a receita do §4 aplica-se tal e qual (pipeline já
+  mapeia `"Tio": "Ilidio"` em `FOLDER_TO_LANDLORD`). Sem isso, fica só o `landlord` "Ilidio" (se
+  já existir no seed) sem frações associadas — não inventar quotas.
 
 **P0-2 · Completar fichas das frações** (utilizador + UI existente)
 - Preencher area_m2, typology, dicofre/freguesia via UI (Frações → editar) a partir das
@@ -193,10 +198,8 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - Confirmado 2026-07-23: signup desligado e lista de utilizadores em Authentication → Users
   revista pelo utilizador (só as contas pretendidas).
 
-**P0-4 · Contas da família (viewers)**
-- Objetivo: criar utilizadores para pai/tio/avô (viewers) via Admin → utilizadores; testar que
-  viewer não consegue escrever (RLS) e que a UI esconde botões de escrita. Aceitação: 2.º login
-  real em leitura.
+**P0-4 · Contas da família (viewers)** — ✅ FEITO (utilizador, 2026-07-23)
+- Contas criadas pelo utilizador via Supabase → Authentication → Add user.
 
 ### P1 — valor rápido
 
@@ -232,10 +235,8 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 
 ### P2 — consolidação
 
-**P2-1 · Conciliação bancária (STANDBY até se saber o banco)**
-- Import de extrato CSV → matching heurístico com payments/contratos (valor+mês+nome parecido),
-  ecrã de revisão aceitar/rejeitar, source='extrato'. Desenhar tabela `bank_transactions` nova
-  (migração idempotente no schema.sql). Só arrancar quando houver extratos reais.
+**P2-1 · Conciliação bancária** — ❌ RECUSADO (2026-07-23): os recibos são emitidos manualmente,
+  não compensa cruzar com extrato bancário. Não reabrir sem pedido explícito do utilizador.
 
 **P2-2 · IRS Anexo F por senhorio**
 - Objetivo: mapa anual por senhorio: rendas brutas por fração × quota (aqui SIM usam-se as
@@ -348,6 +349,11 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
   `src/app/login/debug/page.tsx` (o middleware deixa passar tudo o que começa por /login).
 - `dados/` é gitignored e contém dados pessoais — nunca sair daí.
 - Sem commits/push sem pedido explícito do utilizador.
+- **Senhorios e Saúde dos dados são admin-only (2026-07-23):** removidos do menu do viewer
+  (`src/components/nav.tsx`, passaram para o `ADMIN_GROUP`) E com guard na própria página
+  (`if (!isAdmin) return <Card>Área reservada...` em `senhorios/page.tsx` e `saude/page.tsx`) —
+  esconder só o link no menu não bastava, a rota continuava acessível por URL direto. Mercado
+  ficou visível a todos (não foi pedido para restringir).
 - **A anon key é pública e o repo não é a fronteira de segurança.** Ela viaja no bundle JS do
   site em produção; privado ou público, o repo não muda a exposição. Quem protege os dados é
   (1) o registo de contas estar FECHADO e (2) o RLS. Como o RLS é `using (true)` para qualquer

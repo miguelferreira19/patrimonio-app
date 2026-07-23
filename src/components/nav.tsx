@@ -53,17 +53,18 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Referência",
-    items: [
-      { href: "/mercado", label: "Mercado", icon: TrendingUp },
-      { href: "/senhorios", label: "Senhorios", icon: Users },
-      { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
-    ],
+    items: [{ href: "/mercado", label: "Mercado", icon: TrendingUp }],
   },
 ];
 
+// Só visíveis para admin — as páginas também têm o guard, isto é só o menu.
 const ADMIN_GROUP: NavGroup = {
   label: "Administração",
-  items: [{ href: "/admin", label: "Admin", icon: Settings }],
+  items: [
+    { href: "/senhorios", label: "Senhorios", icon: Users },
+    { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
+    { href: "/admin", label: "Admin", icon: Settings },
+  ],
 };
 
 export function AppNav({ role, email }: { role: Role; email: string | null }) {

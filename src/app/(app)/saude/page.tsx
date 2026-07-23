@@ -22,7 +22,15 @@ const TONE: Record<HealthSeverity, "red" | "amber" | "zinc"> = {
 };
 
 export default async function SaudePage() {
-  const { supabase } = await getSession();
+  const { supabase, isAdmin } = await getSession();
+
+  if (!isAdmin) {
+    return (
+      <Card>
+        <p className="text-sm text-zinc-600">Área reservada ao administrador.</p>
+      </Card>
+    );
+  }
 
   const [propsQ, contractsQ, ownersQ, payments, orphansQ] = await Promise.all([
     supabase.from("properties").select("*"),

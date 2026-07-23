@@ -28,6 +28,15 @@ function statusSummary(counts: Partial<Record<Property["status"], number>>): str
 
 export default async function SenhoriosPage() {
   const { supabase, isAdmin } = await getSession();
+
+  if (!isAdmin) {
+    return (
+      <Card>
+        <p className="text-sm text-zinc-600">Área reservada ao administrador.</p>
+      </Card>
+    );
+  }
+
   const year = currentMonthKey().slice(0, 4);
   const yearStart = `${year}-01-01`;
 
