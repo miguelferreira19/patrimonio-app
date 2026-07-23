@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchIneBenchmarks } from "@/lib/ine";
 import { fail, requireAdmin, type ActionResult } from "./util";
 
@@ -72,51 +73,59 @@ export async function importBenchmarks(rows: BenchmarkInput[]): Promise<ActionRe
 /**
  * Vai buscar ao INE as medianas mais recentes (rendas €/m² e vendas €/m²,
  * municípios + freguesias) e grava-as em market_benchmarks.
+ *
+ * Núcleo puro-de-permissões: recebe o cliente já autorizado a escrever (admin via cookies,
+ * ou service-role no cron — ver src/app/api/cron/ine/route.ts) em vez de o resolver aqui,
+ * para poder ser chamado tanto pela action do botão como pela rota de cron.
  */
+export async function runIneRefresh(supabase: SupabaseClient): Promise<{ info: string }> {
+  const { rent, sale } = await fetchIneBenchmarks();
+
+  async function upsertChunked(rows: Array<Record<string, unknown>>) {
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await supabase
+        .from("market_benchmarks")
+        .upsert(rows.slice(i, i + 500), { onConflict: "dicofre,period,source" });
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  await upsertChunked(
+    rent.rows.map((r) => ({
+      dicofre: r.code,
+      parish_name: r.level === "freguesia" ? r.name : null,
+      municipality: r.municipality,
+      period: rent.period,
+      rent_median_m2: r.value,
+      level: r.level,
+      source: "ine",
+    })),
+  );
+  await upsertChunked(
+    sale.rows.map((r) => ({
+      dicofre: r.code,
+      parish_name: r.level === "freguesia" ? r.name : null,
+      municipality: r.municipality,
+      period: sale.period,
+      sale_median_m2: r.value,
+      level: r.level,
+      source: "ine",
+    })),
+  );
+
+  return {
+    info:
+      `Rendas ${rent.periodLabel}: ${rent.rows.length} territórios · ` +
+      `Vendas ${sale.periodLabel}: ${sale.rows.length} territórios.`,
+  };
+}
+
 export async function refreshIne(): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
-    const { rent, sale } = await fetchIneBenchmarks();
-
-    async function upsertChunked(rows: Array<Record<string, unknown>>) {
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error } = await supabase
-          .from("market_benchmarks")
-          .upsert(rows.slice(i, i + 500), { onConflict: "dicofre,period,source" });
-        if (error) throw new Error(error.message);
-      }
-    }
-
-    await upsertChunked(
-      rent.rows.map((r) => ({
-        dicofre: r.code,
-        parish_name: r.level === "freguesia" ? r.name : null,
-        municipality: r.municipality,
-        period: rent.period,
-        rent_median_m2: r.value,
-        level: r.level,
-        source: "ine",
-      })),
-    );
-    await upsertChunked(
-      sale.rows.map((r) => ({
-        dicofre: r.code,
-        parish_name: r.level === "freguesia" ? r.name : null,
-        municipality: r.municipality,
-        period: sale.period,
-        sale_median_m2: r.value,
-        level: r.level,
-        source: "ine",
-      })),
-    );
-
+    const { info } = await runIneRefresh(supabase);
     revalidatePath("/", "layout");
-    return {
-      ok: true,
-      info:
-        `Rendas ${rent.periodLabel}: ${rent.rows.length} territórios · ` +
-        `Vendas ${sale.periodLabel}: ${sale.rows.length} territórios.`,
-    };
+    return { ok: true, info };
   } catch (e) {
     return fail(e);
   }

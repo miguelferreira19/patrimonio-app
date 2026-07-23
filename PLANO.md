@@ -227,11 +227,18 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
   quando `lastPaidMonth + cadence <= mês corrente` (reusa as linhas de `computeArrears` que o
   dashboard já calcula). Falta validar a lista contra o Portal com dados reais.
 
-**P1-4 · Refresh INE agendado**
-- Objetivo: atualizar benchmarks trimestralmente sem clique manual. Vercel Cron (route handler
-  `/api/cron/ine` com CRON_SECRET) → reutilizar a action de `src/lib/actions/market.ts`.
-- Armadilha: a action atual exige admin — extrair o núcleo para função sem auth chamada pelo
-  cron com secret, mantendo a action para o botão.
+**P1-4 · Refresh INE agendado** — ✅ FEITO 2026-07-23
+- `runIneRefresh(supabase)` extraído de `refreshIne()` (market.ts) — núcleo sem permissões,
+  recebe o cliente já autorizado; a action continua a usar `requireAdmin()` para o botão do
+  Admin, e a rota de cron usa a service-role key.
+- `src/lib/supabase/admin.ts` (novo) — cliente com `SUPABASE_SERVICE_ROLE_KEY` (ignora RLS, só
+  para código sem sessão de utilizador). `src/app/api/cron/ine/route.ts` (novo) — GET protegido
+  por `Authorization: Bearer <CRON_SECRET>`, 401 sem o header certo.
+- `vercel.json` (novo) — cron mensal (`0 6 1 * *`, dia 1 às 6h UTC); dados do INE não mudam com
+  frequência maior do que isso, e o upsert é idempotente por `(dicofre, period, source)`.
+- Segredos: `SUPABASE_SERVICE_ROLE_KEY` e `CRON_SECRET` guardados como env vars "Sensitive" no
+  Vercel (Production) via `vercel env add` — nunca passaram pelo repositório nem por ficheiro em
+  disco além de um temporário apagado no mesmo comando.
 
 ### P2 — consolidação
 
