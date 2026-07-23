@@ -43,7 +43,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // /api/ fora do matcher: cada route handler tem a sua própria proteção (requireAdmin ou,
+  // no caso do cron, um segredo por header) — um pedido do Vercel Cron nunca tem cookie de
+  // sessão, e sem esta exclusão o middleware redirecionava-o para /login antes da rota correr.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
