@@ -59,11 +59,27 @@ export function toMonthKey(iso: string | null): string | null {
   return `${iso.slice(0, 7)}-01`;
 }
 
+/** Como String.includes, mas trata U+FFFD (�) como um carácter-qualquer: alguns exports do
+ *  Portal chegam com a acentuação corrompida (á/é/í/ó/ú/ã/ç/ê → �, sempre 1-para-1, sem
+ *  encurtar a palavra) e isso partia o reconhecimento de colunas como "Imóvel"/"Referência". */
+function fuzzyIncludes(haystack: string, needle: string): boolean {
+  if (needle.length === 0) return true;
+  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+    for (let j = 0; j < needle.length; j++) {
+      const a = haystack[i + j];
+      const b = needle[j];
+      if (a !== b && a !== "�" && b !== "�") continue outer;
+    }
+    return true;
+  }
+  return false;
+}
+
 /** Heurística: escolhe o header que contém alguma das palavras-chave. */
 export function guessHeader(headers: string[], keywords: string[]): string {
   const lower = headers.map((h) => h.toLowerCase());
   for (const k of keywords) {
-    const i = lower.findIndex((h) => h.includes(k));
+    const i = lower.findIndex((h) => fuzzyIncludes(h, k));
     if (i >= 0) return headers[i];
   }
   return "";
