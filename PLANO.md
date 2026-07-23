@@ -313,15 +313,31 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
 - Aceitação: lista acionável "contratos a comunicar à AT (Portaria 110/2019)"; não altera IRS
   sozinho, é um alerta. Armadilha: comércio/garagens NÃO beneficiam; confirmar caso a caso.
 
-**P2-8 · Ciclo de vida dos contratos**
-- Objetivo: avisos de fim/renovação/denúncia com antecedência legal; e GERAR a carta de
-  atualização de renda no formato/prazo legais (liga ao P1-1). Aceitação: badge no dashboard +
-  carta em PDF/docx pronta a enviar.
+**P2-8 · Ciclo de vida dos contratos** — parcial 2026-07-23
+- FEITO: `upcomingContractEnds()` (calc.ts, puro + calc.check.ts) — contratos ativos cujo
+  `end_date` cai nos próximos 90 dias; cartão "Contratos a terminar em breve" no dashboard,
+  ordenado por data mais próxima, link para a fração. Deliberadamente SEM prazos legais de
+  denúncia/renovação (dependem do tipo/duração do contrato, não modelados) — é só o alerta,
+  o rótulo diz para confirmar caso a caso.
+- Também: `saude/page.tsx` ganhou o check `contrato_expirado` (health.ts) — contrato ativo com
+  `end_date` já passada (aviso, não erro: pode ser esquecimento de renovação ou falta dar baixa).
+- FALTA (maior esforço, não feito): gerar a carta de atualização de renda em PDF/docx pronta a
+  enviar (liga ao P1-1) — precisa de decidir o texto/formato legal com o utilizador antes de
+  implementar; e um cálculo de prazos de denúncia por tipo de contrato (arriscado sem validação
+  jurídica, ver §9 sobre "não é aconselhamento vinculativo").
 
-**P2-9 · Ocupação / vacância** — parcial 2026-07-22
-- FEITO: StatCard "Ocupação" no dashboard (% de frações com contrato ativo + nomes das vagas,
-  link para Frações). Deriva dos contratos, não de `properties.status` (campo manual que fica
-  desatualizado). FALTA: período de vazio e renda perdida (precisa dos gaps entre contratos).
+**P2-9 · Ocupação / vacância** — ✅ FEITO 2026-07-23
+- StatCard "Ocupação" no dashboard (% de frações com contrato ativo + nomes das vagas, link para
+  Frações). Deriva dos contratos, não de `properties.status` (campo manual que fica desatualizado).
+- `vacancyGaps()` (calc.ts, puro + casos em calc.check.ts): por fração, ordena contratos por
+  início e procura folgas entre o fim de um e o início do seguinte; vazio "aberto" (sem contrato
+  seguinte) conta até hoje; renovação no dia seguinte não conta como vazio. Estima renda perdida
+  = dias/30 × renda do contrato anterior (não há como saber a renda "esperada" de um vazio, só a
+  última renda real serve de proxy).
+- Dashboard: StatCard "Ocupação" ganha "~X€ perdidos" quando há vazios em aberto (só o vazio
+  ATUAL, não o histórico fechado — evita duplo-contar com o "Potencial de mercado").
+  Fração: nova secção "Períodos de vazio" no histórico de contratos, lista todos os gaps
+  (fechados e aberto) com dias e renda perdida estimada.
 
 **P2-10 · Relatório anual PDF por senhorio**
 - Objetivo: retrato da carteira (ocupação, yield, evolução de atrasos, despesas por categoria)

@@ -28,6 +28,7 @@ export const SEVERITY_LABEL: Record<HealthSeverity, string> = {
 
 export const KIND_LABEL: Record<string, string> = {
   contrato_zombie: "Contratos ativos sem recibos recentes",
+  contrato_expirado: "Contratos ativos com data de fim já passada",
   renda_desalinhada: "Renda do contrato diferente da dos recibos",
   contratos_sobrepostos: "Contratos sobrepostos na mesma fração",
   renda_invalida: "Rendas a zero ou negativas",
@@ -52,6 +53,8 @@ export interface HealthInput {
   arrears: ArrearsRow[];
   /** Nº de recibos com contract_id nulo (contagem barata, sem ler as linhas todas). */
   orphanReceipts: number;
+  /** YYYY-MM-DD — para o check de contratos com data de fim já passada. */
+  today: string;
 }
 
 /** true se dois intervalos [aStart, aEnd] e [bStart, bEnd] se cruzam (fim nulo = em aberto). */
@@ -66,7 +69,7 @@ export function overlaps(
 }
 
 export function computeHealth(input: HealthInput): HealthIssue[] {
-  const { properties, contracts, owners, arrears, orphanReceipts } = input;
+  const { properties, contracts, owners, arrears, orphanReceipts, today } = input;
   const propById = new Map(properties.map((p) => [p.id, p]));
   const name = (id: string) => propById.get(id)?.name ?? "Fração desconhecida";
   const issues: HealthIssue[] = [];
@@ -81,6 +84,19 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
       title: name(row.propertyId),
       detail: `${row.tenantName} · sem recibos há ${row.streak} meses. Confirmar se o contrato cessou e dar baixa, ou importar os recibos em falta.`,
       href: `/fracoes/${row.propertyId}`,
+    });
+  }
+
+  // 1b) Contratos ativos cuja data de fim já passou — ou o contrato continua de facto (falta
+  //     atualizar end_date/renovação) ou já cessou e falta dar baixa (status='cessado').
+  for (const c of contracts) {
+    if (c.status !== "ativo" || !c.end_date || c.end_date >= today) continue;
+    issues.push({
+      kind: "contrato_expirado",
+      severity: "aviso",
+      title: name(c.property_id),
+      detail: `${c.tenant_name} · fim registado em ${c.end_date}, contrato ainda marcado como ativo. Renovar a data de fim ou dar baixa do contrato.`,
+      href: `/fracoes/${c.property_id}`,
     });
   }
 

@@ -17,16 +17,18 @@ import {
   type MonthlyFlowDatum,
 } from "@/components/charts";
 import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import { expensesInMonth, marketView, monthRoll, sum } from "@/lib/calc";
+import { expensesInMonth, marketView, monthRoll, sum, upcomingContractEnds, vacancyGaps } from "@/lib/calc";
 import { computeArrears } from "@/lib/arrears";
 import { fetchAllPayments, getSession } from "@/lib/data";
 import {
   addMonthsKey,
   currentMonthKey,
+  fmtDate,
   fmtEur,
   fmtPct,
   lastMonthsKeys,
   monthLabel,
+  todayISO,
 } from "@/lib/format";
 import type { Contract, Expense, Landlord, MarketBenchmark, Property, Receipt } from "@/lib/types";
 import { DeviationBadge } from "./fracoes/properties-table";
@@ -185,6 +187,17 @@ export default async function DashboardPage() {
   const vacant = properties.filter((p) => !occupiedIds.has(p.id));
   const occupancy = properties.length > 0 ? occupiedIds.size / properties.length : 0;
 
+  // Vazios em ABERTO (frações sem contrato ativo neste momento): renda perdida desde que
+  // ficaram vagas. Não soma o histórico de vazios já fechados — é só o "sangramento" atual.
+  const openGaps = vacancyGaps(contracts, todayISO()).filter((g) => g.gapEnd === null);
+  const lostRentNow = sum(openGaps.map((g) => g.lostRent));
+
+  // ---------- Contratos a terminar em breve (P2-8, só o alerta) ----------
+  const endingSoon = upcomingContractEnds(activeContracts, todayISO(), 90).map((c) => ({
+    contract: c,
+    property: propertiesById.get(c.property_id),
+  }));
+
   // ---------- Vs. mercado ----------
   const marketRows = properties.map((p) => {
     const active = contracts.find((c) => c.property_id === p.id && c.status === "ativo");
@@ -284,7 +297,8 @@ export default async function DashboardPage() {
                 : `${vacant.length} sem contrato ativo: ${vacant
                     .slice(0, 3)
                     .map((p) => p.name)
-                    .join(", ")}${vacant.length > 3 ? "…" : ""}`
+                    .join(", ")}${vacant.length > 3 ? "…" : ""}` +
+                  (lostRentNow > 0 ? ` · ~${fmtEur(lostRentNow)} perdidos` : "")
             }
             tone={vacant.length === 0 ? "green" : "zinc"}
             icon={DoorOpen}
@@ -338,6 +352,41 @@ export default async function DashboardPage() {
                     <p className="font-mono text-xs text-zinc-400">{contract.pf_contract_no}</p>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card
+        title="Contratos a terminar em breve"
+        subtitle="Próximos 90 dias · sem cálculo de prazos legais de renovação/denúncia, confirmar caso a caso"
+      >
+        {endingSoon.length === 0 ? (
+          <EmptyState icon={CheckCircle2}>Nenhum contrato ativo termina nos próximos 90 dias.</EmptyState>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {endingSoon.map(({ contract, property }) => (
+              <div
+                key={contract.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+              >
+                <div className="min-w-0">
+                  {property ? (
+                    <Link
+                      href={`/fracoes/${property.id}`}
+                      className="font-medium text-teal-700 hover:underline"
+                    >
+                      {property.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-zinc-700">?</span>
+                  )}
+                  <p className="truncate text-xs text-zinc-500">{contract.tenant_name}</p>
+                </div>
+                <p className="shrink-0 tabular-nums text-sm font-semibold text-amber-700">
+                  {fmtDate(contract.end_date)}
+                </p>
               </div>
             ))}
           </div>

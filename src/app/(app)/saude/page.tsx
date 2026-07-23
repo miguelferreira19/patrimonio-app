@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, ListChecks, XCircle } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
 import { computeArrears } from "@/lib/arrears";
 import { fetchAllPayments, getSession } from "@/lib/data";
+import { todayISO } from "@/lib/format";
 import {
   KIND_LABEL,
   SEVERITY_LABEL,
@@ -58,6 +59,7 @@ export default async function SaudePage() {
     owners,
     arrears,
     orphanReceipts: orphansQ.count ?? 0,
+    today: todayISO(),
   });
   const counts = countBySeverity(issues);
   const groups = groupByKind(issues);

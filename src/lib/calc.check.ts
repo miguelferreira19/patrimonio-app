@@ -1,6 +1,6 @@
 // Self-check de calc.ts. Correr com `npm run check:calc`.
 import assert from "node:assert/strict";
-import { rentUpdateEligibility } from "./calc";
+import { rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
 import type { Contract, RentUpdate, UpdateCoefficient } from "./types";
 
 function contract(over: Partial<Contract> = {}): Contract {
@@ -46,6 +46,53 @@ function contract(over: Partial<Contract> = {}): Contract {
   const r = rentUpdateEligibility(contract({ start_date: null }), [], [], "2030-01-01");
   assert.equal(r.eligible, false);
   assert.equal(r.baseDate, null);
+}
+
+// vacancyGaps: vazio fechado entre dois contratos da mesma fração.
+{
+  const contracts = [
+    contract({ id: "a", property_id: "p1", start_date: "2020-01-01", end_date: "2022-05-31", rent: 600 }),
+    contract({ id: "b", property_id: "p1", start_date: "2022-08-01", end_date: null, rent: 650 }),
+  ];
+  const gaps = vacancyGaps(contracts, "2026-01-01");
+  assert.equal(gaps.length, 1);
+  assert.equal(gaps[0].gapStart, "2022-06-01");
+  assert.equal(gaps[0].gapEnd, "2022-08-01");
+  assert.equal(gaps[0].days, 61);
+  assert.equal(gaps[0].lostRent, Math.round((61 / 30) * 600 * 100) / 100);
+}
+
+// vacancyGaps: vazio aberto (fração ainda sem contrato seguinte) conta até hoje.
+{
+  const contracts = [
+    contract({ id: "a", property_id: "p2", start_date: "2024-01-01", end_date: "2025-01-01", rent: 500 }),
+  ];
+  const gaps = vacancyGaps(contracts, "2025-04-01");
+  assert.equal(gaps.length, 1);
+  assert.equal(gaps[0].gapEnd, null);
+  assert.equal(gaps[0].days, 89);
+}
+
+// vacancyGaps: renovação same-day (sem folga real) não conta como vazio.
+{
+  const contracts = [
+    contract({ id: "a", property_id: "p3", start_date: "2020-01-01", end_date: "2021-01-01", rent: 500 }),
+    contract({ id: "b", property_id: "p3", start_date: "2021-01-02", end_date: null, rent: 500 }),
+  ];
+  const gaps = vacancyGaps(contracts, "2026-01-01");
+  assert.equal(gaps.length, 0);
+}
+
+// upcomingContractEnds: só ativos, só dentro do horizonte, ordenado por fim mais próximo.
+{
+  const contracts = [
+    contract({ id: "a", end_date: "2027-01-01" }), // fora do horizonte (90d de 23/07 = ~21/10)
+    contract({ id: "b", end_date: "2026-08-01" }),
+    contract({ id: "c", end_date: "2026-07-20" }), // já passou
+    contract({ id: "d", end_date: "2026-09-01", status: "cessado" }), // não conta, não é ativo
+  ];
+  const upcoming = upcomingContractEnds(contracts, "2026-07-23", 90);
+  assert.deepEqual(upcoming.map((c) => c.id), ["b"]);
 }
 
 console.log("calc.check.ts: OK");

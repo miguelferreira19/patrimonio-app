@@ -156,6 +156,71 @@ export function rentUpdateEligibility(
   return { eligible: todayISO >= eligibleSince, baseDate, eligibleSince, suggestedRent };
 }
 
+export interface VacancyGap {
+  propertyId: string;
+  gapStart: string; // dia seguinte ao fim do contrato anterior
+  gapEnd: string | null; // início do contrato seguinte, ou null se ainda vago hoje
+  days: number;
+  lostRent: number; // renda do contrato anterior × meses do vazio (30 dias/mês)
+}
+
+/**
+ * Vazios entre contratos por fração (P2-9): ordena os contratos de cada fração por início e
+ * procura folgas entre o fim de um e o início do seguinte. Um vazio sem contrato seguinte
+ * (fração ainda hoje sem contrato ativo) conta como aberto (`gapEnd: null`) até `todayISO`.
+ * Precisa de `end_date` no contrato anterior — sem ele não há como saber onde começa o vazio.
+ */
+export function vacancyGaps(contracts: Contract[], todayISO: string): VacancyGap[] {
+  const byProperty = new Map<string, Contract[]>();
+  for (const c of contracts) {
+    const list = byProperty.get(c.property_id) ?? [];
+    list.push(c);
+    byProperty.set(c.property_id, list);
+  }
+
+  const gaps: VacancyGap[] = [];
+  for (const [propertyId, list] of byProperty) {
+    const sorted = list.slice().sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""));
+    for (let i = 0; i < sorted.length; i++) {
+      const prev = sorted[i];
+      if (!prev.end_date) continue; // ainda ativo ou sem data de fim registada — não é vazio conhecido
+      const gapStartDate = new Date(prev.end_date);
+      gapStartDate.setDate(gapStartDate.getDate() + 1);
+      const gapStart = gapStartDate.toISOString().slice(0, 10);
+
+      const next = sorted[i + 1];
+      const gapEnd = next?.start_date ?? null;
+      if (gapEnd !== null && gapEnd <= gapStart) continue; // sem folga real (renovação same-day)
+
+      const endForCalc = gapEnd ?? todayISO;
+      if (endForCalc <= gapStart) continue; // vazio "aberto" que ainda não teve nenhum dia (fim=hoje)
+      const days = Math.round((new Date(endForCalc).getTime() - new Date(gapStart).getTime()) / 86400000);
+      const lostRent = Math.round((days / 30) * prev.rent * 100) / 100;
+
+      gaps.push({ propertyId, gapStart, gapEnd, days, lostRent });
+    }
+  }
+  return gaps;
+}
+
+/**
+ * Contratos ativos cuja data de fim cai dentro de `horizonDays` (P2-8, só o alerta — sem gerar
+ * carta nem calcular prazos legais de denúncia/renovação, que dependem do tipo/duração do
+ * contrato e não estão modelados aqui). Ordenado por data de fim mais próxima primeiro.
+ */
+export function upcomingContractEnds(
+  contracts: Contract[],
+  todayISO: string,
+  horizonDays = 90,
+): Contract[] {
+  const horizon = new Date(todayISO);
+  horizon.setDate(horizon.getDate() + horizonDays);
+  const horizonISO = horizon.toISOString().slice(0, 10);
+  return contracts
+    .filter((c) => c.status === "ativo" && c.end_date && c.end_date >= todayISO && c.end_date <= horizonISO)
+    .sort((a, b) => a.end_date!.localeCompare(b.end_date!));
+}
+
 /** Lista de territórios (freguesias/concelhos) disponível nos benchmarks, para o formulário da fração. */
 export function geoOptionsFromBenchmarks(
   benchmarks: MarketBenchmark[],

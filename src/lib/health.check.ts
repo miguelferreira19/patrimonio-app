@@ -34,7 +34,7 @@ function arrearsRow(over: Partial<ArrearsRow> = {}): ArrearsRow {
 function run(over: Partial<HealthInput> = {}) {
   return computeHealth({
     properties: [property("p1")], contracts: [], owners: [], arrears: [],
-    orphanReceipts: 0, ...over,
+    orphanReceipts: 0, today: "2026-07-23", ...over,
   });
 }
 
@@ -121,4 +121,29 @@ function run(over: Partial<HealthInput> = {}) {
   assert.deepEqual(kinds, ["contrato_zombie", "ficha_incompleta"]);
 }
 
-console.log("health: casos OK (A, B, C, C2, D, E, F, G)");
+// H) Contrato ativo com data de fim já passada (P2-8) — aviso, não erro (pode ser esquecimento
+//    de renovação, não necessariamente um contrato morto).
+{
+  const issues = run({
+    properties: [property("p1", { area_m2: 80, typology: "T2", dicofre: "110501", vpt: 50000 })],
+    contracts: [contract("c1", { end_date: "2026-01-01" })],
+  });
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].kind, "contrato_expirado");
+  assert.equal(issues[0].severity, "aviso");
+}
+{
+  // Fim no futuro, ou já cessado, não gera aviso.
+  const futuro = run({
+    properties: [property("p1", { area_m2: 80, typology: "T2", dicofre: "110501", vpt: 50000 })],
+    contracts: [contract("c1", { end_date: "2030-01-01" })],
+  });
+  assert.equal(futuro.length, 0);
+  const cessado = run({
+    properties: [property("p1", { area_m2: 80, typology: "T2", dicofre: "110501", vpt: 50000 })],
+    contracts: [contract("c1", { end_date: "2026-01-01", status: "cessado" })],
+  });
+  assert.equal(cessado.length, 0);
+}
+
+console.log("health: casos OK (A, B, C, C2, D, E, F, G, H)");

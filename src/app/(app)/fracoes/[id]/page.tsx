@@ -18,7 +18,7 @@ import {
   RentUpdateButton,
 } from "@/components/forms";
 import { Badge, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum } from "@/lib/calc";
+import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacancyGaps } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
 import { EPSILON_EUR, isMonthSettled, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
@@ -246,6 +246,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
     : null;
   const mv = marketView(property, active, benchmarks);
   const landlordById = new Map(landlords.map((l) => [l.id, l]));
+  const gaps = vacancyGaps(contracts, todayISO());
 
   const months = lastMonthsKeys(12);
 
@@ -733,6 +734,23 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                 </div>
               ))}
             </div>
+            {gaps.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                  Períodos de vazio
+                </p>
+                <ul className="space-y-1 text-sm text-zinc-600">
+                  {gaps.map((g) => (
+                    <li key={g.gapStart} className="tabular-nums">
+                      {fmtDate(g.gapStart)} → {g.gapEnd ? fmtDate(g.gapEnd) : "hoje (em aberto)"}{" "}
+                      <span className="text-xs text-zinc-400">
+                        ({g.days} dias · ~{fmtEur(g.lostRent)} perdidos)
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {rentUpdates.length > 0 && (
               <div>
                 <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
