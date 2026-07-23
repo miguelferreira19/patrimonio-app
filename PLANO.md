@@ -357,6 +357,17 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
 - PostgREST: máx 1000 linhas por defeito → `.limit()` explícito em payments/receipts.
 - Import por SQL Editor > wizard (superuser, idempotente, verificável). Wizard = casos pequenos.
 - Payments com `on conflict do nothing` — reimports nunca pisam marcações manuais.
+- **BUG corrigido 2026-07-23 — `sync_contract_rents()` escrevia renda errada quando um contrato
+  tem a renda mensal dividida em mais de um recibo no mesmo mês** (ex.: 1905921 "lote 2e":
+  260€+70€=330€/mês). A função pegava só no último recibo (`distinct on (contract_id) order by
+  ref_month desc`) — quando duas linhas empatavam no mesmo `ref_month`, o Postgres escolhia uma
+  delas sem critério e podia gravar 70€ em vez de 330€. Fix em `supabase/schema.sql`: agrupa por
+  `(contract_id, ref_month)` e SOMA antes de escolher o mês mais recente. **Precisa de ser colado
+  manualmente no SQL Editor** (como qualquer alteração de schema — ver §8) e depois correr
+  "Sincronizar rendas" (Admin, novo botão em `sync-rents-card.tsx`, antes só corria escondido
+  dentro do wizard de importar Recibos) para corrigir os contratos já afetados. Só se sabe quais
+  frações foram atingidas depois de correr — conferir a Ficha de fração de quem tinha rendas
+  "estranhamente baixas".
 - Node só via pasta Logitech (CLAUDE.md); caminhos com espaços ("OneDrive - ISEG") → aspas.
 - **`src/components/ui.tsx` NÃO pode levar `"use client"`** (é módulo partilhado): as páginas
   server passam `icon={LucideIcon}` a StatCard/EmptyState; com a diretiva cria-se uma fronteira

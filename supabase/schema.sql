@@ -196,14 +196,25 @@ create table if not exists public.update_coefficients (
 
 -- Depois de importar recibos, alinha a renda de cada contrato ativo com o
 -- valor do recibo mais recente. Corre com RLS do invocador (só admin escreve).
+--
+-- Soma por mes de referencia ANTES de escolher o mais recente: alguns contratos
+-- (ex.: 1905921 "lote 2e") tem a renda mensal dividida em mais de um recibo no
+-- mesmo mes (260 + 70 = 330). A versao anterior pegava so no ultimo recibo (uma
+-- linha, `distinct on (contract_id)`) e, quando duas linhas empatavam no mesmo
+-- ref_month, escolhia uma delas sem criterio -- podia gravar 70 em vez de 330.
 create or replace function public.sync_contract_rents()
 returns int
 language sql
 as $$
-  with latest as (
-    select distinct on (contract_id) contract_id, amount
+  with monthly as (
+    select contract_id, ref_month, sum(amount) as total
     from public.receipts
     where contract_id is not null
+    group by contract_id, ref_month
+  ),
+  latest as (
+    select distinct on (contract_id) contract_id, total as amount
+    from monthly
     order by contract_id, ref_month desc
   ),
   updated as (

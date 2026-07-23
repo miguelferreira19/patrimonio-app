@@ -4,6 +4,7 @@ import type { Landlord, MarketBenchmark, Profile, UpdateCoefficient } from "@/li
 import { CoefficientsCard } from "./coefficients-card";
 import { IneCard } from "./ine-card";
 import { PfImportWizard } from "./pf-import-wizard";
+import { SyncRentsCard } from "./sync-rents-card";
 import { UsersCard } from "./users-card";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +75,8 @@ export default async function AdminPage() {
       />
 
       <PfImportWizard landlords={landlords} />
+
+      <SyncRentsCard />
 
       <IneCard
         ineCount={ineCount}
