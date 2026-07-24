@@ -7,6 +7,7 @@
 // `expectedRent`), em vez de reimplementar essa análise.
 
 import type { ArrearsRow } from "./arrears";
+import { isCurrentProperty } from "./calc";
 import type { Contract, Property, PropertyOwner } from "./types";
 
 export type HealthSeverity = "erro" | "aviso" | "info";
@@ -69,7 +70,15 @@ export function overlaps(
 }
 
 export function computeHealth(input: HealthInput): HealthIssue[] {
-  const { properties, contracts, owners, arrears, orphanReceipts, today } = input;
+  const { orphanReceipts, today } = input;
+  // P0-2c: terrenos e imóveis vendidos não entram em NENHUM check — não fazem parte
+  // de "métricas correntes" (ver isCurrentProperty em calc.ts). Filtra logo à entrada
+  // para não ter de repetir a condição em cada check individual.
+  const properties = input.properties.filter(isCurrentProperty);
+  const currentIds = new Set(properties.map((p) => p.id));
+  const contracts = input.contracts.filter((c) => currentIds.has(c.property_id));
+  const owners = input.owners.filter((o) => currentIds.has(o.property_id));
+  const arrears = input.arrears.filter((r) => currentIds.has(r.propertyId));
   const propById = new Map(properties.map((p) => [p.id, p]));
   const name = (id: string) => propById.get(id)?.name ?? "Fração desconhecida";
   const issues: HealthIssue[] = [];

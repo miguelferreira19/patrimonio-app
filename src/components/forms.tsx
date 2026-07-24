@@ -212,6 +212,8 @@ export function PropertyFormButton({
                 <option value="arrendado">Arrendado</option>
                 <option value="vago">Vago</option>
                 <option value="outro">Outro</option>
+                <option value="terreno">Terreno</option>
+                <option value="vendido">Vendido</option>
               </Select>
             </Field>
           </div>

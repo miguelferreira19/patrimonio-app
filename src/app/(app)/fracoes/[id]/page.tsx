@@ -365,10 +365,20 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                 <dt className="text-xs text-zinc-500">Renda mensal</dt>
                 <dd className="font-semibold tabular-nums text-teal-700">{fmtEur(active.rent, 2)}</dd>
                 {rentEligibility?.eligible && (
-                  <Badge tone="amber" className="mt-1">
-                    Atualizável desde {monthLabel(rentEligibility.eligibleSince!)}
-                    {rentEligibility.suggestedRent && ` · sugestão ${fmtEur(rentEligibility.suggestedRent, 2)}`}
-                  </Badge>
+                  <>
+                    <Badge tone="amber" className="mt-1">
+                      Atualizável desde {monthLabel(rentEligibility.eligibleSince!)}
+                      {rentEligibility.suggestedRent && ` · sugestão ${fmtEur(rentEligibility.suggestedRent, 2)}`}
+                    </Badge>
+                    <a
+                      href={`/carta/${active.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-xs font-medium text-teal-700 hover:underline"
+                    >
+                      Gerar carta
+                    </a>
+                  </>
                 )}
               </div>
               <div>

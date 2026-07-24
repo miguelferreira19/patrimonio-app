@@ -16,7 +16,9 @@ export interface Landlord {
   notes: string | null;
 }
 
-export type PropertyStatus = "arrendado" | "vago" | "outro";
+// "terreno" (não arrendável) e "vendido" (já não é da família) saem de todas as
+// métricas correntes — ver isCurrentProperty em calc.ts.
+export type PropertyStatus = "arrendado" | "vago" | "outro" | "terreno" | "vendido";
 
 export interface Property {
   id: string;
@@ -76,7 +78,8 @@ export interface Receipt {
   ref_month: string;
   period_start: string | null;
   period_end: string | null;
-  amount: number;
+  amount: number;              // "Importância recebida" (líquida de retenção)
+  withholding: number;         // retenção na fonte (bruto menos importância recebida)
   issue_date: string | null;
   source: string;
 }

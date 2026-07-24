@@ -312,3 +312,64 @@ insert into public.landlords (name)
 select v.name
 from (values ('Miguel'), ('Eva'), ('António'), ('Ilidio')) as v(name)
 where not exists (select 1 from public.landlords);
+
+-- ============================================================
+-- Migrações idempotentes (2026-07-24)
+-- ============================================================
+
+-- P0-2c: frações não arrendáveis (terrenos) e já vendidas saem das métricas
+-- correntes; o histórico de contratos/recibos fica intacto na BD.
+-- O check inline chama-se properties_status_check em instalações novas, mas
+-- dropamos por definição para não depender do nome gerado.
+do $$
+declare c record;
+begin
+  for c in
+    select con.conname
+    from pg_constraint con
+    join pg_class rel on rel.oid = con.conrelid
+    join pg_namespace n on n.oid = rel.relnamespace
+    where n.nspname = 'public' and rel.relname = 'properties'
+      and con.contype = 'c' and pg_get_constraintdef(con.oid) like '%arrendado%'
+  loop
+    execute format('alter table public.properties drop constraint %I', c.conname);
+  end loop;
+end;
+$$;
+
+alter table public.properties
+  add constraint properties_status_check
+  check (status in ('arrendado', 'vago', 'outro', 'terreno', 'vendido'));
+
+-- P2-5: retenção na fonte do recibo (bruto menos "Importância recebida").
+alter table public.receipts add column if not exists withholding numeric not null default 0;
+
+-- ============================================================
+-- P0-2c (2026-07-24): marcar frações fora das métricas correntes.
+-- Não apaga nada — contratos/recibos/pagamentos ficam intactos na BD, só deixam
+-- de contar para ocupação, atrasos, mercado e saúde dos dados (ver
+-- isCurrentProperty em src/lib/calc.ts). Seguro re-correr: cada UPDATE só afeta
+-- quem ainda estiver no estado errado, e não falha se a fração não existir.
+-- ============================================================
+
+-- (a) 182341-U-4364: imóvel já vendido pelo avô (o inquilino não pagava renda,
+-- mas a dívida ficou saldada na venda — não deve gerar atraso nem entrar em
+-- ocupação/mercado).
+update public.properties
+set status = 'vendido'
+where matriz_article = '182341-U-4364'
+  and status is distinct from 'vendido';
+
+-- (b) Terrenos: qualquer fração sem NENHUM contrato com renda > 0 e sem
+-- NENHUM recibo — nunca teve renda nem histórico de arrendamento (cobre
+-- 182341-U-6004 e 182301-R-401, e qualquer outra no mesmo caso). Não toca em
+-- quem já está 'vendido' (caso (a) tem prioridade e não é reclassificado aqui).
+update public.properties p
+set status = 'terreno'
+where p.status not in ('vendido', 'terreno')
+  and not exists (
+    select 1 from public.contracts c where c.property_id = p.id and c.rent > 0
+  )
+  and not exists (
+    select 1 from public.receipts r where r.property_id = p.id
+  );

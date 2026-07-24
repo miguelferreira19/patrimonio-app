@@ -17,7 +17,15 @@ import {
   type MonthlyFlowDatum,
 } from "@/components/charts";
 import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import { expensesInMonth, marketView, monthRoll, sum, upcomingContractEnds, vacancyGaps } from "@/lib/calc";
+import {
+  currentProperties,
+  expensesInMonth,
+  marketView,
+  monthRoll,
+  sum,
+  upcomingContractEnds,
+  vacancyGaps,
+} from "@/lib/calc";
 import { computeArrears } from "@/lib/arrears";
 import { fetchAllPayments, getSession } from "@/lib/data";
 import {
@@ -102,9 +110,17 @@ export default async function DashboardPage() {
 
   const propertiesById = new Map(properties.map((p) => [p.id, p]));
 
+  // P0-2c: terrenos e imóveis vendidos não entram em NENHUMA métrica corrente do
+  // dashboard (fluxo, atrasos, ocupação, potencial de mercado). Filtra os contratos
+  // uma vez aqui e reusa daí para baixo — mais simples do que repetir a condição em
+  // cada cálculo.
+  const currentProps = currentProperties(properties);
+  const currentPropertyIds = new Set(currentProps.map((p) => p.id));
+  const currentContracts = contracts.filter((c) => currentPropertyIds.has(c.property_id));
+
   // ---------- Fluxo mensal (12 meses) ----------
   const monthAggs = months.map((m) => {
-    const roll = monthRoll(m, contracts, payments, propertiesById);
+    const roll = monthRoll(m, currentContracts, payments, propertiesById);
     const esperado = sum(roll.map((r) => r.expected));
     const recebido = sum(roll.map((r) => r.payment?.amount));
     const despesasMes = sum(expensesInMonth(expenses, m).map((e) => e.amount));
@@ -138,7 +154,7 @@ export default async function DashboardPage() {
   // Fonte ÚNICA: a MESMA computeArrears da página de Atrasos (renda de referência, horizonte de
   // dados, cadência, contratos cessados sem baixa). Antes o dashboard tinha lógica própria
   // (janela 12m, renda inteira por mês) que divergia da tab — daí os números não baterem certo.
-  const activeContracts = contracts.filter((c) => c.status === "ativo");
+  const activeContracts = currentContracts.filter((c) => c.status === "ativo");
   const { rows: arrearsRows, summary: arrearsSummary } = computeArrears(
     activeContracts,
     payments,
@@ -184,12 +200,12 @@ export default async function DashboardPage() {
   // Ocupada = tem contrato ativo. Deriva dos contratos e não de properties.status, que é um
   // campo manual que fica desatualizado quando um contrato cessa.
   const occupiedIds = new Set(activeContracts.map((c) => c.property_id));
-  const vacant = properties.filter((p) => !occupiedIds.has(p.id));
-  const occupancy = properties.length > 0 ? occupiedIds.size / properties.length : 0;
+  const vacant = currentProps.filter((p) => !occupiedIds.has(p.id));
+  const occupancy = currentProps.length > 0 ? occupiedIds.size / currentProps.length : 0;
 
   // Vazios em ABERTO (frações sem contrato ativo neste momento): renda perdida desde que
   // ficaram vagas. Não soma o histórico de vazios já fechados — é só o "sangramento" atual.
-  const openGaps = vacancyGaps(contracts, todayISO()).filter((g) => g.gapEnd === null);
+  const openGaps = vacancyGaps(currentContracts, todayISO()).filter((g) => g.gapEnd === null);
   const lostRentNow = sum(openGaps.map((g) => g.lostRent));
 
   // ---------- Contratos a terminar em breve (P2-8, só o alerta) ----------
@@ -199,8 +215,8 @@ export default async function DashboardPage() {
   }));
 
   // ---------- Vs. mercado ----------
-  const marketRows = properties.map((p) => {
-    const active = contracts.find((c) => c.property_id === p.id && c.status === "ativo");
+  const marketRows = currentProps.map((p) => {
+    const active = currentContracts.find((c) => c.property_id === p.id && c.status === "ativo");
     const mv = marketView(p, active, benchmarks);
     return { property: p, mv };
   });
@@ -293,7 +309,7 @@ export default async function DashboardPage() {
             value={fmtPct(occupancy, 0)}
             sub={
               vacant.length === 0
-                ? `${properties.length} frações, todas arrendadas`
+                ? `${currentProps.length} frações, todas arrendadas`
                 : `${vacant.length} sem contrato ativo: ${vacant
                     .slice(0, 3)
                     .map((p) => p.name)

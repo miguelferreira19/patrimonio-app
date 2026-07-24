@@ -1,4 +1,4 @@
-import { geoOptionsFromBenchmarks, marketView } from "@/lib/calc";
+import { geoOptionsFromBenchmarks, isCurrentProperty, marketView } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import type {
   Contract,
@@ -54,22 +54,26 @@ export default async function FracoesPage() {
     };
   });
 
-  const rented = rows.filter((r) => r.rent !== null).length;
-  const occupancy = properties.length > 0 ? rented / properties.length : 0;
+  // P0-2c: os KPIs do hero são "métricas correntes" — terrenos e imóveis vendidos ficam
+  // de fora (não contam para ocupação nem para €/m² médio). A tabela abaixo continua a
+  // listar TODAS as frações, incluindo estas (é o histórico legítimo).
+  const currentRows = rows.filter((r) => isCurrentProperty(r.property));
+  const rented = currentRows.filter((r) => r.rent !== null).length;
+  const occupancy = currentRows.length > 0 ? rented / currentRows.length : 0;
 
   // €/m² médio: só as frações com área preenchida entram (o resto ainda está por completar,
   // ver P0-2) — daí o `sub` dizer sobre quantas é que a média foi calculada.
-  const withM2 = rows.filter((r) => r.rentPerM2 !== null);
+  const withM2 = currentRows.filter((r) => r.rentPerM2 !== null);
   const avgPerM2 =
     withM2.length > 0 ? withM2.reduce((a, r) => a + (r.rentPerM2 ?? 0), 0) / withM2.length : null;
-  const deviations = rows.filter((r) => r.deviation !== null);
+  const deviations = currentRows.filter((r) => r.deviation !== null);
   const avgDeviation =
     deviations.length > 0
       ? deviations.reduce((a, r) => a + (r.deviation ?? 0), 0) / deviations.length
       : null;
 
   const description =
-    `${properties.length} frações, ${rented} arrendadas (${fmtPct(occupancy, 0)} de ocupação).` +
+    `${currentRows.length} frações, ${rented} arrendadas (${fmtPct(occupancy, 0)} de ocupação).` +
     (avgDeviation !== null
       ? ` As rendas estão ${fmtPct(Math.abs(avgDeviation), 0)} ${avgDeviation < 0 ? "abaixo" : "acima"} da mediana do mercado.`
       : " Falta preencher áreas e freguesias para comparar com o mercado.");
@@ -84,11 +88,11 @@ export default async function FracoesPage() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total de frações" value={properties.length} icon={Building2} />
+        <StatCard label="Total de frações" value={currentRows.length} icon={Building2} />
         <StatCard
           label="Arrendadas"
           value={rented}
-          sub={`${properties.length - rented} sem contrato ativo`}
+          sub={`${currentRows.length - rented} sem contrato ativo`}
           tone="teal"
           icon={KeyRound}
         />
@@ -103,7 +107,7 @@ export default async function FracoesPage() {
           value={avgPerM2 !== null ? `${fmtNum(avgPerM2, 2)} €` : "·"}
           sub={
             avgPerM2 !== null
-              ? `sobre ${withM2.length} de ${properties.length} frações com área`
+              ? `sobre ${withM2.length} de ${currentRows.length} frações com área`
               : "sem áreas preenchidas"
           }
           tone="amber"

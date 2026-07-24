@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Building2, Percent, Target, TriangleAlert } from "lucide-react";
 import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import { marketView, sum } from "@/lib/calc";
+import { currentProperties, marketView, sum } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
 import type { Contract, MarketBenchmark, Property } from "@/lib/types";
@@ -18,7 +18,9 @@ export default async function MercadoPage() {
     supabase.from("market_benchmarks").select("*"),
   ]);
 
-  const properties = (propsQ.data ?? []) as Property[];
+  // P0-2c: terrenos e imóveis vendidos saem da comparação de mercado (não são
+  // arrendáveis / já não são da família).
+  const properties = currentProperties((propsQ.data ?? []) as Property[]);
   const contracts = (contractsQ.data ?? []) as Contract[];
   const benchmarks = (benchQ.data ?? []) as MarketBenchmark[];
 

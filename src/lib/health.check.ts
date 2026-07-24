@@ -121,6 +121,40 @@ function run(over: Partial<HealthInput> = {}) {
   assert.deepEqual(kinds, ["contrato_zombie", "ficha_incompleta"]);
 }
 
+// I) Terreno/vendido (P0-2c): nenhum check dispara para estas frações, mesmo com dados
+// que noutra fração dariam erro (contrato-zombie, renda inválida, ficha incompleta).
+{
+  const terreno = property("p1", {
+    status: "terreno", area_m2: null, typology: null, dicofre: null, vpt: null,
+  });
+  const issuesTerreno = run({
+    properties: [terreno],
+    contracts: [contract("c1", { rent: 0 })],
+    arrears: [arrearsRow({ stale: true, streak: 40 })],
+    owners: [{ property_id: "p1", landlord_id: "l1", quota: 33 }],
+  });
+  assert.equal(issuesTerreno.length, 0, "terreno não gera nenhuma anomalia");
+
+  const vendido = property("p1", { status: "vendido" });
+  const issuesVendido = run({
+    properties: [vendido],
+    contracts: [contract("c1", { rent: 0, end_date: "2020-01-01" })],
+    arrears: [arrearsRow({ stale: true, streak: 40 })],
+    owners: [{ property_id: "p1", landlord_id: "l1", quota: 50 }],
+  });
+  assert.equal(issuesVendido.length, 0, "vendido não gera nenhuma anomalia");
+
+  // Uma fração normal ao lado continua a ser avaliada normalmente.
+  const mixed = run({
+    properties: [terreno, property("p2", { status: "arrendado", area_m2: null, typology: null, dicofre: null, vpt: null })],
+    contracts: [],
+    arrears: [],
+  });
+  assert.equal(mixed.length, 1);
+  assert.equal(mixed[0].kind, "ficha_incompleta");
+  assert.equal(mixed[0].title, "Fração p2");
+}
+
 // H) Contrato ativo com data de fim já passada (P2-8) — aviso, não erro (pode ser esquecimento
 //    de renovação, não necessariamente um contrato morto).
 {
@@ -146,4 +180,4 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(cessado.length, 0);
 }
 
-console.log("health: casos OK (A, B, C, C2, D, E, F, G, H)");
+console.log("health: casos OK (A, B, C, C2, D, E, F, G, H, I)");

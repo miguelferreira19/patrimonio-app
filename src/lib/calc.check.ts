@@ -1,13 +1,21 @@
 // Self-check de calc.ts. Correr com `npm run check:calc`.
 import assert from "node:assert/strict";
-import { rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
-import type { Contract, RentUpdate, UpdateCoefficient } from "./types";
+import { currentProperties, isCurrentProperty, rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
+import type { Contract, Property, RentUpdate, UpdateCoefficient } from "./types";
 
 function contract(over: Partial<Contract> = {}): Contract {
   return {
     id: "c1", property_id: "p1", tenant_name: "Inquilino", tenant_nif: null,
     pf_contract_no: null, start_date: "2020-01-01", end_date: null, rent: 500,
     due_day: 1, status: "ativo", notes: null, ...over,
+  };
+}
+
+function property(over: Partial<Property> = {}): Property {
+  return {
+    id: "p1", name: "Fração p1", address: null, postal_code: null, municipality: null,
+    parish: null, dicofre: null, typology: null, area_m2: null, vpt: null,
+    vpt_year: null, matriz_article: null, status: "arrendado", notes: null, ...over,
   };
 }
 
@@ -93,6 +101,24 @@ function contract(over: Partial<Contract> = {}): Contract {
   ];
   const upcoming = upcomingContractEnds(contracts, "2026-07-23", 90);
   assert.deepEqual(upcoming.map((c) => c.id), ["b"]);
+}
+
+// isCurrentProperty / currentProperties (P0-2c): terreno e vendido saem das métricas
+// correntes; arrendado, vago e outro continuam a contar.
+{
+  assert.equal(isCurrentProperty(property({ status: "arrendado" })), true);
+  assert.equal(isCurrentProperty(property({ status: "vago" })), true);
+  assert.equal(isCurrentProperty(property({ status: "outro" })), true);
+  assert.equal(isCurrentProperty(property({ status: "terreno" })), false);
+  assert.equal(isCurrentProperty(property({ status: "vendido" })), false);
+
+  const list = [
+    property({ id: "a", status: "arrendado" }),
+    property({ id: "b", status: "terreno" }),
+    property({ id: "c", status: "vendido" }),
+    property({ id: "d", status: "vago" }),
+  ];
+  assert.deepEqual(currentProperties(list).map((p) => p.id), ["a", "d"]);
 }
 
 console.log("calc.check.ts: OK");

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui";
 import { computeArrears, type ArrearsContractInput, type ArrearsPaymentInput } from "@/lib/arrears";
+import { isCurrentProperty } from "@/lib/calc";
 import { fetchAllPayments, getSession } from "@/lib/data";
 import { fmtEur } from "@/lib/format";
 import type { Landlord, Property, PropertyOwner } from "@/lib/types";
@@ -9,7 +10,7 @@ import { ArrearsClient, type ArrearsViewRow } from "./arrears-client";
 
 export const dynamic = "force-dynamic";
 
-type ArrearsPropertyRow = Pick<Property, "id" | "name" | "matriz_article">;
+type ArrearsPropertyRow = Pick<Property, "id" | "name" | "matriz_article" | "status">;
 type ArrearsLandlordRow = Pick<Landlord, "id" | "name">;
 
 export default async function AtrasosPage() {
@@ -20,7 +21,7 @@ export default async function AtrasosPage() {
       .from("contracts")
       .select("id,rent,start_date,property_id,tenant_name,pf_contract_no")
       .eq("status", "ativo"),
-    supabase.from("properties").select("id,name,matriz_article"),
+    supabase.from("properties").select("id,name,matriz_article,status"),
     supabase.from("property_owners").select("*"),
     supabase.from("landlords").select("id,name").order("name"),
     // Histórico COMPLETO de pagamentos (o último mês pago pode ser há anos). Paginado: o
@@ -29,11 +30,17 @@ export default async function AtrasosPage() {
     fetchAllPayments(supabase),
   ]);
 
-  const contracts = (contractsQ.data ?? []) as ArrearsContractInput[];
+  const allContracts = (contractsQ.data ?? []) as ArrearsContractInput[];
   const properties = (propsQ.data ?? []) as ArrearsPropertyRow[];
   const owners = (ownersQ.data ?? []) as PropertyOwner[];
   const landlords = (landlordsQ.data ?? []) as ArrearsLandlordRow[];
   const payments = allPayments as ArrearsPaymentInput[];
+
+  // P0-2c: terrenos nunca tiveram renda e imóveis vendidos já não são da família —
+  // os contratos ligados a essas frações não podem gerar dívida corrente (ex.:
+  // 182341-U-4364, vendido pelo avô, cuja dívida ficou saldada na venda).
+  const currentPropertyIds = new Set(properties.filter(isCurrentProperty).map((p) => p.id));
+  const contracts = allContracts.filter((c) => currentPropertyIds.has(c.property_id));
 
   const { rows, summary } = computeArrears(contracts, payments, new Date());
 

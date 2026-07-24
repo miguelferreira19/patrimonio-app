@@ -1,5 +1,6 @@
 import { LandlordFormButton } from "@/components/forms";
 import { Card, PageHeader, Table, Td, Th } from "@/components/ui";
+import { currentProperties } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { currentMonthKey, fmtEur } from "@/lib/format";
 import type {
@@ -9,17 +10,25 @@ import type {
   Payment,
   Property,
   PropertyOwner,
+  PropertyStatus,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<Property["status"], string> = {
+// P0-2c: terrenos e imóveis vendidos não são portefólio corrente, por isso nunca chegam
+// às contagens desta página (ver isCurrentProperty em calc.ts) — só estes três estados
+// é que precisam de rótulo.
+type CurrentStatus = Exclude<PropertyStatus, "terreno" | "vendido">;
+
+const STATUS_LABEL: Record<CurrentStatus, string> = {
   arrendado: "arrendada",
   vago: "vaga",
   outro: "outro",
 };
 
-function statusSummary(counts: Partial<Record<Property["status"], number>>): string {
+// Recebe o Record completo (é assim que as contagens saem do `status` da fração) mas
+// percorre só os estados correntes — os outros já vêm filtrados a zero.
+function statusSummary(counts: Partial<Record<PropertyStatus, number>>): string {
   const parts = (["arrendado", "vago", "outro"] as const)
     .filter((s) => (counts[s] ?? 0) > 0)
     .map((s) => `${counts[s]} ${STATUS_LABEL[s]}${counts[s]! > 1 ? "s" : ""}`);
@@ -50,13 +59,17 @@ export default async function SenhoriosPage() {
   ]);
 
   const landlords = (landlordsQ.data ?? []) as Landlord[];
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
+  const allOwners = (ownersQ.data ?? []) as PropertyOwner[];
   const properties = (propsQ.data ?? []) as Array<Pick<Property, "id" | "name" | "status">>;
   const contracts = (contractsQ.data ?? []) as Contract[];
   const payments = (paymentsQ.data ?? []) as Payment[];
   const expenses = (expensesQ.data ?? []) as Expense[];
 
-  const propertyById = new Map(properties.map((p) => [p.id, p]));
+  // P0-2c: terrenos e imóveis vendidos ficam fora do que é retrato de hoje (frações por
+  // senhorio, estado, renda ativa, quota média). O que receberam/gastaram este ano é
+  // histórico de caixa e continua a contar no total da família, mais abaixo.
+  const propertyById = new Map(currentProperties(properties).map((p) => [p.id, p]));
+  const owners = allOwners.filter((o) => propertyById.has(o.property_id));
   const contractById = new Map(contracts.map((c) => [c.id, c]));
 
   // Frações por senhorio (Set dedupe-a automaticamente) + quotas (só informativo).
@@ -124,15 +137,23 @@ export default async function SenhoriosPage() {
   // linhas por senhorio, que se somadas duplicariam as frações partilhadas). ----
   const familyPropertyIds = new Set(owners.map((o) => o.property_id));
   let rendaFamilia = 0;
-  let recebidoFamilia = 0;
-  let despesasFamilia = 0;
   for (const pid of familyPropertyIds) {
     rendaFamilia += activeRentByProperty.get(pid) ?? 0;
+  }
+
+  // O recebido/despesas do ano correm sobre TODAS as frações da família, incluindo as
+  // que entretanto foram vendidas: é dinheiro que já entrou e saiu, não uma métrica de
+  // hoje (P0-2c tira-as do retrato corrente, não do histórico).
+  const allFamilyPropertyIds = new Set(allOwners.map((o) => o.property_id));
+  let recebidoFamilia = 0;
+  let despesasFamilia = 0;
+  for (const pid of allFamilyPropertyIds) {
     recebidoFamilia += receivedByProperty.get(pid) ?? 0;
     despesasFamilia += expensesByProperty.get(pid) ?? 0;
   }
   despesasFamilia += expensesLandlordGeral;
   const liquidoFamilia = recebidoFamilia - despesasFamilia;
+  const nForaDoCorrente = allFamilyPropertyIds.size - familyPropertyIds.size;
 
   return (
     <div className="space-y-4">
@@ -269,6 +290,13 @@ export default async function SenhoriosPage() {
             </div>
           </div>
         </div>
+        {nForaDoCorrente > 0 && (
+          <p className="mt-2 text-xs text-zinc-500">
+            Nota: {nForaDoCorrente} {nForaDoCorrente === 1 ? "fração" : "frações"} (terrenos ou já
+            vendidas) não contam nas frações, nos estados nem na renda mensal. O que receberam e
+            custaram em {year} continua incluído no total da família.
+          </p>
+        )}
         {expensesSemAtribuicao > 0 && (
           <p className="mt-2 text-xs text-zinc-500">
             Nota: {fmtEur(expensesSemAtribuicao)} de despesas gerais (sem fração/senhorio) não

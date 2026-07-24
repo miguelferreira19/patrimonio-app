@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarClock,
   HandCoins,
+  Landmark,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -53,7 +54,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Referência",
-    items: [{ href: "/mercado", label: "Mercado", icon: TrendingUp }],
+    items: [
+      { href: "/mercado", label: "Mercado", icon: TrendingUp },
+      { href: "/irs", label: "IRS", icon: Landmark },
+    ],
   },
 ];
 

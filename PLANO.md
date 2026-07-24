@@ -26,6 +26,13 @@ análises sempre em ótica de família (valores por inteiro).
 - 2026-07-22: checklist "Este mês" de recibos por emitir (P1-3), StatCard de ocupação (P2-9
   parcial), backup `.xlsx` da carteira em Admin (P1-7), página **Saúde dos dados** (P1-5),
   atalho de pagamento em dinheiro (P1-2), CI no GitHub (P1-6) e **redesign v2** (§10). Em produção.
+- 2026-07-24: fecho do backlog de código pendente. P0-2c (terrenos e vendidos fora das métricas),
+  P2-5 (retenção na fonte no import), P2-2+P2-6 (página e export do **Anexo F** com simulação de
+  regime), P2-7 (taxa reduzida do art. 72.º), P3-5 (exposição a AIMI) e P2-8 (**carta de
+  atualização de renda** pronta a imprimir). `npm run build` e os 5 self-checks verdes.
+  **Por fazer pelo utilizador antes de isto valer nos dados reais: colar o SQL do fim de
+  `supabase/schema.sql` no SQL Editor e re-correr o import dos recibos (§4) para preencher
+  `receipts.withholding`.** Deploy ainda não feito.
 
 **Pendências imediatas de dados (não de código):**
 - Tio Ilídio: exports do Portal ainda não existem em `dados/Tio/` — quando existirem, correr o
@@ -33,9 +40,24 @@ análises sempre em ótica de família (valores por inteiro).
 - Avó Eva: NÃO terá pasta própria — o export do avô representa o casal (decisão 2026-07-18).
 - Áreas (m²), tipologia e freguesia/dicofre das frações estão vazias — preencher à mão a partir
   das cadernetas prediais (UI de edição de fração já existe) para ativar €/m² vs INE no Mercado.
-- Confirmar com o pai: titularidade dos 2/3 restantes do `182341-U-6004`; gralha `2783-L` vs
-  `2783-K` (dados do pai); `182341-U-4364` (avô) aparece em contratos/recibos mas não no
-  património predial — apurar código correto.
+**Passos do utilizador (por ordem, para a sessão de 2026-07-24 valer nos dados reais):**
+1. Colar no SQL Editor do Supabase o bloco final de `supabase/schema.sql` (migrações de 2026-07-24:
+   estados `terreno`/`vendido`, coluna `receipts.withholding`, e os dois UPDATE de marcação).
+2. Re-correr o import dos recibos (§4) para preencher `receipts.withholding` (sem isto o Anexo F
+   mostra retenção zero).
+3. Conferir os escalões de IRS em `src/lib/irs.ts` contra a tabela oficial da AT.
+4. Deploy: `npx vercel@latest deploy --prod --yes`.
+
+- **RESOLVIDO 2026-07-23 (info do utilizador, implementado em 2026-07-24 — ver P0-2c abaixo):**
+  - `182341-U-6004` e `182301-R-401` (as 2 frações do Pai a quota 1/3): são **2 terrenos**
+    divididos entre avó, pai e prima — não têm renda, nunca tiveram, e NUNCA vão ter (não são
+    arrendáveis). O mesmo se aplica a QUALQUER outra fração sem renda nem histórico de renda —
+    são provavelmente todos terrenos também, tratar da mesma forma.
+  - `182341-U-4364` (avô): imóvel **já vendido** pelo avô — o inquilino não pagava a renda, mas
+    a dívida ficou saldada na venda. **Não deve entrar em nenhuma análise** (atrasos, ocupação,
+    dashboard, IRS) — está aparece em contratos/recibos históricos mas o imóvel já não pertence
+    à família.
+  - A gralha `2783-L` vs `2783-K` fica por resolver (não fazia parte desta resposta).
 
 ---
 
@@ -62,8 +84,10 @@ análises sempre em ótica de família (valores por inteiro).
   `createClient()` de `src/lib/supabase/server`), client components só para interação
   (tabelas com filtros, grelhas, formulários em modal via `src/components/forms.tsx` +
   server actions em `src/lib/actions/*` com `requireAdmin`).
-- **Cálculo:** `src/lib/calc.ts` (mercado, contratos ativos por mês), `src/lib/arrears.ts`
-  (atrasos, ver §5), `src/lib/format.ts` (fmtEur, fmtDate, monthKey…).
+- **Cálculo:** `src/lib/calc.ts` (mercado, contratos ativos por mês, `isCurrentProperty`),
+  `src/lib/arrears.ts` (atrasos, ver §5), `src/lib/irs.ts` (Anexo F, simulação de regime, taxa
+  reduzida do art. 72.º, AIMI), `src/lib/health.ts` (saúde dos dados),
+  `src/lib/format.ts` (fmtEur, fmtDate, monthKey…). Cada um tem o seu `*.check.ts`.
 - **Import em massa:** `dados/gerar_sql_import.py` (reusa `analise_senhorio.py`) gera SQL
   idempotente; `dividir_sql.py` parte em blocos <150KB coláveis; verificação no fim.
 
@@ -164,6 +188,47 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 - Preencher area_m2, typology, dicofre/freguesia via UI (Frações → editar) a partir das
   cadernetas. Aceitação: página Mercado mostra €/m² e desvio vs INE para as frações arrendadas.
 
+**P0-2c · Terrenos sem renda + imóvel vendido excluído da análise** — ✅ FEITO 2026-07-24
+- Desenho escolhido: `properties.status` ganhou os valores `terreno` e `vendido` (CHECK alargado
+  no fim de `supabase/schema.sql`, migração idempotente que dropa o check antigo por DEFINIÇÃO e
+  não pelo nome gerado). Um só conceito novo em código: `isCurrentProperty(p)` / `currentProperties(list)`
+  em `calc.ts`, aplicado no dashboard, Frações (KPIs do hero), Mercado, Atrasos (filtra contratos
+  ANTES de `computeArrears`, por isso o vendido não gera dívida), Senhorios e `health.ts` (filtra à
+  entrada de `computeHealth`: nenhum dos checks dispara para terreno/vendido). A lista de Frações e
+  a ficha individual continuam a mostrá-las (o histórico é legítimo), com Badge zinc e filtro novo.
+- Marcação dos dados por SQL idempotente no fim de `supabase/schema.sql`: `182341-U-4364` → `vendido`;
+  qualquer fração sem contrato com `rent > 0` e sem nenhum recibo → `terreno` (cobre `182341-U-6004`
+  e `182301-R-401`). **Falta colar no SQL Editor.** Alternativa manual: o Select de estado no
+  formulário de edição de fração já oferece "Terreno" e "Vendido".
+- Self-checks novos: `calc.check.ts` (helper) e `health.check.ts` caso I.
+- Por confirmar com o utilizador: se há mais imóveis vendidos por identificar.
+
+<details><summary>Especificação original (2026-07-23)</summary>
+- **Parte 1 — terrenos (`182341-U-6004`, `182301-R-401`, e qualquer outra fração sem renda
+  nem histórico de renda):**
+  - `typology = "Terreno"` (ou similar) na ficha da fração via UI, OU um script/SQL idempotente
+    que identifica frações sem contratos com `rent > 0` e sem receipts, e as marca.
+  - Health check novo em `health.ts`: hoje uma fração `arrendado`/`vago` sem contrato ativo conta
+    para "Ocupação" (dashboard) e pode aparecer como vaga/candidata a arrendar — um terreno NÃO
+    deve contar nem para ocupação nem para "potencial de mercado" nem para "ficha incompleta"
+    (não faz sentido pedir área/tipologia de um terreno para comparar €/m² de arrendamento).
+    Sugestão: `property.status` ganha valor `"terreno"` (hoje só `arrendado|vago|outro` — mudar
+    o CHECK constraint no schema.sql de forma idempotente) e todos os cálculos que hoje filtram
+    por `status !== 'terreno'` ou equivalente passam a excluir.
+  - Rever: dashboard (StatCard Ocupação, `vacant`), `saude/page.tsx` (ficha_incompleta),
+    `fracoes/page.tsx` (properties-table), Mercado.
+- **Parte 2 — `182341-U-4364` excluído por venda:**
+  - Marcar a fração como vendida (`status` novo `"vendido"` no mesmo CHECK constraint, OU um
+    booleano `sold_at`/`archived` — decidir o desenho mais simples ao implementar) para sair de
+    TODAS as análises correntes: Atrasos (não gerar dívida), Ocupação, Saúde dos dados
+    (`contrato_zombie` não devia disparar para um imóvel já vendido), dashboard, Mercado.
+  - O histórico (contratos/recibos/pagamentos antigos) FICA na BD — só deixa de contar para
+    métricas correntes. Não apagar nada.
+  - Confirmar com o utilizador se há mais imóveis vendidos por identificar (só se sabe deste um).
+- Aceitação: dashboard/Atrasos/Saúde dos dados deixam de mencionar terrenos e o `182341-U-4364`;
+  `npm run check` cobre os novos casos (arrears.check.ts/health.check.ts).
+</details>
+
 **P0-3 · Versionar e fazer deploy (Vercel)** — ✅ FEITO 2026-07-20
 - Commit inicial `main` (60 ficheiros; .gitignore verificado: dados/ e .env* fora; identidade
   git repo-local Miguel/margaridaministro2002@gmail.com, igual ao palpites).
@@ -242,23 +307,41 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 
 ### P2 — consolidação
 
+> **2026-07-23 — atualização:** P2-2/P2-6 (IRS) e P2-8 (carta de renda) foram DESBLOQUEADOS pelo
+> utilizador — podem avançar em código na próxima sessão com tokens, pela ordem de valor do
+> backlog. **P2-3 (documentos) continua em pausa**: o utilizador vai tentar reunir os ficheiros
+> de TODOS os contratos primeiro, para depois pedir a associação em bloco — não começar o P2-3
+> sem esses ficheiros ou sem pedido explícito.
+
 **P2-1 · Conciliação bancária** — ❌ RECUSADO (2026-07-23): os recibos são emitidos manualmente,
   não compensa cruzar com extrato bancário. Não reabrir sem pedido explícito do utilizador.
 
-**P2-2 · IRS Anexo F por senhorio**
+**P2-2 · IRS Anexo F por senhorio** — ✅ FEITO 2026-07-24 (implementado junto com o P2-6, ver lá)
 - Objetivo: mapa anual por senhorio: rendas brutas por fração × quota (aqui SIM usam-se as
   quotas de property_owners), retenções (ListaRecibos tem retenção — hoje não é importada:
   acrescentar coluna `withholding` a receipts no schema + no gerador SQL), despesas dedutíveis
   por fração (expenses por categoria). Export CSV/Excel por ano fiscal.
 - Armadilha: recibos multi-mês repartidos — o Anexo F é por ano de RECEBIMENTO; usar issue_date.
+- **DECISÃO (2026-07-23, utilizador):** o export tem de replicar EXATAMENTE o layout dos quadros
+  do Anexo F real (Modelo 3), não um formato livre — quando se arrancar, ir buscar um Anexo F
+  em branco (ou já preenchido, ex. `dados/Pai/IRS_PAI.pdf`) e copiar a estrutura de quadros/
+  colunas/numeração ao milímetro, para o utilizador poder usá-lo diretamente como apoio ao
+  preenchimento na declaração real. Aplica-se também ao P2-6.
 
 **P2-3 · Documentos por fração/contrato**
 - Supabase Storage (bucket privado + RLS por role), upload na página da fração (cadernetas,
   contratos assinados, seguros). Tabela `documents` (property_id/contract_id, tipo, path).
+- **DECISÃO (2026-07-23, utilizador):** primeiro caso de uso concreto a implementar — upload do
+  FICHEIRO DO CONTRATO (o PDF/scan do contrato de arrendamento assinado) associado ao contrato/
+  fração, guardado de forma persistente (Supabase Storage). O resto (cadernetas, seguros, outros
+  tipos) fica como generalização natural do mesmo mecanismo, não é o ponto de partida.
 
-**P2-4 · Testes automatizados mínimos**
-- Vitest para `src/lib/arrears.ts` e `calc.ts` (casos: multi-mês, cadência trimestral, carência,
-  parcial, contrato novo). Aceitação: `npm test` verde; casos de fronteira cobertos.
+**P2-4 · Testes automatizados mínimos** — ❌ FECHADO 2026-07-24 (resolvido por outra via)
+- O Vitest não chega a acrescentar nada: o projeto já tem 5 self-checks puros (`arrears`, `health`,
+  `calc`, `parse`, `irs`) que correm o código real com `assert`, sem framework nem devDep, e já
+  estão no CI via `npm run check`. Meter vitest era uma dependência e um config novo para repetir
+  os mesmos asserts. **Regra:** casos novos vão para o `*.check.ts` do módulo respetivo.
+- Só reabrir se aparecer necessidade real de mocks, snapshots ou testes de componentes React.
 
 ### P3 — mais tarde / estudo
 
@@ -299,28 +382,80 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
   cartão "Cópia de segurança" do Admin — sem JS de cliente. NÃO exporta `market_benchmarks`
   (regenerável do INE). Mais tarde: agendar (Vercel Cron → Storage).
 
-**P2-5 · Retenção na fonte e caução no modelo** (pré-requisito do P2-6)
-- Objetivo: `receipts.withholding` + `contracts.deposit` no schema e no gerador SQL de `dados/`.
-  A retenção já vem no ListaRecibos (bruto − "Importância recebida"). Alimenta o Anexo F (crédito)
-  E torna a renda de referência dos Atrasos EXATA em vez de mediana estimada (ver arrears.ts).
-- Armadilha: inquilino-empresa retém ~25%; particular não. Migração idempotente no schema.sql.
+**P2-5 · Retenção na fonte no modelo** (pré-requisito do P2-6) — ✅ FEITO 2026-07-24
+- `receipts.withholding numeric not null default 0` (migração idempotente no fim de `schema.sql`)
+  + `Receipt.withholding` em `types.ts` + `dados/gerar_sql_import.py` a calcular a retenção por
+  FATIA mensal (`valor_parts[i] − recebido_parts[i]`, não a coluna bruta `RetencaoIRS`, para a soma
+  das fatias fechar ao cêntimo). Reimport faz `on conflict (receipt_number) do update set
+  withholding = excluded.withholding` — só essa coluna, tudo o resto fica intacto.
+- **Falta correr:** enquanto não se re-correr o import (§4) a coluna está a 0 em toda a BD e o
+  Anexo F mostra retenção zero.
+- `contracts.deposit` CORTADO: nenhuma funcionalidade o consome. Acrescentar quando houver uso.
+- Também deliberadamente NÃO feito: usar a retenção real na renda de referência dos Atrasos
+  (`arrears.ts` continua com a mediana). Só faz sentido depois do reimport; a mediana já resolve.
+- Armadilha que se mantém: inquilino-empresa retém ~25%, particular não.
 
-**P2-6 · Otimizador de IRS Anexo F por senhorio** (evolui o P2-2)
-- Objetivo: por senhorio/ano — rendas ilíquidas, gastos DEDUTÍVEIS (mapear `expenses`: só
+**P2-6 · Otimizador de IRS Anexo F por senhorio** (evolui o P2-2) — ✅ FEITO 2026-07-24
+- `src/lib/irs.ts` (puro) + `src/lib/irs.check.ts` (`npm run check:irs`, já dentro do `npm run check`)
+  + página `/irs` (`src/app/(app)/irs/page.tsx`, server, seletor de ano e senhorio, link no menu em
+  Referência) + export `.xlsx` em `src/app/api/irs/route.ts` (GET, `requireAdmin`).
+- Export: replica os **Quadros 4.1** (rendas e gastos, numeração de campos 4001+) e **9** (AIMI) do
+  Anexo F real, estrutura copiada do PDF `dados/Pai/IRS_PAI.pdf`. Os quadros 4.2, 4.3, 4.4, 5, 6-8,
+  10 e 11 foram omitidos de propósito: hoje não há dados para nenhum deles. Uma folha "Notas" leva a
+  simulação de regime, as despesas "a confirmar", os alertas do P2-7 e o AIMI.
+- Decisões fiscais assumidas (todas comentadas no código): despesas dedutíveis = `imi` e `condominio`;
+  `obras` e `outras` ficam "a confirmar" e NÃO deduzem (obras tanto podem ser conservação como
+  valorização); `seguro` e `financiamento` excluídas. Ano fiscal por `issue_date` (ano de recebimento).
+  Simulação de englobamento isolada ao predial líquido do senhorio, sem quociente conjugal nem outras
+  categorias — é o limite honesto do que a app sabe, e está escrito na página.
+- **Escalões:** `IRS_BRACKETS_BY_YEAR` em `irs.ts` — tabela POR ANO (2025 e 2026), com
+  `bracketsForYear(year)` a escolher a do ano fiscal certo (extrapola para o ano mais recente
+  disponível se o Orçamento seguinte ainda não tiver entrada). Correção 2026-07-24: a 1ª versão
+  tinha as taxas de 2024 com os limites de 2025; depois o utilizador trouxe a fonte de 2026
+  (doutorfinancas.pt) e ficaram as duas tabelas certas — 2025 (12,5/16/21,5/24,4/31,4/34,9/43,1/
+  44,6/48) e 2026 (mesmas taxas do 2.º ao 5.º escalão −0,3 p.p., limites +3,51%, Lei 73-A/2025).
+  **Ano novo = acrescentar mais uma entrada aqui; confirmar sempre contra a tabela oficial da AT.**
+- Colunas em branco no export por não serem determináveis a partir dos dados da app: "Natureza",
+  NIF do arrendatário e "atualização de renda > 1,02". Assinaladas em nota no próprio ficheiro.
+- Objetivo original: por senhorio/ano — rendas ilíquidas, gastos DEDUTÍVEIS (mapear `expenses`: só
   conservação/condomínio/IMI/selo/taxas; EXCLUIR financiamento e obras de valorização), retenções,
   predial líquido; e SIMULAR englobamento vs taxa autónoma 28% vs taxas reduzidas de longa duração
   (§9). Mostrar imposto estimado por opção + a melhor. Export Excel do Anexo F.
 - Ficheiros: `src/lib/irs.ts` (puro + self-check) + página. Armadilha: é ESTIMATIVA — rótulo claro
   "confirmar no simulador da AT / com contabilista"; não é aconselhamento fiscal vinculativo.
 
-**P2-7 · Elegibilidade de taxa reduzida (art. 72.º) por contrato**
-- Objetivo: por contrato de HABITAÇÃO, usar início+duração para assinalar a taxa reduzida a que
+**P2-7 · Elegibilidade de taxa reduzida (art. 72.º) por contrato** — ✅ FEITO 2026-07-24
+- `reducedRateEligibility()` em `irs.ts` (puro, com casos de fronteira no self-check: 5/10/20 anos
+  exatos, menos de 5, comércio, sem tipologia, sem data de início) + secção na página `/irs` com a
+  lista acionável e a poupança anual estimada.
+- Uso habitacional inferido de `properties.typology` (`T\d` ou "habita" → habitação; loja, garagem,
+  armazém → comercial). **Sem tipologia preenchida fica sempre "a confirmar", nunca assume
+  habitação** — por isso o valor real desta feature só aparece depois do P0-2.
+- Objetivo original: por contrato de HABITAÇÃO, usar início+duração para assinalar a taxa reduzida a que
   podia aceder (≥5a 15%, ≥10a 10%, ≥20a 5%) vs os 28% atuais, e estimar €/ano poupados. Requer o
   campo `typology`/uso (habitação vs comércio) e duração — depende do P0-2.
 - Aceitação: lista acionável "contratos a comunicar à AT (Portaria 110/2019)"; não altera IRS
   sozinho, é um alerta. Armadilha: comércio/garagens NÃO beneficiam; confirmar caso a caso.
 
-**P2-8 · Ciclo de vida dos contratos** — parcial 2026-07-23
+**P2-8 · Ciclo de vida dos contratos** — ✅ FEITO 2026-07-24 (a carta que faltava)
+- **Carta de atualização de renda:** página server `src/app/(app)/carta/[contractId]/page.tsx`, que
+  renderiza a carta em HTML a 210mm com `@media print` a esconder navegação e botão. Zero
+  dependências: nada de docx nem de gerador de PDF, o browser imprime (ou grava em PDF). Único
+  client component: `carta/print-button.tsx` (`window.print()`).
+- Conteúdo conforme a estrutura aprovada (art. 24.º da Lei 6/2006): senhorio com NIF, inquilino e
+  morada, referência ao contrato, renda atual, coeficiente do ano mais recente, nova renda, data de
+  efeito vinda de `rentUpdateEligibility` (sem duplicar a lógica do P1-1), pedido de confirmação de
+  receção, local/data, assinatura e o rodapé de disclaimer.
+- Gatilho: link "Gerar carta" ao lado do badge "Atualizável desde ..." na ficha da fração, só quando
+  `rentEligibility.eligible`, abre em separador novo.
+- Casos de fronteira tratados com Card em vez de crash: contrato inexistente ou cessado, fração sem
+  senhorio, sem coeficiente registado, e acesso direto ao URL com contrato não elegível.
+- Regra sem self-check (a lógica vive na página): com vários proprietários usa-se o de MAIOR quota,
+  sem desempate definido; a nova renda reusa o arredondamento de `rentUpdateEligibility`.
+- Continua POR FAZER de propósito: cálculo de prazos de denúncia por tipo de contrato (arriscado
+  sem validação jurídica, ver §9).
+
+<details><summary>Estado anterior (parcial 2026-07-23)</summary>
 - FEITO: `upcomingContractEnds()` (calc.ts, puro + calc.check.ts) — contratos ativos cujo
   `end_date` cai nos próximos 90 dias; cartão "Contratos a terminar em breve" no dashboard,
   ordenado por data mais próxima, link para a fração. Deliberadamente SEM prazos legais de
@@ -332,6 +467,23 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
   enviar (liga ao P1-1) — precisa de decidir o texto/formato legal com o utilizador antes de
   implementar; e um cálculo de prazos de denúncia por tipo de contrato (arriscado sem validação
   jurídica, ver §9 sobre "não é aconselhamento vinculativo").
+- **SUGESTÃO (2026-07-23, APROVADA pelo utilizador — pronta a implementar):** carta simples,
+  base legal art. 24.º da Lei n.º 6/2006 (NRAU) — atualização automática por coeficiente, não
+  precisa de acordo do inquilino, só de comunicação. Estrutura:
+  - Cabeçalho: identificação do senhorio (nome, NIF) e do inquilino (nome, morada da fração).
+  - Assunto: "Atualização da renda — [morada/referência da fração]".
+  - Corpo: referência ao contrato (nº Portal das Finanças / data de início); renda atual;
+    coeficiente de atualização do ano X (publicado em Diário da República); nova renda
+    (arredondada); data a partir da qual produz efeitos (regra atual do sistema: 12 meses
+    depois da última atualização/início — já calculado em `rentUpdateEligibility`); pedido de
+    confirmação de receção.
+  - Rodapé: nota "carta gerada automaticamente a partir dos dados do contrato — confirmar prazo
+    de antecedência exigido e enquadramento legal do contrato específico antes de enviar" (mesmo
+    espírito de disclaimer do P2-6/§9 — não é aconselhamento jurídico vinculativo).
+  - Formato de saída a decidir: docx (editável, como os outros entregáveis Oney) ou PDF direto.
+  - Gatilho na UI: botão "Gerar carta" ao lado do badge "Atualizável desde..." já existente na
+    ficha da fração (`fracoes/[id]/page.tsx`), só quando `rentEligibility.eligible`.
+</details>
 
 **P2-9 · Ocupação / vacância** — ✅ FEITO 2026-07-23
 - StatCard "Ocupação" no dashboard (% de frações com contrato ativo + nomes das vagas, link para
@@ -346,14 +498,22 @@ Origem: pedido do utilizador + análise dos IRS 2025 do Pai e do Avô (ver §9).
   Fração: nova secção "Períodos de vazio" no histórico de contratos, lista todos os gaps
   (fechados e aberto) com dias e renda perdida estimada.
 
-**P2-10 · Relatório anual PDF por senhorio**
+**P2-10 · Relatório anual PDF por senhorio** — ADIADO 2026-07-24, sem prejuízo
 - Objetivo: retrato da carteira (ocupação, yield, evolução de atrasos, despesas por categoria)
   exportável. Complementa o Anexo F do P2-6.
+- Não implementado de propósito: o export `.xlsx` do Anexo F (P2-6) e o backup da carteira (P1-7)
+  já dão os números, e qualquer página da app imprime para PDF pelo browser (o padrão que a carta
+  do P2-8 usa). Só vale a pena se o utilizador quiser um documento com narrativa e gráficos para
+  mostrar a terceiros — nesse caso reusar o padrão da carta, nunca uma biblioteca de PDF.
 
-**P3-5 · Monitor de AIMI**
-- Objetivo: somar VPT por proprietário e comparar com o limite (600k singular / 1,2M casal);
-  sinalizar exposição a AIMI. A distribuição de propriedade por herdeiros reduz AIMI — MAS é
-  planeamento sucessório: só sinalizar e remeter para contabilista, nunca recomendar a ação.
+**P3-5 · Monitor de AIMI** — ✅ FEITO 2026-07-24 (secção na página `/irs`)
+- `aimiExposure()` em `irs.ts`: soma `vpt` por proprietário (via `property_owners`) e compara com os
+  dois limiares, 600.000 EUR singular e 1,2M casal. Mostra os dois sem assumir emparelhamento
+  conjugal (o schema não tem esse campo). Exclui frações `vendido` e `terreno`.
+- Só SINALIZA. Não sugere redistribuição de propriedade (planeamento sucessório, remete para
+  contabilista) — como estava decidido.
+- Por confirmar: se alguma fração marcada `terreno` é terreno para CONSTRUÇÃO (sujeito a AIMI, ao
+  contrário do rústico); hoje são todas excluídas.
 
 ## 7. Armadilhas e decisões permanentes (não re-litigar)
 

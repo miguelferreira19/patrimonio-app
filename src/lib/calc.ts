@@ -221,6 +221,21 @@ export function upcomingContractEnds(
     .sort((a, b) => a.end_date!.localeCompare(b.end_date!));
 }
 
+/**
+ * P0-2c: terrenos (não arrendáveis) e imóveis vendidos saem de todas as métricas
+ * correntes (ocupação, potencial de mercado, atrasos, saúde dos dados) — o histórico
+ * de contratos/recibos fica na BD, só deixa de contar para os números de hoje.
+ */
+// Aceita `Pick<Property, "status">` (não só `Property` inteiro) para servir também
+// leituras parciais do Supabase que só pedem as colunas de que precisam (ex.: atrasos).
+export function isCurrentProperty(p: Pick<Property, "status">): boolean {
+  return p.status !== "terreno" && p.status !== "vendido";
+}
+
+export function currentProperties<T extends Pick<Property, "status">>(list: T[]): T[] {
+  return list.filter(isCurrentProperty);
+}
+
 /** Lista de territórios (freguesias/concelhos) disponível nos benchmarks, para o formulário da fração. */
 export function geoOptionsFromBenchmarks(
   benchmarks: MarketBenchmark[],
