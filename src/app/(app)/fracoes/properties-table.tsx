@@ -108,25 +108,25 @@ export function PropertiesTable({
             <Table>
               <thead>
                 <tr>
-                  <Th className="sticky top-0 z-10 bg-white">Fração</Th>
-                  <Th className="sticky top-0 z-10 bg-white">Freguesia</Th>
-                  <Th className="sticky top-0 z-10 bg-white">Tipol.</Th>
-                  <Th className="sticky top-0 z-10 bg-white text-right">Área</Th>
-                  <Th className="sticky top-0 z-10 bg-white">Senhorios</Th>
-                  <Th className="sticky top-0 z-10 bg-white">Inquilino</Th>
-                  <Th className="sticky top-0 z-10 bg-white text-right">Renda</Th>
-                  <Th className="sticky top-0 z-10 bg-white text-right">€/m²</Th>
-                  <Th className="sticky top-0 z-10 bg-white">Vs. mercado</Th>
-                  <Th className="sticky top-0 z-10 bg-white">Estado</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Fração</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Freguesia</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Tipol.</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900 text-right">Área</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Senhorios</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Inquilino</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900 text-right">Renda</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900 text-right">€/m²</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Vs. mercado</Th>
+                  <Th className="sticky top-0 z-10 bg-white dark:bg-zinc-900">Estado</Th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((r) => (
-                  <tr key={r.property.id} className="hover:bg-zinc-50">
+                  <tr key={r.property.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                     <Td>
                       <Link
                         href={`/fracoes/${r.property.id}`}
-                        className="font-medium text-teal-700 hover:underline"
+                        className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                       >
                         {r.property.name}
                       </Link>
@@ -155,38 +155,38 @@ export function PropertiesTable({
           {/* Mobile: um cartão por fração, com todos os dados da linha. */}
           <div className="space-y-2 md:hidden">
             {filtered.map((r) => (
-              <div key={r.property.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
+              <div key={r.property.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-start justify-between gap-2">
                   <Link
                     href={`/fracoes/${r.property.id}`}
-                    className="font-medium text-teal-700 hover:underline"
+                    className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                   >
                     {r.property.name}
                   </Link>
                   <PropertyStatusBadge status={r.property.status} />
                 </div>
-                <p className="mt-0.5 text-xs text-zinc-500">
+                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                   {r.property.parish ?? "n/d"}
                   {r.property.typology && ` · ${r.property.typology}`}
                   {r.property.area_m2 ? ` · ${fmtNum(r.property.area_m2, 0)} m²` : ""}
                 </p>
                 <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
                   <div>
-                    <p className="text-[11px] text-zinc-400">Senhorios</p>
-                    <p className="truncate text-zinc-700">{r.ownersLabel}</p>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Senhorios</p>
+                    <p className="truncate text-zinc-700 dark:text-zinc-300">{r.ownersLabel}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-zinc-400">Inquilino</p>
-                    <p className="truncate text-zinc-700">{r.tenant ?? "n/d"}</p>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Inquilino</p>
+                    <p className="truncate text-zinc-700 dark:text-zinc-300">{r.tenant ?? "n/d"}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-zinc-400">Renda</p>
-                    <p className="tabular-nums font-medium text-zinc-800">{fmtEur(r.rent)}</p>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Renda</p>
+                    <p className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">{fmtEur(r.rent)}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-zinc-400">€/m² vs. mercado</p>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">€/m² vs. mercado</p>
                     <div className="flex items-center gap-1.5">
-                      <span className="tabular-nums text-zinc-700">
+                      <span className="tabular-nums text-zinc-700 dark:text-zinc-300">
                         {r.rentPerM2 !== null ? fmtNum(r.rentPerM2, 1) : "n/d"}
                       </span>
                       <DeviationBadge deviation={r.deviation} />

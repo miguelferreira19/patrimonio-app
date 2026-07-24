@@ -80,7 +80,7 @@ export default async function AtrasosPage() {
         actions={
           <Link
             href="/pagamentos"
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
           >
             <Plus size={15} strokeWidth={2} />
             Registar pagamento

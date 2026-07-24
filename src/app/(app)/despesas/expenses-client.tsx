@@ -63,11 +63,11 @@ export function ExpensesClient({
 
       <div className="flex flex-wrap gap-2">
         {byCategory.map(([cat, v]) => (
-          <div key={cat} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-xs">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <div key={cat} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {EXPENSE_CATEGORY_LABEL[cat]}
             </p>
-            <p className="text-sm font-semibold tabular-nums text-zinc-800">{fmtEur(v)}</p>
+            <p className="text-sm font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">{fmtEur(v)}</p>
           </div>
         ))}
       </div>
@@ -126,7 +126,7 @@ export function ExpensesClient({
                 </thead>
                 <tbody>
                   {filtered.map((e) => (
-                    <tr key={e.id} className="hover:bg-zinc-50">
+                    <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                       <Td className="whitespace-nowrap tabular-nums">{fmtDate(e.expense_date)}</Td>
                       <Td className="max-w-52 truncate">
                         {e.property_id
@@ -155,11 +155,11 @@ export function ExpensesClient({
             {/* Mobile: um cartão por despesa. */}
             <div className="space-y-2 md:hidden">
               {filtered.map((e) => (
-                <div key={e.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
+                <div key={e.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-zinc-800">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
-                      <p className="truncate text-xs text-zinc-500">
+                      <p className="font-medium text-zinc-800 dark:text-zinc-200">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
+                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                         {e.property_id
                           ? (propertyName.get(e.property_id) ?? "?")
                           : e.landlord_id
@@ -167,14 +167,14 @@ export function ExpensesClient({
                             : "Geral"}
                       </p>
                     </div>
-                    <p className="shrink-0 tabular-nums font-semibold text-zinc-800">{fmtEur(e.amount, 2)}</p>
+                    <p className="shrink-0 tabular-nums font-semibold text-zinc-800 dark:text-zinc-200">{fmtEur(e.amount, 2)}</p>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-zinc-500">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <span className="tabular-nums">{fmtDate(e.expense_date)}</span>
                     {e.description && <span className="truncate">{e.description}</span>}
                   </div>
                   {isAdmin && (
-                    <div className="mt-2 flex gap-1 border-t border-zinc-100 pt-2">
+                    <div className="mt-2 flex gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
                       <ExpenseFormButton properties={properties} expense={e} />
                       <DeleteExpenseButton id={e.id} />
                     </div>

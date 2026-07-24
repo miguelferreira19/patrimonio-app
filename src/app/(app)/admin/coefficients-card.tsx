@@ -44,7 +44,7 @@ export function CoefficientsCard({ coefficients }: { coefficients: UpdateCoeffic
           {pending ? "A gravar…" : "Guardar"}
         </Button>
       </form>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
 
       {rows.length > 0 && (
         <Table className="mt-4">
@@ -56,7 +56,7 @@ export function CoefficientsCard({ coefficients }: { coefficients: UpdateCoeffic
           </thead>
           <tbody>
             {rows.map((c) => (
-              <tr key={c.year} className="hover:bg-zinc-50">
+              <tr key={c.year} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                 <Td className="tabular-nums">{c.year}</Td>
                 <Td className="tabular-nums">{c.coefficient}</Td>
               </tr>

@@ -92,13 +92,13 @@ export default async function DashboardPage() {
       <div className="space-y-4">
         <PageHeader title="Dashboard" description={monthLabel(currentMonthKey())} />
         <Card title="Bem-vindo">
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Começa por importar os recibos do Portal das Finanças em{" "}
-            <Link href="/admin" className="font-medium text-teal-700 hover:underline">
+            <Link href="/admin" className="font-medium text-teal-700 hover:underline dark:text-teal-400">
               Admin → Importar
             </Link>
             , ou cria frações manualmente em{" "}
-            <Link href="/fracoes" className="font-medium text-teal-700 hover:underline">
+            <Link href="/fracoes" className="font-medium text-teal-700 hover:underline dark:text-teal-400">
               Frações
             </Link>
             .
@@ -249,7 +249,7 @@ export default async function DashboardPage() {
             {isAdmin && (
               <a
                 href="/api/export"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900"
               >
                 <Download size={15} strokeWidth={1.75} />
                 Exportar
@@ -257,7 +257,7 @@ export default async function DashboardPage() {
             )}
             <Link
               href="/pagamentos"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900"
             >
               <Plus size={15} strokeWidth={2} />
               Registar pagamento
@@ -276,7 +276,7 @@ export default async function DashboardPage() {
         />
         <Link
           href="/atrasos"
-          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
         >
           <StatCard
             label="Rendas em falta"
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
         />
         <Link
           href="/fracoes"
-          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
         >
           <StatCard
             label="Ocupação"
@@ -330,7 +330,7 @@ export default async function DashboardPage() {
             href="https://imoveis.portaldasfinancas.gov.pt/arrendamento/consultarRecibos.action"
             target="_blank"
             rel="noreferrer"
-            className="text-sm font-medium text-teal-700 hover:underline"
+            className="text-sm font-medium text-teal-700 hover:underline dark:text-teal-400"
           >
             Abrir Portal das Finanças
           </a>
@@ -345,27 +345,27 @@ export default async function DashboardPage() {
             {toIssue.map(({ contract, property }) => (
               <div
                 key={contract.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
               >
                 <div className="min-w-0">
                   {property ? (
                     <Link
                       href={`/fracoes/${property.id}`}
-                      className="font-medium text-teal-700 hover:underline"
+                      className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                     >
                       {property.name}
                     </Link>
                   ) : (
-                    <span className="font-medium text-zinc-700">?</span>
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">?</span>
                   )}
-                  <p className="truncate text-xs text-zinc-500">{contract.tenant_name}</p>
+                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{contract.tenant_name}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="tabular-nums font-semibold text-zinc-900">
+                  <p className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
                     {fmtEur(contract.rent)}
                   </p>
                   {contract.pf_contract_no && (
-                    <p className="font-mono text-xs text-zinc-400">{contract.pf_contract_no}</p>
+                    <p className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{contract.pf_contract_no}</p>
                   )}
                 </div>
               </div>
@@ -385,22 +385,22 @@ export default async function DashboardPage() {
             {endingSoon.map(({ contract, property }) => (
               <div
                 key={contract.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
               >
                 <div className="min-w-0">
                   {property ? (
                     <Link
                       href={`/fracoes/${property.id}`}
-                      className="font-medium text-teal-700 hover:underline"
+                      className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                     >
                       {property.name}
                     </Link>
                   ) : (
-                    <span className="font-medium text-zinc-700">?</span>
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">?</span>
                   )}
-                  <p className="truncate text-xs text-zinc-500">{contract.tenant_name}</p>
+                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{contract.tenant_name}</p>
                 </div>
-                <p className="shrink-0 tabular-nums text-sm font-semibold text-amber-700">
+                <p className="shrink-0 tabular-nums text-sm font-semibold text-amber-700 dark:text-amber-400">
                   {fmtDate(contract.end_date)}
                 </p>
               </div>
@@ -411,8 +411,8 @@ export default async function DashboardPage() {
 
       <Card title="Últimos 12 meses" actions={<FlowLegend />}>
         <MonthlyFlowChart data={flowData} />
-        <div className="mt-4 border-t border-zinc-100 pt-3">
-          <p className="mb-1 text-xs font-medium text-zinc-500">Taxa de cobrança mensal</p>
+        <div className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">Taxa de cobrança mensal</p>
           <CollectionRateChart data={rateData} />
         </div>
       </Card>
@@ -435,12 +435,12 @@ export default async function DashboardPage() {
                   </thead>
                   <tbody>
                     {lateRows.map((r) => (
-                      <tr key={r.contractId} className="hover:bg-zinc-50">
+                      <tr key={r.contractId} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                         <Td>
                           {r.property ? (
                             <Link
                               href={`/fracoes/${r.property.id}`}
-                              className="font-medium text-teal-700 hover:underline"
+                              className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                             >
                               {r.property.name}
                             </Link>
@@ -450,7 +450,7 @@ export default async function DashboardPage() {
                         </Td>
                         <Td>{r.tenantName}</Td>
                         <Td className="text-right tabular-nums">{r.monthsLate}</Td>
-                        <Td className="text-right tabular-nums text-red-700">
+                        <Td className="text-right tabular-nums text-red-700 dark:text-red-400">
                           {r.stale ? "·" : fmtEur(r.totalLate)}
                         </Td>
                       </tr>
@@ -462,26 +462,26 @@ export default async function DashboardPage() {
                 {lateRows.map((r) => (
                   <div
                     key={r.contractId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
                   >
                     <div className="min-w-0">
                       {r.property ? (
                         <Link
                           href={`/fracoes/${r.property.id}`}
-                          className="font-medium text-teal-700 hover:underline"
+                          className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                         >
                           {r.property.name}
                         </Link>
                       ) : (
-                        <span className="font-medium text-zinc-700">?</span>
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">?</span>
                       )}
-                      <p className="truncate text-xs text-zinc-500">{r.tenantName}</p>
+                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{r.tenantName}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="tabular-nums font-semibold text-red-700">
+                      <p className="tabular-nums font-semibold text-red-700 dark:text-red-400">
                         {r.stale ? "·" : fmtEur(r.totalLate)}
                       </p>
-                      <p className="tabular-nums text-xs text-zinc-500">
+                      <p className="tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
                         {r.monthsLate} {r.monthsLate === 1 ? "mês" : "meses"}
                       </p>
                     </div>
@@ -517,17 +517,17 @@ export default async function DashboardPage() {
                   </thead>
                   <tbody>
                     {belowMarket.map((r) => (
-                      <tr key={r.property.id} className="hover:bg-zinc-50">
+                      <tr key={r.property.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                         <Td>
                           <Link
                             href={`/fracoes/${r.property.id}`}
-                            className="font-medium text-teal-700 hover:underline"
+                            className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                           >
                             {r.property.name}
                           </Link>
                         </Td>
                         <Td><DeviationBadge deviation={r.mv.deviation} /></Td>
-                        <Td className="text-right tabular-nums text-amber-700">
+                        <Td className="text-right tabular-nums text-amber-700 dark:text-amber-400">
                           {r.mv.gapEurMonth ? `+${fmtEur(r.mv.gapEurMonth)}` : "n/d"}
                         </Td>
                       </tr>
@@ -539,12 +539,12 @@ export default async function DashboardPage() {
                 {belowMarket.map((r) => (
                   <div
                     key={r.property.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
                   >
                     <div className="min-w-0">
                       <Link
                         href={`/fracoes/${r.property.id}`}
-                        className="font-medium text-teal-700 hover:underline"
+                        className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                       >
                         {r.property.name}
                       </Link>
@@ -552,7 +552,7 @@ export default async function DashboardPage() {
                         <DeviationBadge deviation={r.mv.deviation} />
                       </div>
                     </div>
-                    <p className="shrink-0 tabular-nums font-semibold text-amber-700">
+                    <p className="shrink-0 tabular-nums font-semibold text-amber-700 dark:text-amber-400">
                       {r.mv.gapEurMonth ? `+${fmtEur(r.mv.gapEurMonth)}` : "n/d"}
                     </p>
                   </div>
@@ -563,13 +563,13 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500">
         Ver também{" "}
-        <Link href="/mercado" className="text-teal-700 hover:underline">
+        <Link href="/mercado" className="text-teal-700 hover:underline dark:text-teal-400">
           Mercado
         </Link>{" "}
         e{" "}
-        <Link href="/pagamentos" className="text-teal-700 hover:underline">
+        <Link href="/pagamentos" className="text-teal-700 hover:underline dark:text-teal-400">
           Pagamentos
         </Link>
         .

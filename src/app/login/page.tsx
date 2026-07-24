@@ -47,14 +47,14 @@ export default async function LoginPage() {
       </div>
 
       {/* Formulário */}
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 p-6">
+      <div className="flex flex-1 items-center justify-center bg-zinc-50 p-6 dark:bg-zinc-950">
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Entrar</h1>
-            <p className="mt-1 text-sm text-zinc-500">Gestão de arrendamentos da família</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Entrar</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Gestão de arrendamentos da família</p>
           </div>
           <LoginForm />
-          <p className="mt-4 text-center text-xs text-zinc-400">
+          <p className="mt-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
             Não há registo público: os acessos são criados pelo administrador.
           </p>
         </div>

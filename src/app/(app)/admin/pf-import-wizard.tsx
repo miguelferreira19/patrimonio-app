@@ -283,17 +283,24 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
                 s.n === step
                   ? "bg-teal-800 text-white"
                   : s.n < step
-                    ? "bg-teal-100 text-teal-800"
-                    : "bg-zinc-100 text-zinc-400",
+                    ? "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-400"
+                    : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600",
               )}
             >
               {s.n}
             </span>
-            <span className={cn("text-xs font-medium", s.n <= step ? "text-zinc-900" : "text-zinc-400")}>
+            <span
+              className={cn(
+                "text-xs font-medium",
+                s.n <= step ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-600",
+              )}
+            >
               {s.label}
             </span>
           </div>
-          {i < WIZARD_STEPS.length - 1 && <span className="mx-3 h-px w-8 bg-zinc-200" aria-hidden="true" />}
+          {i < WIZARD_STEPS.length - 1 && (
+            <span className="mx-3 h-px w-8 bg-zinc-200 dark:bg-zinc-800" aria-hidden="true" />
+          )}
         </div>
       ))}
     </div>
@@ -498,8 +505,8 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                   className={cn(
                     "rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors",
                     kind === o.key
-                      ? "border-teal-600 bg-teal-50 text-teal-800"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
+                      ? "border-teal-600 bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-400"
+                      : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
                   )}
                 >
                   {o.label}
@@ -518,12 +525,12 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
             </Select>
           </Field>
           <Field label="Ficheiro exportado do Portal das Finanças *">
-            <label className="relative flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center transition-colors hover:border-teal-400 hover:bg-teal-50/40">
-              <Upload size={20} strokeWidth={1.75} className="text-zinc-400" aria-hidden="true" />
-              <p className="text-sm text-zinc-600">
-                <span className="font-medium text-teal-700">Escolhe um ficheiro</span> ou arrasta para aqui
+            <label className="relative flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center transition-colors hover:border-teal-400 hover:bg-teal-50/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:bg-teal-950/20">
+              <Upload size={20} strokeWidth={1.75} className="text-zinc-400 dark:text-zinc-500" aria-hidden="true" />
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <span className="font-medium text-teal-700 dark:text-teal-400">Escolhe um ficheiro</span> ou arrasta para aqui
               </p>
-              <p className="text-xs text-zinc-400">CSV, XLSX ou XLS</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">CSV, XLSX ou XLS</p>
               <input
                 type="file"
                 accept=".csv,.xlsx,.xls,.txt"
@@ -532,8 +539,8 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
               />
             </label>
           </Field>
-          {fileError && <p className="text-xs text-red-600">{fileError}</p>}
-          <p className="text-xs text-zinc-400">
+          {fileError && <p className="text-xs text-red-600 dark:text-red-400">{fileError}</p>}
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">
             Ordem recomendada: importa primeiro os Contratos, depois os Recibos e por fim o
             Património predial, um ficheiro por senhorio.
           </p>
@@ -562,21 +569,21 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
 
           {preview.kind === "recibos" && (
             <>
-              <label className="flex items-center gap-2 text-sm text-zinc-700">
+              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                 <input
                   type="checkbox"
                   checked={createPayments}
                   onChange={(e) => setCreatePayments(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-2 focus:ring-teal-600/20"
+                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-2 focus:ring-teal-600/20 dark:border-zinc-700"
                 />
                 Registar os recibos também como pagamentos (rendas recebidas).
               </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-700">
+              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                 <input
                   type="checkbox"
                   checked={updateRents}
                   onChange={(e) => setUpdateRents(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-2 focus:ring-teal-600/20"
+                  className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-2 focus:ring-teal-600/20 dark:border-zinc-700"
                 />
                 Substituir a renda dos contratos pelo último recibo (usar só se NÃO importaste a
                 lista de contratos).
@@ -585,7 +592,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
           )}
 
           <div>
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Pré-visualização
             </p>
             {rowCount === 0 ? (
@@ -604,7 +611,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                 </thead>
                 <tbody>
                   {preview.rows.slice(0, 5).map((r, i) => (
-                    <tr key={i} className="hover:bg-zinc-50">
+                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                       <Td className="max-w-52 truncate">{r.property_label}</Td>
                       <Td className="font-mono">{monthLabel(r.ref_month)}</Td>
                       <Td className="text-right tabular-nums">{fmtEur(r.amount, 2)}</Td>
@@ -625,7 +632,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                 </thead>
                 <tbody>
                   {preview.rows.slice(0, 5).map((r, i) => (
-                    <tr key={i} className="hover:bg-zinc-50">
+                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                       <Td className="max-w-52 truncate">{r.property_label}</Td>
                       <Td className="max-w-52 truncate">{r.tenant_name ?? "n/d"}</Td>
                       <Td className="text-right tabular-nums">{fmtEur(r.rent, 2)}</Td>
@@ -646,7 +653,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                 </thead>
                 <tbody>
                   {preview.rows.slice(0, 5).map((r, i) => (
-                    <tr key={i} className="hover:bg-zinc-50">
+                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                       <Td className="font-mono">{r.identificador}</Td>
                       <Td>{r.parte ?? "n/d"}</Td>
                       <Td className="tabular-nums">{r.ano ?? "n/d"}</Td>
@@ -656,7 +663,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                 </tbody>
               </Table>
             )}
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
               {rowCount} linha(s) válida(s)
               {preview.kind === "recibos" && preview.anuladoCount > 0
                 ? ` · ${preview.anuladoCount} anulado(s) excluído(s)`
@@ -666,7 +673,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
             <Button type="button" variant="ghost" onClick={() => setStep(1)}>
               Voltar
             </Button>
@@ -684,13 +691,13 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
       {step === 3 && (
         <div className="space-y-3">
           {importing && (
-            <p className="text-sm text-zinc-600">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {batchProgress ? `Lote ${batchProgress.i} de ${batchProgress.n}…` : "A importar…"}
             </p>
           )}
           {importError && (
             <div className="space-y-2">
-              <p className="text-sm text-red-600">{importError}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{importError}</p>
               <Button variant="outline" size="sm" onClick={resetAll}>
                 Recomeçar
               </Button>
@@ -709,8 +716,10 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                   tone={receiptResult.skippedRows > 0 ? "amber" : "zinc"}
                 />
               </div>
-              {syncInfo && <p className="text-sm text-emerald-700">{syncInfo}</p>}
-              {syncError && <p className="text-sm text-red-600">Renda dos contratos: {syncError}</p>}
+              {syncInfo && <p className="text-sm text-emerald-700 dark:text-emerald-400">{syncInfo}</p>}
+              {syncError && (
+                <p className="text-sm text-red-600 dark:text-red-400">Renda dos contratos: {syncError}</p>
+              )}
               <Button onClick={resetAll}>Importar outro ficheiro</Button>
             </div>
           )}
@@ -736,7 +745,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
                 <StatCard label="Quotas atualizadas" value={patrimonioResult.updatedQuotas} />
               </div>
               {patrimonioResult.unmatched > 0 && (
-                <p className="text-sm text-amber-700">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
                   Há frações do CSV sem correspondência. Importa primeiro os contratos e/ou os
                   recibos desse senhorio para as criar.
                 </p>
@@ -747,7 +756,7 @@ export function PfImportWizard({ landlords }: { landlords: Landlord[] }) {
         </div>
       )}
 
-      <p className="mt-4 text-[11px] leading-snug text-zinc-400">
+      <p className="mt-4 text-[11px] leading-snug text-zinc-400 dark:text-zinc-500">
         No Portal das Finanças: Arrendamento → Contratos (exportar lista), Arrendamento → Recibos
         de Renda → Consultar (exportar lista) e Património Predial → lista de imóveis (CSV).
         Importa um ficheiro por senhorio, pela ordem contratos → recibos → património.

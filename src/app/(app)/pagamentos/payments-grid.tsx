@@ -27,13 +27,13 @@ type CellState = "pago" | "falta" | "aguarda" | "na";
 function cellTone(state: CellState): string {
   switch (state) {
     case "pago":
-      return "bg-emerald-50 text-emerald-700";
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
     case "falta":
-      return "bg-red-50 text-red-700";
+      return "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400";
     case "aguarda":
-      return "bg-amber-50 text-amber-700";
+      return "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
     default:
-      return "text-zinc-300";
+      return "text-zinc-300 dark:text-zinc-700";
   }
 }
 
@@ -119,12 +119,12 @@ export function PaymentsGrid({
             </option>
           ))}
         </Select>
-        <label className="flex items-center gap-1.5 text-sm text-zinc-600">
+        <label className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400">
           <input
             type="checkbox"
             checked={onlyLate}
             onChange={(e) => setOnlyLate(e.target.checked)}
-            className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-2 focus:ring-teal-600/20"
+            className="h-4 w-4 rounded border-zinc-300 text-teal-700 focus:ring-2 focus:ring-teal-600/20 dark:border-zinc-700"
           />
           Só com rendas em falta
         </label>
@@ -140,13 +140,15 @@ export function PaymentsGrid({
       <Table edgeFade>
         <thead>
           <tr>
-            <Th className="sticky left-0 top-0 z-30 bg-white">Fração / Inquilino</Th>
+            <Th className="sticky left-0 top-0 z-30 bg-white dark:bg-zinc-900">Fração / Inquilino</Th>
             {months.map((m) => (
               <Th
                 key={m}
                 className={cn(
                   "sticky top-0 z-20 text-center font-mono normal-case tracking-normal",
-                  m === current ? "bg-teal-50 text-teal-800" : "bg-white",
+                  m === current
+                    ? "bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-400"
+                    : "bg-white dark:bg-zinc-900",
                 )}
               >
                 {monthLabel(m)}
@@ -156,10 +158,10 @@ export function PaymentsGrid({
         </thead>
         <tbody>
           {filtered.map((r) => (
-            <tr key={r.contract.id} className="hover:bg-zinc-50">
-              <Td className="sticky left-0 z-10 max-w-52 bg-white">
-                <p className="truncate font-medium text-zinc-800">{r.propertyName}</p>
-                <p className="truncate text-xs text-zinc-400">
+            <tr key={r.contract.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
+              <Td className="sticky left-0 z-10 max-w-52 bg-white dark:bg-zinc-900">
+                <p className="truncate font-medium text-zinc-800 dark:text-zinc-200">{r.propertyName}</p>
+                <p className="truncate text-xs text-zinc-400 dark:text-zinc-500">
                   {r.contract.tenant_name} · {fmtEur(r.contract.rent)}
                 </p>
               </Td>
@@ -207,16 +209,22 @@ export function PaymentsGrid({
               })}
             </tr>
           ))}
-          <tr className="bg-zinc-50 text-xs font-semibold">
-            <Td className="sticky left-0 z-10 border-t border-zinc-200 bg-zinc-50 text-zinc-600">
+          <tr className="bg-zinc-50 text-xs font-semibold dark:bg-zinc-900">
+            <Td className="sticky left-0 z-10 border-t border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
               Recebido / esperado
             </Td>
             {totals.map((t, i) => (
-              <Td key={months[i]} className="border-t border-zinc-200 text-center tabular-nums">
-                <span className={t.received >= t.expected ? "text-emerald-700" : "text-zinc-700"}>
+              <Td key={months[i]} className="border-t border-zinc-200 text-center tabular-nums dark:border-zinc-800">
+                <span
+                  className={
+                    t.received >= t.expected
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-zinc-700 dark:text-zinc-300"
+                  }
+                >
                   {fmtEur(t.received)}
                 </span>
-                <span className="block text-[10px] font-normal text-zinc-400">
+                <span className="block text-[10px] font-normal text-zinc-400 dark:text-zinc-500">
                   de {fmtEur(t.expected)}
                 </span>
               </Td>
@@ -225,21 +233,21 @@ export function PaymentsGrid({
         </tbody>
       </Table>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-zinc-500">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
         <span className="inline-flex items-center gap-1.5">
-          <Check size={12} strokeWidth={2.5} className="text-emerald-600" /> Pago
+          <Check size={12} strokeWidth={2.5} className="text-emerald-600 dark:text-emerald-400" /> Pago
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Banknote size={12} strokeWidth={2} className="text-emerald-600" /> Pago em dinheiro
+          <Banknote size={12} strokeWidth={2} className="text-emerald-600 dark:text-emerald-400" /> Pago em dinheiro
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <X size={12} strokeWidth={2.5} className="text-red-600" /> Em falta
+          <X size={12} strokeWidth={2.5} className="text-red-600 dark:text-red-400" /> Em falta
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Clock size={12} strokeWidth={2} className="text-amber-600" /> Dentro do prazo
+          <Clock size={12} strokeWidth={2} className="text-amber-600 dark:text-amber-400" /> Dentro do prazo
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Minus size={12} strokeWidth={2} className="text-zinc-400" /> Sem contrato
+          <Minus size={12} strokeWidth={2} className="text-zinc-400 dark:text-zinc-500" /> Sem contrato
         </span>
       </div>
 
@@ -296,7 +304,7 @@ function PaymentModal({
   return (
     <Modal open onClose={onClose} title={`${row.propertyName} · ${monthLabel(month)}`}>
       <form onSubmit={submit} className="space-y-3">
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Inquilino: <strong>{row.contract.tenant_name}</strong> · Renda contratada:{" "}
           <strong className="tabular-nums">{fmtEur(row.contract.rent, 2)}</strong>
         </p>
@@ -315,8 +323,8 @@ function PaymentModal({
             <option value="outro">Outro</option>
           </Select>
         </Field>
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        <div className="flex justify-between gap-2 border-t border-zinc-100 pt-4">
+        {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        <div className="flex justify-between gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
           {payment ? (
             <Button
               type="button"

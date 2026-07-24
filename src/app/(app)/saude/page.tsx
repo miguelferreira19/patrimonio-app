@@ -28,7 +28,7 @@ export default async function SaudePage() {
   if (!isAdmin) {
     return (
       <Card>
-        <p className="text-sm text-zinc-600">Área reservada ao administrador.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Área reservada ao administrador.</p>
       </Card>
     );
   }
@@ -117,17 +117,17 @@ export default async function SaudePage() {
               </thead>
               <tbody>
                 {list.map((issue, i) => (
-                  <tr key={`${kind}-${i}`} className="hover:bg-zinc-50">
+                  <tr key={`${kind}-${i}`} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                     <Td>
                       {issue.href ? (
-                        <Link href={issue.href} className="font-medium text-teal-700 hover:underline">
+                        <Link href={issue.href} className="font-medium text-teal-700 hover:underline dark:text-teal-400">
                           {issue.title}
                         </Link>
                       ) : (
-                        <span className="font-medium text-zinc-700">{issue.title}</span>
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{issue.title}</span>
                       )}
                     </Td>
-                    <Td className="whitespace-normal text-zinc-600">{issue.detail}</Td>
+                    <Td className="whitespace-normal text-zinc-600 dark:text-zinc-400">{issue.detail}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -136,9 +136,9 @@ export default async function SaudePage() {
         ))
       )}
 
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500">
         As verificações de contratos parados e de renda desalinhada usam a mesma base da página de{" "}
-        <Link href="/atrasos" className="text-teal-700 hover:underline">
+        <Link href="/atrasos" className="text-teal-700 hover:underline dark:text-teal-400">
           Atrasos
         </Link>
         .

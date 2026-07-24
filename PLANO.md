@@ -41,12 +41,14 @@ análises sempre em ótica de família (valores por inteiro).
 - Áreas (m²), tipologia e freguesia/dicofre das frações estão vazias — preencher à mão a partir
   das cadernetas prediais (UI de edição de fração já existe) para ativar €/m² vs INE no Mercado.
 **Passos do utilizador (por ordem, para a sessão de 2026-07-24 valer nos dados reais):**
-1. Colar no SQL Editor do Supabase o bloco final de `supabase/schema.sql` (migrações de 2026-07-24:
-   estados `terreno`/`vendido`, coluna `receipts.withholding`, e os dois UPDATE de marcação).
+1. ✅ FEITO — bloco final de `supabase/schema.sql` colado no SQL Editor (estados `terreno`/
+   `vendido`, coluna `receipts.withholding`, os dois UPDATE de marcação).
 2. Re-correr o import dos recibos (§4) para preencher `receipts.withholding` (sem isto o Anexo F
    mostra retenção zero).
-3. Conferir os escalões de IRS em `src/lib/irs.ts` contra a tabela oficial da AT.
-4. Deploy: `npx vercel@latest deploy --prod --yes`.
+3. Conferir os escalões de IRS em `src/lib/irs.ts` (`IRS_BRACKETS_BY_YEAR`, 2025+2026) contra a
+   tabela oficial da AT — a fonte usada (doutorfinancas.pt) não é oficial.
+4. Deploy: já feito 2026-07-24 (`npx vercel@latest deploy --prod --yes`); repetir se voltares a
+   mexer em código.
 
 - **RESOLVIDO 2026-07-23 (info do utilizador, implementado em 2026-07-24 — ver P0-2c abaixo):**
   - `182341-U-6004` e `182301-R-401` (as 2 frações do Pai a quota 1/3): são **2 terrenos**
@@ -345,10 +347,51 @@ item de cada vez, `npm run build` no fim, atualizar este ficheiro.
 
 ### P3 — mais tarde / estudo
 
-- **P3-1 Emissão automática de recibos no Portal** — estudar viabilidade legal/técnica
-  (autenticação AT, provavelmente não vale o risco; alternativa: deep-link + checklist P1-3).
-- **P3-2 PWA/mobile** — manifest + ícones; a UI já é responsiva.
-- **P3-3 Multi-tema (dark)** — só se a família pedir; hoje é light-only por decisão.
+- **P3-1 · Emissão automática de recibos no Portal** — ❌ RECUSADO DEFINITIVAMENTE (2026-07-24):
+  o Portal das Finanças tem login de dois fatores associado ao telemóvel do tio Ilídio, a quem não
+  há acesso — automação fica impossível independentemente do mérito técnico/legal. Não reabrir.
+  Fica o P1-3 (checklist "recibos por emitir" com deep-link) como o que já existe.
+- **P3-2 · PWA/mobile** — ✅ FEITO 2026-07-24
+  - `public/manifest.json` (nome, ícone `icon.png` 256×256 existente, `theme_color` #09090b a
+    condizer com a barra mobile sempre escura de `nav.tsx`, `background_color` #fafafa).
+  - `src/app/layout.tsx`: `metadata.manifest` + `metadata.appleWebApp` (Add to Home Screen no
+    iOS) + `export const viewport` (API nova do Next 15, `colorScheme: "light dark"` +
+    `themeColor` por `prefers-color-scheme`). Zero dependências novas.
+  - Sem service worker de propósito (YAGNI): um manifest válido já chega para "Adicionar ao ecrã
+    principal" no Safari/a maioria do Android; só valeria a pena com pedido real de uso offline.
+
+- **P3-3 · Multi-tema (dark)** — ✅ FEITO 2026-07-24 (desbloqueado pelo utilizador nesta sessão)
+  - Tailwind v4 não tem `tailwind.config`, por isso o variant `dark:` já segue
+    `prefers-color-scheme` nativamente — zero dependências, zero seletor manual na app (é sempre
+    "segue o SO/browser", nunca um botão de troca). `globals.css`: bloco `@media
+    (prefers-color-scheme: dark)` com `body` (fundo/texto) e variáveis CSS
+    `--fade-surface`/`--fade-edge` (o gradiente do `Table edgeFade` de `ui.tsx` é um `style`
+    inline em hex, não segue classes `dark:`, por isso usa var CSS resolvida pelo browser).
+  - `ui.tsx`: as 8 primitivas (PageHeader, Card, Button, Input/Select/Textarea, Badge, Table/Th/Td,
+    StatCard, Modal, EmptyState) ganharam `dark:` em toda a superfície de cor. Botões
+    primary/danger (`bg-teal-800`/`bg-red-600`) ficam iguais nos dois temas — já têm contraste
+    próprio; só ganham `dark:focus-visible:ring-offset-zinc-900` para o halo do foco não ficar
+    branco em fundo escuro.
+  - `charts.tsx` (Recharts pinta SVG por prop `fill`/`stroke`, não por classe): `useIsDark()`
+    (matchMedia nativo, com listener de mudança) + `PALETTE_LIGHT`/`PALETTE_DARK` (grelha, texto de
+    eixo, referência tracejada e a própria barra "Bruto" ficam mais claros no escuro para não
+    baçar; grid zinc-200→zinc-800, texto zinc-500→zinc-400, barra teal-700→teal-400). A paleta de
+    ESTADO da taxa de cobrança (verde/âmbar/vermelho) fica FIXA nos dois temas — vem de
+    `dataviz/references/palette.md`, é significado, não fundo.
+  - Depois da fundação: varrimento de todas as páginas/componentes client em `(app)/**` +
+    `forms.tsx` + `setup-notice.tsx` à procura de classes de cor cruas fora das primitivas
+    (caixas de alerta ad-hoc, badges à mão, linhas de tabela por severidade) — todas emparelhadas
+    com `dark:` seguindo a mesma tabela de correspondência (zinc-900↔zinc-100 texto,
+    branco↔zinc-900 superfície, `{cor}-50`↔`{cor}-950/40` fundo semântico, etc.).
+  - **`carta/[contractId]/**` fica DE PROPÓSITO sem nenhum `dark:`** — é uma carta para
+    imprimir/enviar (papel branco, tinta preta), tem de ficar sempre clara independentemente do
+    tema do utilizador. `nav.tsx` também não mexeu — já é permanentemente escuro por desenho
+    (barra lateral `bg-zinc-950` fixa, não é tema da app).
+  - Verificado no browser (`prefers-color-scheme` a `dark` e a `light` via `resize_window`) na
+    página `/login` (não pede sessão): fundo/texto/input trocam de par corretamente nos dois
+    temas, botão primário mantém a mesma cor teal nos dois. `npm run build` + `npm run check`
+    (5 self-checks) limpos.
+
 - **P3-4 Histórico/auditoria de alterações** — tabela audit_log via triggers nas tabelas core.
 
 ### Novos temas aprovados (2026-07-20) — "tornar mais profissional"

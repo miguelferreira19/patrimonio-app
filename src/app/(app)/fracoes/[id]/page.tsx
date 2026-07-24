@@ -125,10 +125,10 @@ function buildContractHistory(
 }
 
 const HIST_TONE: Record<HistMonthStatus, string> = {
-  pago: "bg-emerald-50 text-emerald-700",
-  parcial: "bg-amber-50 text-amber-700",
-  falta: "bg-red-50 text-red-700",
-  fora: "bg-zinc-100 text-zinc-400",
+  pago: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  parcial: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  falta: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  fora: "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600",
 };
 
 function histCellTitle(cell: HistMonthCell): string {
@@ -147,7 +147,7 @@ function histCellTitle(cell: HistMonthCell): string {
 
 function YearBlock({ block }: { block: HistYearBlock }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-100 p-2.5 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-2 rounded-lg border border-zinc-100 p-2.5 sm:flex-row sm:items-center dark:border-zinc-800">
       <div className="grid flex-1 grid-cols-6 gap-1 sm:grid-cols-12">
         {block.months.map((cell) => (
           <div
@@ -162,8 +162,8 @@ function YearBlock({ block }: { block: HistYearBlock }) {
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-2 text-xs text-zinc-500 sm:w-40 sm:justify-end sm:border-t-0 sm:border-l sm:pl-3 sm:pt-0">
-        <span className="font-medium tabular-nums text-zinc-700">{block.year}</span>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:w-40 sm:justify-end sm:border-t-0 sm:border-l sm:pl-3 sm:pt-0">
+        <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">{block.year}</span>
         <span className="tabular-nums">{fmtEur(block.totalReceived)}</span>
         {block.monthsMissing > 0 && <Badge tone="red">{block.monthsMissing} em falta</Badge>}
       </div>
@@ -287,11 +287,11 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
     <div className="space-y-4">
       {/* Cabeçalho */}
       <div>
-        <p className="text-xs text-zinc-500">
-          <Link href="/fracoes" className="hover:text-teal-700 hover:underline">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <Link href="/fracoes" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
             Frações
           </Link>
-          <span className="mx-1.5 text-zinc-300">/</span>
+          <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">/</span>
           {property.name}
         </p>
         <PageHeader
@@ -326,7 +326,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           )}
           {property.typology && <Badge tone="zinc">{property.typology}</Badge>}
           {property.area_m2 && <Badge tone="zinc">{fmtNum(property.area_m2, 0)} m²</Badge>}
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
             Senhorios:{" "}
             {owners
               .map((o) => `${landlordById.get(o.landlord_id)?.name ?? "?"} (${fmtNum(o.quota, 0)}%)`)
@@ -358,12 +358,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           {active ? (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
               <div>
-                <dt className="text-xs text-zinc-500">Inquilino</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Inquilino</dt>
                 <dd className="font-medium">{active.tenant_name}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Renda mensal</dt>
-                <dd className="font-semibold tabular-nums text-teal-700">{fmtEur(active.rent, 2)}</dd>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Renda mensal</dt>
+                <dd className="font-semibold tabular-nums text-teal-700 dark:text-teal-400">{fmtEur(active.rent, 2)}</dd>
                 {rentEligibility?.eligible && (
                   <>
                     <Badge tone="amber" className="mt-1">
@@ -374,7 +374,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                       href={`/carta/${active.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-2 text-xs font-medium text-teal-700 hover:underline"
+                      className="ml-2 text-xs font-medium text-teal-700 hover:underline dark:text-teal-400"
                     >
                       Gerar carta
                     </a>
@@ -382,22 +382,22 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Início</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Início</dt>
                 <dd className="tabular-nums">{fmtDate(active.start_date)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Vencimento</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Vencimento</dt>
                 <dd className="tabular-nums">dia {active.due_day}</dd>
               </div>
               {active.pf_contract_no && (
                 <div>
-                  <dt className="text-xs text-zinc-500">Contrato Portal Finanças</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Contrato Portal Finanças</dt>
                   <dd className="font-mono text-xs">{active.pf_contract_no}</dd>
                 </div>
               )}
               {active.tenant_nif && (
                 <div>
-                  <dt className="text-xs text-zinc-500">NIF inquilino</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">NIF inquilino</dt>
                   <dd className="font-mono text-xs">{active.tenant_nif}</dd>
                 </div>
               )}
@@ -412,43 +412,43 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           {mv.benchmark ? (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
-                <dt className="text-xs text-zinc-500">Renda atual €/m²</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Renda atual €/m²</dt>
                 <dd className="font-medium tabular-nums">
                   {mv.rentPerM2 !== null ? `${fmtNum(mv.rentPerM2, 2)} €` : "n/d"}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Mediana mercado €/m²</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Mediana mercado €/m²</dt>
                 <dd className="font-medium tabular-nums">
                   {mv.benchmarkRentM2 !== null ? `${fmtNum(mv.benchmarkRentM2, 2)} €` : "n/d"}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Desvio vs. mercado</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Desvio vs. mercado</dt>
                 <dd><DeviationBadge deviation={mv.deviation} /></dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Potencial por mês</dt>
-                <dd className="font-medium text-amber-700 tabular-nums">
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Potencial por mês</dt>
+                <dd className="font-medium text-amber-700 tabular-nums dark:text-amber-400">
                   {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Valor estimado (mediana venda)</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Valor estimado (mediana venda)</dt>
                 <dd className="font-semibold tabular-nums">{fmtEur(mv.estimatedValue)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">VPT</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">VPT</dt>
                 <dd className="tabular-nums">
                   {fmtEur(property.vpt)} {property.vpt_year ? `(${property.vpt_year})` : ""}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Yield bruto</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Yield bruto</dt>
                 <dd className="tabular-nums">{fmtPct(mv.grossYield, 1)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-zinc-500">Yield líquido (12m)</dt>
+                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Yield líquido (12m)</dt>
                 <dd className="tabular-nums">{fmtPct(netYield, 1)}</dd>
               </div>
             </dl>
@@ -458,7 +458,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
               INE na página Admin.
             </EmptyState>
           )}
-          <p className="mt-3 text-[11px] leading-snug text-zinc-400">
+          <p className="mt-3 text-[11px] leading-snug text-zinc-400 dark:text-zinc-500">
             Estimativas com base nas medianas do INE por freguesia (rendas de novos contratos e
             valores de venda): são ordens de grandeza, não avaliações imobiliárias.
           </p>
@@ -474,8 +474,8 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           className={cn(
             "mb-4 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm",
             missingOutside12 > 0
-              ? "border-amber-200 bg-amber-50 text-amber-800"
-              : "border-emerald-200 bg-emerald-50 text-emerald-800",
+              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400",
           )}
         >
           {missingOutside12 > 0 ? (
@@ -511,7 +511,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
               <div key={h.contract.id}>
                 {histories.length > 1 && (
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                       {h.contract.tenant_name} · {fmtDate(h.contract.start_date)}
                       {h.contract.end_date ? ` a ${fmtDate(h.contract.end_date)}` : " até hoje"}
                     </p>
@@ -535,7 +535,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-[11px] text-zinc-500">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-[11px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded bg-emerald-400" aria-hidden="true" />
             Pago
@@ -549,7 +549,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             Em falta
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-zinc-300" aria-hidden="true" />
+            <span className="h-2.5 w-2.5 rounded bg-zinc-300 dark:bg-zinc-700" aria-hidden="true" />
             Fora do período do contrato
           </span>
         </div>
@@ -579,7 +579,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                   </thead>
                   <tbody>
                     {expenses.slice(0, 12).map((e) => (
-                      <tr key={e.id} className="hover:bg-zinc-50">
+                      <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                         <Td className="whitespace-nowrap tabular-nums">{fmtDate(e.expense_date)}</Td>
                         <Td>{EXPENSE_CATEGORY_LABEL[e.category]}</Td>
                         <Td className="max-w-44 truncate">{e.description ?? "n/d"}</Td>
@@ -599,17 +599,17 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
               </div>
               <div className="space-y-2 md:hidden">
                 {expenses.slice(0, 12).map((e) => (
-                  <div key={e.id} className="rounded-lg border border-zinc-200 p-3">
+                  <div key={e.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-800">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
-                        <p className="text-xs text-zinc-500">{fmtDate(e.expense_date)}</p>
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{fmtDate(e.expense_date)}</p>
                       </div>
-                      <p className="shrink-0 tabular-nums font-semibold text-zinc-800">{fmtEur(e.amount, 2)}</p>
+                      <p className="shrink-0 tabular-nums font-semibold text-zinc-800 dark:text-zinc-200">{fmtEur(e.amount, 2)}</p>
                     </div>
-                    {e.description && <p className="mt-1.5 truncate text-xs text-zinc-500">{e.description}</p>}
+                    {e.description && <p className="mt-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{e.description}</p>}
                     {isAdmin && (
-                      <div className="mt-2 border-t border-zinc-100 pt-2">
+                      <div className="mt-2 border-t border-zinc-100 pt-2 dark:border-zinc-800">
                         <ExpenseFormButton
                           properties={[{ id: property.id, name: property.name }]}
                           expense={e}
@@ -641,7 +641,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                   </thead>
                   <tbody>
                     {receipts.slice(0, 12).map((r) => (
-                      <tr key={r.id} className="hover:bg-zinc-50">
+                      <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                         <Td className="font-mono">{monthLabel(r.ref_month)}</Td>
                         <Td className="font-mono">{r.receipt_number ?? "n/d"}</Td>
                         <Td className="tabular-nums">{fmtDate(r.issue_date)}</Td>
@@ -653,12 +653,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
               </div>
               <div className="space-y-2 md:hidden">
                 {receipts.slice(0, 12).map((r) => (
-                  <div key={r.id} className="rounded-lg border border-zinc-200 p-3">
+                  <div key={r.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-mono text-sm font-medium text-zinc-800">{monthLabel(r.ref_month)}</p>
-                      <p className="tabular-nums font-semibold text-zinc-800">{fmtEur(r.amount, 2)}</p>
+                      <p className="font-mono text-sm font-medium text-zinc-800 dark:text-zinc-200">{monthLabel(r.ref_month)}</p>
+                      <p className="tabular-nums font-semibold text-zinc-800 dark:text-zinc-200">{fmtEur(r.amount, 2)}</p>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-xs text-zinc-500">
+                    <div className="mt-1 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
                       <span className="font-mono">{r.receipt_number ?? "n/d"}</span>
                       <span className="tabular-nums">{fmtDate(r.issue_date)}</span>
                     </div>
@@ -690,7 +690,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                 </thead>
                 <tbody>
                   {contracts.map((c) => (
-                    <tr key={c.id} className="hover:bg-zinc-50">
+                    <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                       <Td>{c.tenant_name}</Td>
                       <Td className="tabular-nums">{fmtDate(c.start_date)}</Td>
                       <Td className="tabular-nums">{fmtDate(c.end_date)}</Td>
@@ -717,26 +717,26 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="space-y-2 md:hidden">
               {contracts.map((c) => (
-                <div key={c.id} className="rounded-lg border border-zinc-200 p-3">
+                <div key={c.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-zinc-800">{c.tenant_name}</p>
+                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{c.tenant_name}</p>
                     {c.status === "ativo" ? (
                       <Badge tone="green">Ativo</Badge>
                     ) : (
                       <Badge tone="zinc">Cessado</Badge>
                     )}
                   </div>
-                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
+                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <span>
-                      Início <span className="tabular-nums text-zinc-700">{fmtDate(c.start_date)}</span>
+                      Início <span className="tabular-nums text-zinc-700 dark:text-zinc-300">{fmtDate(c.start_date)}</span>
                     </span>
                     <span>
-                      Fim <span className="tabular-nums text-zinc-700">{fmtDate(c.end_date)}</span>
+                      Fim <span className="tabular-nums text-zinc-700 dark:text-zinc-300">{fmtDate(c.end_date)}</span>
                     </span>
                   </div>
-                  <p className="mt-1.5 tabular-nums font-semibold text-teal-700">{fmtEur(c.rent, 2)}</p>
+                  <p className="mt-1.5 tabular-nums font-semibold text-teal-700 dark:text-teal-400">{fmtEur(c.rent, 2)}</p>
                   {isAdmin && (
-                    <div className="mt-2 flex gap-1 border-t border-zinc-100 pt-2">
+                    <div className="mt-2 flex gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
                       <ContractFormButton propertyId={property.id} contract={c} label="Editar" />
                       <DeleteContractButton id={c.id} />
                     </div>
@@ -746,14 +746,14 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             </div>
             {gaps.length > 0 && (
               <div>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Períodos de vazio
                 </p>
-                <ul className="space-y-1 text-sm text-zinc-600">
+                <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {gaps.map((g) => (
                     <li key={g.gapStart} className="tabular-nums">
                       {fmtDate(g.gapStart)} → {g.gapEnd ? fmtDate(g.gapEnd) : "hoje (em aberto)"}{" "}
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
                         ({g.days} dias · ~{fmtEur(g.lostRent)} perdidos)
                       </span>
                     </li>
@@ -763,14 +763,14 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             )}
             {rentUpdates.length > 0 && (
               <div>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Atualizações de renda
                 </p>
-                <ul className="space-y-1 text-sm text-zinc-600">
+                <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {rentUpdates.map((u) => (
                     <li key={u.id} className="tabular-nums">
                       {fmtDate(u.effective_date)}: {fmtEur(u.old_rent, 2)} → {fmtEur(u.new_rent, 2)}{" "}
-                      <span className="text-xs text-zinc-400">({u.reason})</span>
+                      <span className="text-xs text-zinc-400 dark:text-zinc-500">({u.reason})</span>
                     </li>
                   ))}
                 </ul>

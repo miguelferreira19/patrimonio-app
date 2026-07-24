@@ -49,7 +49,7 @@ export function LoginForm() {
           required
         />
       </Field>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       <Button type="submit" disabled={loading} className="w-full">
         {loading ? "A entrar…" : "Entrar"}
       </Button>

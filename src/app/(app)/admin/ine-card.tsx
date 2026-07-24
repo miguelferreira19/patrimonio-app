@@ -24,7 +24,7 @@ function DeleteBenchmarkButton({ id }: { id: string }) {
       >
         <Trash2 size={14} />
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }
@@ -102,32 +102,32 @@ export function IneCard({
     >
       <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
         <div>
-          <dt className="text-xs text-zinc-500">Territórios carregados</dt>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">Territórios carregados</dt>
           <dd className="font-medium tabular-nums">{fmtNum(ineCount, 0)}</dd>
         </div>
         <div>
-          <dt className="text-xs text-zinc-500">Períodos disponíveis</dt>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">Períodos disponíveis</dt>
           <dd className="font-mono font-medium">{inePeriods.length > 0 ? inePeriods.join(", ") : "n/d"}</dd>
         </div>
         <div>
-          <dt className="text-xs text-zinc-500">Última atualização</dt>
+          <dt className="text-xs text-zinc-500 dark:text-zinc-400">Última atualização</dt>
           <dd className="font-medium">{fmtDate(ineLastFetch)}</dd>
         </div>
       </dl>
 
-      {refreshInfo && <p className="mt-2 text-sm text-emerald-700">{refreshInfo}</p>}
-      {refreshAction.error && <p className="mt-2 text-xs text-red-600">{refreshAction.error}</p>}
+      {refreshInfo && <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">{refreshInfo}</p>}
+      {refreshAction.error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{refreshAction.error}</p>}
 
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
         Vai buscar as medianas €/m² de rendas (novos contratos, últimos 12 meses) e de vendas, por
         concelho e freguesia: indicadores oficiais 0014771 e 0012246. Atualiza trimestralmente.
       </p>
 
-      <div className="mt-5 border-t border-zinc-100 pt-4">
-        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+      <div className="mt-5 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Benchmark manual
         </p>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
           Para freguesias sem dados do INE, ou para usar comparáveis próprios.
         </p>
         <form onSubmit={submitManual} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -174,7 +174,7 @@ export function IneCard({
             </Button>
           </div>
         </form>
-        {addAction.error && <p className="mt-2 text-xs text-red-600">{addAction.error}</p>}
+        {addAction.error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{addAction.error}</p>}
 
         {manualBenchmarks.length === 0 ? (
           <div className="mt-3">
@@ -195,7 +195,7 @@ export function IneCard({
             </thead>
             <tbody>
               {manualBenchmarks.map((b) => (
-                <tr key={b.id} className="hover:bg-zinc-50">
+                <tr key={b.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                   <Td className="font-mono">{b.dicofre}</Td>
                   <Td>{b.parish_name ?? b.municipality ?? "n/d"}</Td>
                   <Td className="font-mono">{b.period}</Td>

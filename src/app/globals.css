@@ -7,14 +7,30 @@
     Consolas, monospace;
 }
 
-:root {
-  color-scheme: light;
-}
-
 body {
   background-color: var(--color-zinc-50);
   color: var(--color-zinc-900);
   -webkit-font-smoothing: antialiased;
+}
+
+/* P3-3: tema escuro segue o SO/browser (prefers-color-scheme), sem seletor manual na
+   app — color-scheme fica a cargo do Viewport export em layout.tsx. Cores de "fim de
+   tabela" (Table edgeFade em ui.tsx) trocam de par light/dark por variável CSS, porque
+   ali são hex diretos num style inline (Recharts/gradientes não seguem classes `dark:`). */
+:root {
+  --fade-surface: #fff;
+  --fade-edge: rgba(24, 24, 27, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fade-surface: #18181b;
+    --fade-edge: rgba(228, 228, 231, 0.14);
+  }
+  body {
+    background-color: var(--color-zinc-950);
+    color: var(--color-zinc-100);
+  }
 }
 
 /* Painel esquerdo do login: glow radial muito subtil, sem néon. */

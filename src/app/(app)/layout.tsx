@@ -29,17 +29,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const role = profile?.role ?? "viewer";
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <AppNav role={role} email={user.email ?? null} />
       <main className="mx-auto max-w-[1360px] p-4 pb-16 md:ml-60 md:px-9 md:pb-16 md:pt-8">
         {error && (
-          <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-            <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">
+            <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
             <div>
-              <p className="font-medium text-amber-900">Perfil não legível</p>
-              <p className="mt-0.5 text-amber-800">
+              <p className="font-medium text-amber-900 dark:text-amber-300">Perfil não legível</p>
+              <p className="mt-0.5 text-amber-800 dark:text-amber-400">
                 A app está a assumir acesso de leitura. Erro{" "}
-                <code className="rounded bg-amber-100 px-1 font-mono text-xs">{error.code}</code>:{" "}
+                <code className="rounded bg-amber-100 px-1 font-mono text-xs dark:bg-amber-900/60">{error.code}</code>:{" "}
                 {error.message}
               </p>
             </div>

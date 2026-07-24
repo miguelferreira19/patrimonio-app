@@ -18,7 +18,7 @@ function ProfileRoleSelect({ profile, isMe }: { profile: Profile; isMe: boolean 
         <option value="admin">Administrador</option>
         <option value="viewer">Leitura</option>
       </Select>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }
@@ -36,20 +36,20 @@ export function UsersCard({ profiles, meId }: { profiles: Profile[]; meId: strin
         </thead>
         <tbody>
           {profiles.map((p) => (
-            <tr key={p.id} className="hover:bg-zinc-50">
+            <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
               <Td>{p.email ?? "n/d"}</Td>
               <Td>{p.display_name ?? "n/d"}</Td>
               <Td>
                 <div className="flex items-center gap-2">
                   <ProfileRoleSelect profile={p} isMe={p.id === meId} />
-                  {p.id === meId && <span className="text-xs text-zinc-400">és tu</span>}
+                  {p.id === meId && <span className="text-xs text-zinc-400 dark:text-zinc-500">és tu</span>}
                 </div>
               </Td>
             </tr>
           ))}
         </tbody>
       </Table>
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
         Para criar novos acessos: Supabase → Authentication → Add user.
       </p>
     </Card>

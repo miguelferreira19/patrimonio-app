@@ -45,10 +45,10 @@ function SeverityBadge({ severity }: { severity: ArrearsSeverity }) {
 }
 
 const CELL_TONE: Record<ArrearsMonthCell["status"], string> = {
-  pago: "bg-emerald-50 text-emerald-700",
-  parcial: "bg-amber-50 text-amber-700",
-  falta: "bg-red-50 text-red-700",
-  antes_inicio: "bg-zinc-100 text-zinc-400",
+  pago: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  parcial: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  falta: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  antes_inicio: "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600",
 };
 
 function monthCellTitle(cell: ArrearsMonthCell): string {
@@ -84,7 +84,7 @@ function MonthsGrid({ months }: { months: ArrearsMonthCell[] }) {
           </div>
         ))}
       </div>
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded bg-emerald-400" aria-hidden="true" />
           Pago
@@ -98,7 +98,7 @@ function MonthsGrid({ months }: { months: ArrearsMonthCell[] }) {
           Em falta
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded bg-zinc-300" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 rounded bg-zinc-300 dark:bg-zinc-700" aria-hidden="true" />
           Antes do contrato
         </span>
       </div>
@@ -116,7 +116,7 @@ function RentCell({ rent, expectedRent }: { rent: number; expectedRent: number }
   return (
     <>
       {fmtEur(rent)}
-      <span className="block text-xs text-zinc-400">recebe {fmtEur(expectedRent)}</span>
+      <span className="block text-xs text-zinc-400 dark:text-zinc-500">recebe {fmtEur(expectedRent)}</span>
     </>
   );
 }
@@ -220,7 +220,7 @@ export function ArrearsClient({
       <Card>
         {nothingInArrears ? (
           <EmptyState icon={CheckCircle2}>
-            <strong className="text-zinc-700">Tudo em dia.</strong>{" "}
+            <strong className="text-zinc-700 dark:text-zinc-300">Tudo em dia.</strong>{" "}
             {rows.length === 0
               ? "Não há contratos ativos para analisar."
               : "Nenhum contrato ativo tem rendas em atraso neste momento."}
@@ -288,7 +288,7 @@ export function ArrearsClient({
                           <Fragment key={row.contractId}>
                             <tr
                               onClick={() => setExpandedId(isOpen ? null : row.contractId)}
-                              className="cursor-pointer hover:bg-zinc-50"
+                              className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
                             >
                               <Td className="pr-0">
                                 <button
@@ -299,7 +299,7 @@ export function ArrearsClient({
                                     e.stopPropagation();
                                     setExpandedId(isOpen ? null : row.contractId);
                                   }}
-                                  className="rounded p-0.5 text-zinc-400 transition-colors duration-150 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                                  className="rounded p-0.5 text-zinc-400 transition-colors duration-150 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                                 >
                                   {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                 </button>
@@ -308,12 +308,12 @@ export function ArrearsClient({
                                 <Link
                                   href={`/fracoes/${row.propertyId}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="block max-w-40 truncate font-medium text-teal-700 hover:underline"
+                                  className="block max-w-40 truncate font-medium text-teal-700 hover:underline dark:text-teal-400"
                                 >
                                   {row.propertyName}
                                 </Link>
                                 {row.matrizArticle && (
-                                  <p className="font-mono text-xs text-zinc-400">{row.matrizArticle}</p>
+                                  <p className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{row.matrizArticle}</p>
                                 )}
                               </Td>
                               <Td className="max-w-40 truncate">{row.tenantName}</Td>
@@ -329,7 +329,7 @@ export function ArrearsClient({
                               <Td
                                 className={cn(
                                   "text-right tabular-nums",
-                                  row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
+                                  row.debt > 0 ? "font-medium text-red-700 dark:text-red-400" : "text-zinc-400 dark:text-zinc-500",
                                 )}
                               >
                                 {row.stale ? "·" : fmtEur(row.debt)}
@@ -346,7 +346,7 @@ export function ArrearsClient({
                             </tr>
                             {isOpen && (
                               <tr>
-                                <Td colSpan={TABLE_COLS} className="bg-zinc-50/70">
+                                <Td colSpan={TABLE_COLS} className="bg-zinc-50/70 dark:bg-zinc-900/40">
                                   <MonthsGrid months={row.months24} />
                                 </Td>
                               </tr>
@@ -363,7 +363,7 @@ export function ArrearsClient({
                   {filtered.map((row) => {
                     const isOpen = expandedId === row.contractId;
                     return (
-                      <div key={row.contractId} className="rounded-lg border border-zinc-200 bg-white shadow-xs">
+                      <div key={row.contractId} className="rounded-lg border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
                         <div
                           onClick={() => setExpandedId(isOpen ? null : row.contractId)}
                           className="flex cursor-pointer items-start justify-between gap-2 p-3"
@@ -372,11 +372,11 @@ export function ArrearsClient({
                             <Link
                               href={`/fracoes/${row.propertyId}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="font-medium text-teal-700 hover:underline"
+                              className="font-medium text-teal-700 hover:underline dark:text-teal-400"
                             >
                               {row.propertyName}
                             </Link>
-                            <p className="truncate text-xs text-zinc-500">{row.tenantName}</p>
+                            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{row.tenantName}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1">
                             <SeverityBadge severity={row.severity} />
@@ -388,47 +388,47 @@ export function ArrearsClient({
                                 e.stopPropagation();
                                 setExpandedId(isOpen ? null : row.contractId);
                               }}
-                              className="-m-1.5 flex h-10 w-10 items-center justify-center rounded text-zinc-400 transition-colors duration-150 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                              className="-m-1.5 flex h-10 w-10 items-center justify-center rounded text-zinc-400 transition-colors duration-150 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                             >
                               {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-zinc-100 px-3 py-2.5 text-sm">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-zinc-100 dark:border-zinc-800 px-3 py-2.5 text-sm">
                           <div>
-                            <p className="text-[11px] text-zinc-400">Renda</p>
-                            <p className="tabular-nums font-medium text-zinc-800">
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Renda</p>
+                            <p className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">
                               <RentCell rent={row.rent} expectedRent={row.expectedRent} />
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] text-zinc-400">Último mês pago</p>
-                            <p className="font-mono text-xs tabular-nums text-zinc-700">
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Último mês pago</p>
+                            <p className="font-mono text-xs tabular-nums text-zinc-700 dark:text-zinc-300">
                               {row.lastPaidMonth ? monthLabel(row.lastPaidMonth) : "nunca"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] text-zinc-400">Meses em atraso</p>
-                            <p className="tabular-nums text-zinc-800">{row.streak}</p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Meses em atraso</p>
+                            <p className="tabular-nums text-zinc-800 dark:text-zinc-200">{row.streak}</p>
                           </div>
                           <div>
-                            <p className="text-[11px] text-zinc-400">Em falta (12m)</p>
-                            <p className="tabular-nums text-zinc-800">{row.missed12}</p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Em falta (12m)</p>
+                            <p className="tabular-nums text-zinc-800 dark:text-zinc-200">{row.missed12}</p>
                           </div>
                           <div>
-                            <p className="text-[11px] text-zinc-400">Dívida estimada</p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Dívida estimada</p>
                             <p
                               className={cn(
                                 "tabular-nums",
-                                row.debt > 0 ? "font-medium text-red-700" : "text-zinc-400",
+                                row.debt > 0 ? "font-medium text-red-700 dark:text-red-400" : "text-zinc-400 dark:text-zinc-500",
                               )}
                             >
                               {row.stale ? "·" : fmtEur(row.debt)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] text-zinc-400">Senhorio(s)</p>
-                            <p className="truncate text-zinc-700">{row.landlordNames.join(", ") || "n/d"}</p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Senhorio(s)</p>
+                            <p className="truncate text-zinc-700 dark:text-zinc-300">{row.landlordNames.join(", ") || "n/d"}</p>
                           </div>
                           {(row.cadence !== null || row.stale) && (
                             <div className="col-span-2 flex flex-wrap gap-1">
@@ -440,7 +440,7 @@ export function ArrearsClient({
                           )}
                         </div>
                         {isOpen && (
-                          <div className="border-t border-zinc-100 bg-zinc-50/70 px-3 py-2">
+                          <div className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 px-3 py-2">
                             <MonthsGrid months={row.months24} />
                           </div>
                         )}
@@ -453,7 +453,7 @@ export function ArrearsClient({
           </>
         )}
 
-        <p className="mt-4 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
+        <p className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-3 text-xs text-zinc-500 dark:text-zinc-400">
           Baseado nos recibos e pagamentos registados. Rendas pagas em dinheiro sem recibo aparecem
           como atraso. Carência de 8 dias sobre o dia 1; dívida estimada limitada a 24 meses;
           contratos com cadência própria (ex.: pagamento trimestral) são assinalados e não contam

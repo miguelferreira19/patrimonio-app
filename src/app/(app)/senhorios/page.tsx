@@ -41,7 +41,7 @@ export default async function SenhoriosPage() {
   if (!isAdmin) {
     return (
       <Card>
-        <p className="text-sm text-zinc-600">Área reservada ao administrador.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Área reservada ao administrador.</p>
       </Card>
     );
   }
@@ -183,16 +183,16 @@ export default async function SenhoriosPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.landlord.id} className="hover:bg-zinc-50">
+                <tr key={r.landlord.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                   <Td className="font-medium">{r.landlord.name}</Td>
                   <Td className="font-mono text-xs">{r.landlord.nif ?? "n/d"}</Td>
                   <Td className="text-right tabular-nums">{r.nProps}</Td>
-                  <Td className="text-xs text-zinc-500">{statusSummary(r.statusCounts)}</Td>
+                  <Td className="text-xs text-zinc-500 dark:text-zinc-400">{statusSummary(r.statusCounts)}</Td>
                   <Td className="text-right tabular-nums">{fmtEur(r.expectedMonthly)}</Td>
-                  <Td className="text-right tabular-nums text-zinc-400">n/d</Td>
-                  <Td className="text-right tabular-nums text-zinc-400">n/d</Td>
-                  <Td className="text-right tabular-nums text-zinc-400">n/d</Td>
-                  <Td className="text-right tabular-nums text-zinc-500">
+                  <Td className="text-right tabular-nums text-zinc-400 dark:text-zinc-500">n/d</Td>
+                  <Td className="text-right tabular-nums text-zinc-400 dark:text-zinc-500">n/d</Td>
+                  <Td className="text-right tabular-nums text-zinc-400 dark:text-zinc-500">n/d</Td>
+                  <Td className="text-right tabular-nums text-zinc-500 dark:text-zinc-400">
                     {r.quotaAvg !== null ? `${r.quotaAvg.toLocaleString("pt-PT")}%` : "n/d"}
                   </Td>
                   {isAdmin && (
@@ -202,21 +202,21 @@ export default async function SenhoriosPage() {
                   )}
                 </tr>
               ))}
-              <tr className="bg-zinc-50 font-semibold">
-                <Td className="border-t border-zinc-200">Total família</Td>
-                <Td className="border-t border-zinc-200" />
-                <Td className="border-t border-zinc-200 text-right tabular-nums">{familyPropertyIds.size}</Td>
-                <Td className="border-t border-zinc-200" />
-                <Td className="border-t border-zinc-200 text-right tabular-nums">{fmtEur(rendaFamilia)}</Td>
-                <Td className="border-t border-zinc-200 text-right tabular-nums">{fmtEur(recebidoFamilia)}</Td>
-                <Td className="border-t border-zinc-200 text-right tabular-nums text-red-700">
+              <tr className="bg-zinc-50 font-semibold dark:bg-zinc-900">
+                <Td className="border-t border-zinc-200 dark:border-zinc-800">Total família</Td>
+                <Td className="border-t border-zinc-200 dark:border-zinc-800" />
+                <Td className="border-t border-zinc-200 dark:border-zinc-800 text-right tabular-nums">{familyPropertyIds.size}</Td>
+                <Td className="border-t border-zinc-200 dark:border-zinc-800" />
+                <Td className="border-t border-zinc-200 dark:border-zinc-800 text-right tabular-nums">{fmtEur(rendaFamilia)}</Td>
+                <Td className="border-t border-zinc-200 dark:border-zinc-800 text-right tabular-nums">{fmtEur(recebidoFamilia)}</Td>
+                <Td className="border-t border-zinc-200 dark:border-zinc-800 text-right tabular-nums text-red-700 dark:text-red-400">
                   {despesasFamilia > 0 ? `−${fmtEur(despesasFamilia)}` : fmtEur(0)}
                 </Td>
-                <Td className="border-t border-zinc-200 text-right tabular-nums text-teal-700">
+                <Td className="border-t border-zinc-200 dark:border-zinc-800 text-right tabular-nums text-teal-700 dark:text-teal-400">
                   {fmtEur(liquidoFamilia)}
                 </Td>
-                <Td className="border-t border-zinc-200" />
-                {isAdmin && <Td className="border-t border-zinc-200" />}
+                <Td className="border-t border-zinc-200 dark:border-zinc-800" />
+                {isAdmin && <Td className="border-t border-zinc-200 dark:border-zinc-800" />}
               </tr>
             </tbody>
           </Table>
@@ -225,80 +225,80 @@ export default async function SenhoriosPage() {
         {/* Mobile: um cartão por senhorio + cartão de total no fim. */}
         <div className="space-y-2 md:hidden">
           {rows.map((r) => (
-            <div key={r.landlord.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs">
+            <div key={r.landlord.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-zinc-800">{r.landlord.name}</p>
-                  <p className="font-mono text-xs text-zinc-500">{r.landlord.nif ?? "n/d"}</p>
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">{r.landlord.name}</p>
+                  <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">{r.landlord.nif ?? "n/d"}</p>
                 </div>
                 {isAdmin && <LandlordFormButton landlord={r.landlord} />}
               </div>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                 {r.nProps} fração{r.nProps === 1 ? "" : "ões"} · {statusSummary(r.statusCounts)}
               </p>
               <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
                 <div>
-                  <p className="text-[11px] text-zinc-400">Renda mensal (por inteiro)</p>
-                  <p className="tabular-nums font-medium text-zinc-800">{fmtEur(r.expectedMonthly)}</p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Renda mensal (por inteiro)</p>
+                  <p className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">{fmtEur(r.expectedMonthly)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">Quota média</p>
-                  <p className="tabular-nums text-zinc-700">
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Quota média</p>
+                  <p className="tabular-nums text-zinc-700 dark:text-zinc-300">
                     {r.quotaAvg !== null ? `${r.quotaAvg.toLocaleString("pt-PT")}%` : "n/d"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">Recebido {year}</p>
-                  <p className="tabular-nums text-zinc-400">n/d</p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Recebido {year}</p>
+                  <p className="tabular-nums text-zinc-400 dark:text-zinc-500">n/d</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">Despesas {year}</p>
-                  <p className="tabular-nums text-zinc-400">n/d</p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Despesas {year}</p>
+                  <p className="tabular-nums text-zinc-400 dark:text-zinc-500">n/d</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-zinc-400">Líquido {year}</p>
-                  <p className="tabular-nums text-zinc-400">n/d</p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Líquido {year}</p>
+                  <p className="tabular-nums text-zinc-400 dark:text-zinc-500">n/d</p>
                 </div>
               </div>
             </div>
           ))}
 
-          <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-3">
+          <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-zinc-800">Total família</p>
-              <p className="tabular-nums text-sm text-zinc-600">{familyPropertyIds.size} frações</p>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200">Total família</p>
+              <p className="tabular-nums text-sm text-zinc-600 dark:text-zinc-400">{familyPropertyIds.size} frações</p>
             </div>
             <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
               <div>
-                <p className="text-[11px] text-zinc-400">Renda mensal</p>
-                <p className="tabular-nums font-medium text-zinc-800">{fmtEur(rendaFamilia)}</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Renda mensal</p>
+                <p className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">{fmtEur(rendaFamilia)}</p>
               </div>
               <div>
-                <p className="text-[11px] text-zinc-400">Recebido {year}</p>
-                <p className="tabular-nums font-medium text-zinc-800">{fmtEur(recebidoFamilia)}</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Recebido {year}</p>
+                <p className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">{fmtEur(recebidoFamilia)}</p>
               </div>
               <div>
-                <p className="text-[11px] text-zinc-400">Despesas {year}</p>
-                <p className="tabular-nums font-medium text-red-700">
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Despesas {year}</p>
+                <p className="tabular-nums font-medium text-red-700 dark:text-red-400">
                   {despesasFamilia > 0 ? `−${fmtEur(despesasFamilia)}` : fmtEur(0)}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-zinc-400">Líquido {year}</p>
-                <p className="tabular-nums font-medium text-teal-700">{fmtEur(liquidoFamilia)}</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Líquido {year}</p>
+                <p className="tabular-nums font-medium text-teal-700 dark:text-teal-400">{fmtEur(liquidoFamilia)}</p>
               </div>
             </div>
           </div>
         </div>
         {nForaDoCorrente > 0 && (
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             Nota: {nForaDoCorrente} {nForaDoCorrente === 1 ? "fração" : "frações"} (terrenos ou já
             vendidas) não contam nas frações, nos estados nem na renda mensal. O que receberam e
             custaram em {year} continua incluído no total da família.
           </p>
         )}
         {expensesSemAtribuicao > 0 && (
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             Nota: {fmtEur(expensesSemAtribuicao)} de despesas gerais (sem fração/senhorio) não
             estão incluídas no total.
           </p>

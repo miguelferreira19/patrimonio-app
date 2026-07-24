@@ -39,18 +39,20 @@ export function PageHeader({
     >
       <div>
         {eyebrow && (
-          <p className="text-xs font-medium uppercase tracking-[0.06em] text-teal-700">{eyebrow}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.06em] text-teal-700 dark:text-teal-400">
+            {eyebrow}
+          </p>
         )}
         <h1
           className={cn(
-            "font-semibold tracking-tight text-zinc-900",
+            "font-semibold tracking-tight text-zinc-900 dark:text-zinc-100",
             hero ? "mt-1.5 text-2xl leading-tight md:text-3xl" : "text-xl md:text-2xl",
           )}
         >
           {title}
         </h1>
         {description && (
-          <p className={cn("mt-2 text-sm text-zinc-500", hero && "max-w-[520px] text-pretty")}>
+          <p className={cn("mt-2 text-sm text-zinc-500 dark:text-zinc-400", hero && "max-w-[520px] text-pretty")}>
             {description}
           </p>
         )}
@@ -75,12 +77,17 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-[14px] border border-zinc-200 bg-white shadow-xs", className)}>
+    <section
+      className={cn(
+        "rounded-[14px] border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900",
+        className,
+      )}
+    >
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
           <div>
-            {title && <h2 className="text-sm font-medium text-zinc-900">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>}
+            {title && <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{title}</h2>}
+            {subtitle && <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </header>
@@ -102,10 +109,14 @@ export function Button({
   variant?: ButtonVariant;
   size?: "sm" | "md";
 }) {
+  // primary/danger são superfícies opacas com contraste próprio — não precisam de par
+  // escuro. outline/ghost partem de branco/zinc claro e precisam de par escuro explícito.
   const variants: Record<ButtonVariant, string> = {
     primary: "bg-teal-800 text-white hover:bg-teal-900",
-    outline: "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
-    ghost: "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
+    outline:
+      "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 " +
+      "dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
+    ghost: "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
     danger: "bg-red-600 text-white hover:bg-red-700",
   };
   const sizes = {
@@ -116,7 +127,7 @@ export function Button({
     <button
       className={cn(
         "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition",
-        "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2",
+        "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900",
         "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
         sizes[size],
         variants[variant],
@@ -130,7 +141,7 @@ export function Button({
 // ---------- Formulários ----------
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <label className={cn("mb-1.5 block text-sm font-medium text-zinc-700", className)}>
+    <label className={cn("mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300", className)}>
       {children}
     </label>
   );
@@ -139,7 +150,9 @@ export function Label({ children, className }: { children: ReactNode; className?
 const controlClass =
   "w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 " +
   "placeholder:text-zinc-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 " +
-  "disabled:bg-zinc-50 disabled:text-zinc-400";
+  "disabled:bg-zinc-50 disabled:text-zinc-400 " +
+  "dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 " +
+  "dark:disabled:bg-zinc-800/60 dark:disabled:text-zinc-500";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(controlClass, "h-9", props.className)} />;
@@ -175,12 +188,12 @@ export function Badge({
   children: ReactNode;
 }) {
   const tones: Record<BadgeTone, string> = {
-    green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-    red: "bg-red-50 text-red-700 ring-red-600/20",
-    amber: "bg-amber-50 text-amber-800 ring-amber-600/20",
-    zinc: "bg-zinc-100 text-zinc-600 ring-zinc-500/20",
-    teal: "bg-teal-50 text-teal-700 ring-teal-600/20",
-    blue: "bg-sky-50 text-sky-700 ring-sky-600/20",
+    green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-400/20",
+    red: "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-400/20",
+    amber: "bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-400 dark:ring-amber-400/20",
+    zinc: "bg-zinc-100 text-zinc-600 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-400/20",
+    teal: "bg-teal-50 text-teal-700 ring-teal-600/20 dark:bg-teal-950/40 dark:text-teal-400 dark:ring-teal-400/20",
+    blue: "bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-950/40 dark:text-sky-400 dark:ring-sky-400/20",
   };
   return (
     <span
@@ -199,12 +212,14 @@ export function Badge({
 // `edgeFade`: indício visual (CSS puro, sem listeners de scroll) de que a tabela
 // continua para a direita — usado nas grelhas largas (Pagamentos) onde o scroll
 // horizontal é aceitável. Duas camadas de fundo: uma sombra "presa" ao contentor
-// (background-attachment: scroll) e uma cobertura branca "presa" ao fim do
-// conteúdo (background-attachment: local) que a tapa assim que se chega ao fim.
+// (background-attachment: scroll) e uma cobertura "presa" ao fim do conteúdo
+// (background-attachment: local) que a tapa assim que se chega ao fim. As cores vêm de
+// variáveis CSS (--fade-surface/--fade-edge, ver globals.css) porque um style inline
+// não segue classes `dark:` — têm de trocar de par com o tema pelo próprio browser.
 const edgeFadeStyle: CSSProperties = {
   backgroundImage:
-    "linear-gradient(to left, #fff, #fff 24px, rgba(255,255,255,0) 44px), " +
-    "linear-gradient(to left, rgba(24,24,27,0.16), rgba(24,24,27,0) 24px)",
+    "linear-gradient(to left, var(--fade-surface), var(--fade-surface) 24px, transparent 44px), " +
+    "linear-gradient(to left, var(--fade-edge), transparent 24px)",
   backgroundRepeat: "no-repeat, no-repeat",
   backgroundPosition: "right top, right top",
   backgroundSize: "44px 100%, 24px 100%",
@@ -234,7 +249,7 @@ export function Th({ children, className }: { children?: ReactNode; className?: 
   return (
     <th
       className={cn(
-        "border-b border-zinc-200 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500",
+        "border-b border-zinc-200 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400",
         className,
       )}
     >
@@ -253,7 +268,10 @@ export function Td({
   colSpan?: number;
 }) {
   return (
-    <td colSpan={colSpan} className={cn("border-b border-zinc-100 px-3 py-2.5 text-zinc-700", className)}>
+    <td
+      colSpan={colSpan}
+      className={cn("border-b border-zinc-100 px-3 py-2.5 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300", className)}
+    >
       {children}
     </td>
   );
@@ -276,25 +294,25 @@ export function StatCard({
   delta?: { value: ReactNode; direction?: "up" | "down" };
 }) {
   const tones = {
-    zinc: "text-zinc-900",
-    green: "text-emerald-700",
-    red: "text-red-700",
-    teal: "text-teal-700",
-    amber: "text-amber-700",
+    zinc: "text-zinc-900 dark:text-zinc-100",
+    green: "text-emerald-700 dark:text-emerald-400",
+    red: "text-red-700 dark:text-red-400",
+    teal: "text-teal-700 dark:text-teal-400",
+    amber: "text-amber-700 dark:text-amber-400",
   };
   // A caixa do ícone acompanha o tom do valor — o cartão passa o estado antes de se ler
   // o número, sem que a cor seja o único portador do significado (o `sub` diz-no por extenso).
   const iconTones = {
-    zinc: "bg-zinc-100 text-zinc-500",
-    green: "bg-emerald-50 text-emerald-700",
-    red: "bg-red-50 text-red-700",
-    teal: "bg-teal-50 text-teal-700",
-    amber: "bg-amber-50 text-amber-700",
+    zinc: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+    green: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+    red: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+    teal: "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400",
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
   };
   return (
-    <div className="h-full rounded-[14px] border border-zinc-200 bg-white p-4 shadow-xs transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-8px_rgba(15,118,110,0.22)]">
+    <div className="h-full rounded-[14px] border border-zinc-200 bg-white p-4 shadow-xs transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-8px_rgba(15,118,110,0.22)] dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-zinc-500">{label}</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-zinc-500 dark:text-zinc-400">{label}</p>
         {Icon && (
           <span
             className={cn(
@@ -313,14 +331,14 @@ export function StatCard({
         <p
           className={cn(
             "mt-1.5 inline-flex items-center gap-0.5 text-xs font-medium tabular-nums",
-            delta.direction === "down" ? "text-red-600" : "text-emerald-600",
+            delta.direction === "down" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400",
           )}
         >
           {delta.direction === "down" ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
           {delta.value}
         </p>
       )}
-      {sub && <p className="mt-1.5 text-xs text-zinc-500">{sub}</p>}
+      {sub && <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">{sub}</p>}
     </div>
   );
 }
@@ -341,18 +359,18 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-zinc-950/40 p-4 backdrop-blur-[2px] sm:items-center">
+    <div className="animate-overlay-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-zinc-950/40 p-4 backdrop-blur-[2px] sm:items-center dark:bg-black/60">
       <div
         className={cn(
-          "animate-modal-in my-8 w-full rounded-lg border border-zinc-200 bg-white shadow-lg",
+          "animate-modal-in my-8 w-full rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900",
           wide ? "max-w-3xl" : "max-w-lg",
         )}
       >
-        <header className="flex items-center justify-between border-b border-zinc-200 px-5 py-3.5">
-          <h3 className="text-sm font-medium text-zinc-900">{title}</h3>
+        <header className="flex items-center justify-between border-b border-zinc-200 px-5 py-3.5 dark:border-zinc-800">
+          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{title}</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
             aria-label="Fechar"
           >
             <X size={16} />
@@ -379,16 +397,16 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-10 text-center",
+        "flex flex-col items-center gap-3 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/60",
         className,
       )}
     >
       {Icon && (
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
           <Icon size={20} strokeWidth={1.75} />
         </span>
       )}
-      <p className="max-w-sm text-sm text-zinc-500">{children}</p>
+      <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">{children}</p>
       {action}
     </div>
   );

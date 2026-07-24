@@ -118,7 +118,7 @@ export default async function IrsPage({
           isAdmin && (
             <a
               href={`/api/irs?landlord=${landlordId}&year=${year}`}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900"
             >
               <Download size={15} strokeWidth={1.75} />
               Exportar Anexo F
@@ -127,8 +127,8 @@ export default async function IrsPage({
         }
       />
 
-      <Card className="border-amber-200 bg-amber-50">
-        <p className="flex items-start gap-2 text-xs leading-relaxed text-amber-800">
+      <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40">
+        <p className="flex items-start gap-2 text-xs leading-relaxed text-amber-800 dark:text-amber-400">
           <TriangleAlert size={15} className="mt-0.5 shrink-0" strokeWidth={1.75} />
           Esta página mostra <strong>estimativas</strong> para apoio à decisão, não é
           aconselhamento fiscal vinculativo. Confirmar sempre no simulador da AT ou com
@@ -183,28 +183,28 @@ export default async function IrsPage({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div
             className={`rounded-lg border p-3 ${
-              fy.bestRegime === "autonoma" ? "border-teal-300 bg-teal-50" : "border-zinc-200 bg-white"
+              fy.bestRegime === "autonoma" ? "border-teal-300 bg-teal-50 dark:border-teal-700 dark:bg-teal-950/40" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             }`}
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-zinc-700">Taxa autónoma (28%)</p>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Taxa autónoma (28%)</p>
               {fy.bestRegime === "autonoma" && <Badge tone="teal">Vence</Badge>}
             </div>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{fmtEur(fy.autonomousTax, 2)}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{fmtEur(fy.autonomousTax, 2)}</p>
           </div>
           <div
             className={`rounded-lg border p-3 ${
-              fy.bestRegime === "englobamento" ? "border-teal-300 bg-teal-50" : "border-zinc-200 bg-white"
+              fy.bestRegime === "englobamento" ? "border-teal-300 bg-teal-50 dark:border-teal-700 dark:bg-teal-950/40" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             }`}
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-zinc-700">Englobamento (escalões {fy.bracketsYear})</p>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Englobamento (escalões {fy.bracketsYear})</p>
               {fy.bestRegime === "englobamento" && <Badge tone="teal">Vence</Badge>}
             </div>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{fmtEur(fy.englobedTax, 2)}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{fmtEur(fy.englobedTax, 2)}</p>
           </div>
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+        <p className="mt-3 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
           O englobamento acima trata o rendimento predial líquido como se fosse a única base
           tributável (sem quociente conjugal nem outras categorias de rendimento: pensões e
           salários somam-se na declaração real e podem empurrar para escalões mais altos). Serve
@@ -226,9 +226,9 @@ export default async function IrsPage({
             </thead>
             <tbody>
               {toConfirmRows.map((r) => (
-                <tr key={r.propertyId} className="hover:bg-zinc-50">
+                <tr key={r.propertyId} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                   <Td>
-                    <Link href={`/fracoes/${r.propertyId}`} className="font-medium text-teal-700 hover:underline">
+                    <Link href={`/fracoes/${r.propertyId}`} className="font-medium text-teal-700 hover:underline dark:text-teal-400">
                       {propertiesById.get(r.propertyId)?.name ?? r.propertyId}
                     </Link>
                   </Td>
@@ -237,7 +237,7 @@ export default async function IrsPage({
               ))}
             </tbody>
           </Table>
-          <p className="mt-2 text-[11px] text-zinc-400">
+          <p className="mt-2 text-[11px] text-zinc-400 dark:text-zinc-500">
             «Obras» pode ser conservação/manutenção (dedutível) ou obra de valorização (não
             dedutível): a app não distingue as duas. Confirmar a fatura antes de somar ao Anexo F.
           </p>
@@ -261,13 +261,13 @@ export default async function IrsPage({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.contractId} className="hover:bg-zinc-50">
+                <tr key={r.contractId} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                   <Td>
-                    <Link href={`/fracoes/${r.propertyId}`} className="font-medium text-teal-700 hover:underline">
+                    <Link href={`/fracoes/${r.propertyId}`} className="font-medium text-teal-700 hover:underline dark:text-teal-400">
                       {propertiesById.get(r.propertyId)?.name ?? r.propertyId}
                     </Link>
                   </Td>
-                  <Td className="font-mono text-xs text-zinc-500">
+                  <Td className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
                     {r.matriz.freguesia ?? "n/d"}-{r.matriz.tipo ?? "?"}-{r.matriz.artigo ?? "?"}
                     {r.matriz.fracaoSeccao ? `-${r.matriz.fracaoSeccao}` : ""}
                   </Td>
@@ -304,9 +304,9 @@ export default async function IrsPage({
               </thead>
               <tbody>
                 {reducedList.map((r) => (
-                  <tr key={r.contractId} className="hover:bg-zinc-50">
+                  <tr key={r.contractId} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                     <Td>
-                      <Link href={`/fracoes/${r.propertyId}`} className="font-medium text-teal-700 hover:underline">
+                      <Link href={`/fracoes/${r.propertyId}`} className="font-medium text-teal-700 hover:underline dark:text-teal-400">
                         {propertiesById.get(r.propertyId)?.name ?? r.propertyId}
                       </Link>
                     </Td>
@@ -314,12 +314,12 @@ export default async function IrsPage({
                     <Td className="text-right tabular-nums">
                       <Badge tone="green">{fmtPct(r.eligibleRate, 0)}</Badge>
                     </Td>
-                    <Td className="text-right tabular-nums text-emerald-700">{fmtEur(r.annualSavings, 2)}</Td>
+                    <Td className="text-right tabular-nums text-emerald-700 dark:text-emerald-400">{fmtEur(r.annualSavings, 2)}</Td>
                   </tr>
                 ))}
               </tbody>
             </Table>
-            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
+            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
               É um ALERTA, não altera nada sozinho. Para beneficiar, o contrato tem de ser
               comunicado à AT (Portaria n.º 110/2019, de 12/04). Comércio, lojas e garagens não
               beneficiam deste regime.
@@ -336,7 +336,7 @@ export default async function IrsPage({
             sub="exclui frações vendidas e terrenos (presumidos rústicos)"
             tone={aimi.overSingle ? "amber" : "zinc"}
           />
-          <div className="rounded-lg border border-zinc-200 bg-white p-3 text-sm">
+          <div className="rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
             <p className="flex items-center justify-between">
               Limite pessoa singular ({fmtEur(AIMI_THRESHOLD_SINGLE)})
               <Badge tone={aimi.overSingle ? "amber" : "green"}>{aimi.overSingle ? "Excedido" : "Dentro"}</Badge>
@@ -347,7 +347,7 @@ export default async function IrsPage({
             </p>
           </div>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
+        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
           Só sinaliza exposição: distribuir propriedade por herdeiros para reduzir o AIMI é
           planeamento sucessório; remeter para contabilista, esta página não recomenda essa ação.
         </p>
