@@ -341,7 +341,7 @@ export default async function DashboardPage() {
             Todos os contratos ativos já têm recibo deste mês.
           </EmptyState>
         ) : (
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid max-h-80 gap-2 overflow-y-auto md:grid-cols-2">
             {toIssue.map(({ contract, property }) => (
               <div
                 key={contract.id}
@@ -381,7 +381,7 @@ export default async function DashboardPage() {
         {endingSoon.length === 0 ? (
           <EmptyState icon={CheckCircle2}>Nenhum contrato ativo termina nos próximos 90 dias.</EmptyState>
         ) : (
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid max-h-80 gap-2 overflow-y-auto md:grid-cols-2">
             {endingSoon.map(({ contract, property }) => (
               <div
                 key={contract.id}
@@ -423,7 +423,7 @@ export default async function DashboardPage() {
             <EmptyState icon={CheckCircle2}>Sem rendas em atraso.</EmptyState>
           ) : (
             <>
-              <div className="hidden md:block">
+              <div className="hidden max-h-80 overflow-y-auto md:block">
                 <Table>
                   <thead>
                     <tr>
@@ -458,7 +458,7 @@ export default async function DashboardPage() {
                   </tbody>
                 </Table>
               </div>
-              <div className="space-y-2 md:hidden">
+              <div className="max-h-80 space-y-2 overflow-y-auto md:hidden">
                 {lateRows.map((r) => (
                   <div
                     key={r.contractId}
