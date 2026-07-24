@@ -327,7 +327,7 @@ export default async function DashboardPage() {
         subtitle={`${monthLabel(thisMonth)} · contratos ativos ainda sem recibo emitido`}
         actions={
           <a
-            href="https://imoveis.portaldasfinancas.gov.pt/arrendamento/consultarRecibos.action"
+            href="https://imoveis.portaldasfinancas.gov.pt/arrendamento/consultarElementosContratos/locador"
             target="_blank"
             rel="noreferrer"
             className="text-sm font-medium text-teal-700 hover:underline dark:text-teal-400"
