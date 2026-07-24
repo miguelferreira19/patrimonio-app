@@ -302,7 +302,7 @@ export default async function DashboardPage() {
         />
         <Link
           href="/fracoes"
-          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+          className="col-span-2 block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 xl:col-span-1 dark:focus-visible:ring-offset-zinc-950"
         >
           <StatCard
             label="Ocupação"
