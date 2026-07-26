@@ -17,7 +17,9 @@
     "check:risk": "tsc src/lib/portfolio/risk.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/risk.check.js",
     "check:import": "tsc src/lib/import/plano.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/import/plano.check.js",
     "check:insights": "tsc src/lib/portfolio/insights.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/insights.check.js",
-    "check": "npm run check:arrears && npm run check:health && npm run check:calc && npm run check:parse && npm run check:irs && npm run check:monthcell && npm run check:rent && npm run check:snapshot && npm run check:insights && npm run check:risk && npm run check:import"
+    "check:renda": "tsc src/lib/portfolio/renda.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/renda.check.js",
+    "check:futuro": "tsc src/lib/portfolio/futuro.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/futuro.check.js",
+    "check": "npm run check:arrears && npm run check:health && npm run check:calc && npm run check:parse && npm run check:irs && npm run check:monthcell && npm run check:rent && npm run check:snapshot && npm run check:insights && npm run check:risk && npm run check:import && npm run check:renda && npm run check:futuro"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

@@ -37,6 +37,7 @@ import {
 } from "../calc";
 import { addMonthsKey, lastMonthsKeys, monthKeyFromDate } from "../format";
 import { monthCellStatus, type MonthCellData } from "../monthcell";
+import { acumuladoDoAno, type PontoAcumulado } from "./renda";
 import { rendaObservada, type RendaObservada } from "../rent";
 import {
   curvaDeCura,
@@ -129,6 +130,11 @@ export interface Snapshot {
    *  `carteira` vêm vazios de propósito. Quem os lê precisa do snapshot completo. */
   historicoCarregado: boolean;
   fluxo: MesAgregado[];
+  /** O ano civil acumulado, mês a mês, contra o mesmo ponto do ano anterior. Vive aqui
+   *  porque o snapshot é o único sítio com o histórico COMPLETO de pagamentos: a janela
+   *  de `fluxo` são 12 meses móveis, que respondem a outra pergunta ("como correu o último
+   *  ano?") e nunca a "quanto já entrou este ano?". Vazio num snapshot leve. */
+  acumulado: PontoAcumulado[];
   /** A faixa da CARTEIRA: o agregado mensal com o mesmo vocabulário das faixas de cada
    *  fração. Substitui o gráfico de fluxo — a substância já é o gráfico (PLANO.md §5). */
   carteira: MonthCellData[];
@@ -433,6 +439,9 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
     rendaObservadaPorContrato,
     horizon,
     fluxo,
+    // Só com histórico completo: num snapshot leve `raw.payments` vem vazio, e uma série
+    // de zeros lia-se como "não entrou nada este ano" em vez de "não foi carregado".
+    acumulado: raw.payments.length > 0 ? acumuladoDoAno(raw.payments, today) : [],
     carteira,
     pagamentosRecentes: raw.paymentsRecentes.filter((p) => toMonthKey(p.ref_month) >= meses[0]),
     recibosPorEmitir,

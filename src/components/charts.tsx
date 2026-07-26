@@ -1,21 +1,27 @@
 "use client";
 
-// Gráficos do dashboard (Recharts exige client component).
-// Cores seguem a skill dataviz: um único hue de destaque (o teal-700 já usado em
-// toda a app, ~5.6:1 em branco) para a série "principal", cinzentos zinc para
-// contexto/derivados (sem custo de CVD — são acromáticos) e a paleta de estado fixa
-// (verde/âmbar/vermelho) reservada só para a taxa de cobrança, onde a cor É de facto
-// um estado (cumpriu/não cumpriu a meta) — nunca reutilizada para "despesas", que é
-// um fluxo normal, não um estado de erro. Grelhas em cinza sólido hairline (nunca
-// tracejadas); só a linha de referência "esperado"/"meta" é tracejada, de propósito.
+// Gráficos (Recharts exige client component).
+//
+// V3: este ficheiro tinha uma paleta própria em hex, duplicada light/dark, e um
+// `useIsDark()` com matchMedia para escolher entre as duas. Passou a ler os MESMOS tokens
+// semânticos do resto da app (`--s-*` em globals.css): o Recharts pinta atributos SVG, e
+// `stroke="var(--s-tinta)"` resolve no browser como qualquer outra propriedade CSS. O tema
+// deixa de ser decidido em JavaScript, e um gráfico nunca mais pode discordar da página em
+// que está.
+//
+// Corrige também uma violação da regra fundadora: a taxa de cobrança tinha um verde de
+// "bom" (#0ca30c). Não há verde de "ok" nesta app — um mês cobrado a 100% é TINTA, calado,
+// como o resto do que está confirmado. A cor só entra quando há atenção (âmbar) ou perda
+// (vermelho), que é quando quer dizer alguma coisa.
+//
+// A grelha de fundo saiu: a separação nesta app é por hairline, e uma grelha atrás das
+// barras é chrome a competir com os dados. Fica só a linha do zero e a da meta.
 
-import { useEffect, useState } from "react";
 import {
+  Area,
   Bar,
-  CartesianGrid,
   Cell,
   ComposedChart,
-  Legend,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -26,46 +32,14 @@ import {
 import type { TooltipProps } from "recharts";
 import { fmtEur, fmtPct } from "@/lib/format";
 
-// ---------- Paleta ----------
-// Recharts pinta SVG com cores passadas por prop (fill/stroke) — não segue classes
-// `dark:`. P3-3: cada cor "de fundo" (grelha, texto de eixo, referência tracejada, e o
-// próprio hue da barra principal) tem um par light/dark, escolhido por `useIsDark()`
-// (matchMedia nativo, sem dependência nova). A paleta de ESTADO (bom/aviso/crítico) fica
-// FIXA nos dois temas — vem de dataviz/references/palette.md e não é "fundo", é o
-// significado em si (mudar por tema tornaria a leitura inconsistente entre ecrãs).
-const PALETTE_LIGHT = {
-  recebido: "#0f766e", // teal-700 — accent da app; contraste ~5.6:1 em branco
-  liquidoBar: "rgba(15,118,110,0.42)",
-  esperado: "#a1a1aa", // zinc-400 — referência tracejada, recessiva por design
-  grid: "#e4e4e7", // zinc-200 — grelha/eixo hairline
-  mutedText: "#71717a", // zinc-500 — texto de eixos
-};
-const PALETTE_DARK = {
-  recebido: "#2dd4bf", // teal-400 — mais claro para não ficar baço no fundo escuro
-  liquidoBar: "rgba(45,212,191,0.42)", // mesmo hue, mesma lógica: 42% = "sobra depois das despesas"
-  esperado: "#71717a", // zinc-500 — continua recessivo, agora contra fundo escuro
-  grid: "#27272a", // zinc-800 — hairline discreta em fundo escuro
-  mutedText: "#a1a1aa", // zinc-400 — legível em fundo escuro
-};
+// Os tokens, tal como estão em globals.css. Trocam de par com o tema sozinhos.
+const TINTA = "var(--s-tinta)";
+const TINTA_3 = "var(--s-tinta-3)";
+const REGUA = "var(--s-regua)";
+const ATENCAO = "var(--s-atencao)";
+const PERDA = "var(--s-perda)";
 
-/** matchMedia nativo — sem seletor manual na app, só segue o SO/browser (ver P3-3). */
-function useIsDark(): boolean {
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setIsDark(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return isDark;
-}
-
-// Paleta de estado fixa (dataviz/references/palette.md) — reservada à taxa de cobrança,
-// que é genuinamente um estado (cumpriu/não cumpriu), ao contrário de despesas/líquido.
-const COLOR_GOOD = "#0ca30c";
-const COLOR_WARNING = "#fab219";
-const COLOR_CRITICAL = "#d03b3b";
+const EIXO = { fontSize: 12, fill: TINTA_3 } as const;
 
 const SERIES_ORDER: Record<string, number> = {
   recebido: 0,
@@ -86,8 +60,8 @@ export interface CollectionRateDatum {
   taxa: number;
 }
 
-// Pequena chave em linha (nunca uma caixa) para identificar a série no tooltip —
-// mais leve visualmente à densidade do tooltip; tracejada para "esperado".
+// Chave em linha (nunca uma caixa) para identificar a série no tooltip: mais leve à
+// densidade do tooltip. Tracejada para "esperado", que é referência e não medição.
 function SeriesSwatch({ color, dashed }: { color: string; dashed?: boolean }) {
   return (
     <svg width="14" height="8" className="shrink-0" aria-hidden="true">
@@ -105,43 +79,49 @@ function SeriesSwatch({ color, dashed }: { color: string; dashed?: boolean }) {
   );
 }
 
+function Balao({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-regua bg-elevado px-3 py-2 text-xs shadow-sm">
+      {children}
+    </div>
+  );
+}
+
 function FlowTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  const palette = useIsDark() ? PALETTE_DARK : PALETTE_LIGHT;
   if (!active || !payload || payload.length === 0) return null;
   const sorted = [...payload].sort(
     (a, b) => (SERIES_ORDER[String(a.dataKey)] ?? 9) - (SERIES_ORDER[String(b.dataKey)] ?? 9),
   );
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="mb-1.5 font-semibold text-zinc-900 dark:text-zinc-100">{label}</p>
+    <Balao>
+      <p className="mb-1.5 font-medium text-tinta">{label}</p>
       <div className="space-y-1">
         {sorted.map((entry) => (
           <div key={String(entry.dataKey)} className="flex items-center gap-2">
-            <SeriesSwatch color={entry.color ?? palette.mutedText} dashed={entry.dataKey === "esperado"} />
-            <span className="flex-1 text-zinc-500 dark:text-zinc-400">{entry.name}</span>
-            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{fmtEur(entry.value)}</span>
+            <SeriesSwatch color={entry.color ?? TINTA_3} dashed={entry.dataKey === "esperado"} />
+            <span className="flex-1 text-tinta-2">{entry.name}</span>
+            <span className="font-medium tabular-nums text-tinta">{fmtEur(entry.value)}</span>
           </div>
         ))}
       </div>
-    </div>
+    </Balao>
   );
 }
 
-/** Legenda do gráfico de fluxo, para o header do cartão (o cliente pediu-a lá em cima). */
+/** Legenda do fluxo, para o cabeçalho da secção. */
 export function FlowLegend() {
-  const palette = useIsDark() ? PALETTE_DARK : PALETTE_LIGHT;
   return (
-    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[11px] text-tinta-3">
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: palette.recebido }} />
+        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: TINTA }} />
         Bruto
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: palette.liquidoBar }} />
+        <span className="h-2.5 w-2.5 rounded-[3px] opacity-40" style={{ background: TINTA }} />
         Líquido
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-0 w-3.5 border-t-2 border-dashed" style={{ borderColor: palette.esperado }} />
+        <span className="h-0 w-3.5 border-t-2 border-dashed" style={{ borderColor: TINTA_3 }} />
         Esperado
       </span>
     </div>
@@ -149,38 +129,38 @@ export function FlowLegend() {
 }
 
 /**
- * Gráfico principal do dashboard: 12 meses, barras Bruto (recebido) vs Líquido
- * (recebido − despesas) e referência tracejada para o esperado — tudo em € num só eixo.
- * A série "Despesas" saiu por pedido do cliente: o que interessa comparar é quanto
- * entrou e quanto sobrou, e a despesa já está implícita na distância entre as duas barras.
+ * Doze meses: barras do bruto recebido e do líquido (recebido menos despesas), com o
+ * esperado como referência tracejada. O que entrou é dinheiro confirmado, logo é tinta;
+ * o esperado é referência, logo é recessivo. A despesa não tem série própria: está na
+ * distância entre as duas barras.
  */
 export function MonthlyFlowChart({ data }: { data: MonthlyFlowDatum[] }) {
-  const palette = useIsDark() ? PALETTE_DARK : PALETTE_LIGHT;
   return (
     <ResponsiveContainer width="100%" height={280}>
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }} barGap={2} barCategoryGap="22%">
-        <CartesianGrid vertical={false} stroke={palette.grid} />
-        <XAxis
-          dataKey="label"
-          tick={{ fontSize: 12, fill: palette.mutedText }}
-          axisLine={false}
-          tickLine={false}
-        />
+        <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
-          tick={{ fontSize: 12, fill: palette.mutedText }}
+          tick={EIXO}
           axisLine={false}
           tickLine={false}
           width={72}
         />
-        <ReferenceLine y={0} stroke={palette.grid} />
-        <Bar dataKey="recebido" name="Bruto" fill={palette.recebido} radius={[3, 3, 0, 0]} barSize={18} />
-        <Bar dataKey="liquido" name="Líquido" fill={palette.liquidoBar} radius={[3, 3, 0, 0]} barSize={18} />
+        <ReferenceLine y={0} stroke={REGUA} />
+        <Bar dataKey="recebido" name="Bruto" fill={TINTA} radius={[3, 3, 0, 0]} barSize={18} />
+        <Bar
+          dataKey="liquido"
+          name="Líquido"
+          fill={TINTA}
+          fillOpacity={0.4}
+          radius={[3, 3, 0, 0]}
+          barSize={18}
+        />
         <Line
           dataKey="esperado"
           name="Esperado"
           type="monotone"
-          stroke={palette.esperado}
+          stroke={TINTA_3}
           strokeWidth={1.5}
           strokeDasharray="4 3"
           strokeLinecap="round"
@@ -188,112 +168,115 @@ export function MonthlyFlowChart({ data }: { data: MonthlyFlowDatum[] }) {
           dot={false}
           activeDot={false}
         />
-        <Tooltip content={<FlowTooltip />} cursor={{ fill: palette.grid, opacity: 0.5 }} />
+        <Tooltip content={<FlowTooltip />} cursor={{ fill: REGUA, opacity: 0.5 }} />
       </ComposedChart>
     </ResponsiveContainer>
   );
 }
 
-export interface ArrearsFlowDatum {
+export interface AcumuladoDatum {
   label: string;
-  esperado: number;
-  recebido: number;
+  esteAno: number | null;
+  anoAnterior: number;
 }
 
-const ARREARS_SERIES_ORDER: Record<string, number> = {
-  recebido: 0,
-  esperado: 1,
-};
-
-function ArrearsFlowTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  const palette = useIsDark() ? PALETTE_DARK : PALETTE_LIGHT;
+function AcumuladoTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload || payload.length === 0) return null;
-  const sorted = [...payload].sort(
-    (a, b) => (ARREARS_SERIES_ORDER[String(a.dataKey)] ?? 9) - (ARREARS_SERIES_ORDER[String(b.dataKey)] ?? 9),
-  );
+  const este = payload.find((p) => p.dataKey === "esteAno")?.value;
+  const anterior = payload.find((p) => p.dataKey === "anoAnterior")?.value;
+  const delta = este != null && anterior != null ? este - anterior : null;
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="mb-1.5 font-semibold text-zinc-900 dark:text-zinc-100">{label}</p>
+    <Balao>
+      <p className="mb-1.5 font-medium text-tinta">Até {label}</p>
       <div className="space-y-1">
-        {sorted.map((entry) => (
-          <div key={String(entry.dataKey)} className="flex items-center gap-2">
-            <SeriesSwatch color={entry.color ?? palette.mutedText} dashed={entry.dataKey === "esperado"} />
-            <span className="flex-1 text-zinc-500 dark:text-zinc-400">{entry.name}</span>
-            <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{fmtEur(entry.value)}</span>
-          </div>
-        ))}
+        <div className="flex items-center gap-3">
+          <SeriesSwatch color={TINTA} />
+          <span className="flex-1 text-tinta-2">Este ano</span>
+          <span className="font-medium tabular-nums text-tinta">{fmtEur(este)}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <SeriesSwatch color={TINTA_3} dashed />
+          <span className="flex-1 text-tinta-2">Ano anterior</span>
+          <span className="tabular-nums text-tinta-2">{fmtEur(anterior)}</span>
+        </div>
+        {delta != null && (
+          <p className="border-t border-regua pt-1 tabular-nums" style={{ color: delta < 0 ? PERDA : undefined }}>
+            {delta >= 0 ? "+" : ""}
+            {fmtEur(delta)} face ao ano passado
+          </p>
+        )}
       </div>
-    </div>
+    </Balao>
   );
 }
 
 /**
- * Página de Atrasos: recebido real (barras) vs. esperado (linha tracejada — aproximação
- * pelas rendas atuais dos contratos ativos, constante nos 12 meses). Mesma convenção do
- * MonthlyFlowChart: tracejado = esperado.
+ * O ano civil acumulado contra o mesmo ponto do ano anterior. Responde à pergunta que os
+ * 12 meses móveis nunca respondem: "quanto já entrou este ano, e vamos melhor ou pior?".
+ * A área cheia é o ano corrente (dinheiro confirmado, logo tinta); o ano anterior é uma
+ * linha tracejada recessiva, porque é referência e não medição nova. A série do ano
+ * corrente pára no mês em curso: os meses por vir vêm a `null` de propósito, para a linha
+ * não cair a pique até zero e sugerir uma quebra que não existe.
  */
-export function ArrearsFlowChart({ data }: { data: ArrearsFlowDatum[] }) {
-  const palette = useIsDark() ? PALETTE_DARK : PALETTE_LIGHT;
+export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }} barCategoryGap="30%">
-        <CartesianGrid vertical={false} stroke={palette.grid} />
-        <XAxis
-          dataKey="label"
-          tick={{ fontSize: 12, fill: palette.mutedText }}
-          axisLine={false}
-          tickLine={false}
-        />
+    <ResponsiveContainer width="100%" height={240}>
+      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+        <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
-          tick={{ fontSize: 12, fill: palette.mutedText }}
+          tick={EIXO}
           axisLine={false}
           tickLine={false}
           width={72}
         />
-        <ReferenceLine y={0} stroke={palette.grid} />
-        <Bar dataKey="recebido" name="Recebido" fill={palette.recebido} radius={[4, 4, 0, 0]} barSize={22} />
-        <Line
-          dataKey="esperado"
-          name="Esperado"
+        <ReferenceLine y={0} stroke={REGUA} />
+        <Area
+          dataKey="esteAno"
+          name="Este ano"
           type="monotone"
-          stroke={palette.esperado}
+          stroke={TINTA}
+          strokeWidth={2}
+          fill={TINTA}
+          fillOpacity={0.1}
+          connectNulls={false}
+          dot={false}
+          activeDot={{ r: 3, fill: TINTA, stroke: "none" }}
+        />
+        <Line
+          dataKey="anoAnterior"
+          name="Ano anterior"
+          type="monotone"
+          stroke={TINTA_3}
           strokeWidth={1.5}
           strokeDasharray="4 3"
           strokeLinecap="round"
-          strokeLinejoin="round"
           dot={false}
           activeDot={false}
         />
-        <Tooltip content={<ArrearsFlowTooltip />} cursor={{ fill: palette.grid, opacity: 0.5 }} />
-        <Legend
-          verticalAlign="bottom"
-          align="center"
-          iconSize={10}
-          wrapperStyle={{ fontSize: 12, color: palette.mutedText, paddingTop: 12 }}
-        />
+        <Tooltip content={<AcumuladoTooltip />} cursor={{ stroke: REGUA }} />
       </ComposedChart>
     </ResponsiveContainer>
   );
 }
 
-function rateColor(taxa: number): string {
-  if (taxa >= 1) return COLOR_GOOD;
-  if (taxa >= 0.8) return COLOR_WARNING;
-  return COLOR_CRITICAL;
+/** Um mês cobrado por inteiro não merece cor. Só a falta é que fala. */
+function corDaTaxa(taxa: number): string {
+  if (taxa >= 1) return TINTA;
+  if (taxa >= 0.8) return ATENCAO;
+  return PERDA;
 }
 
 function RateTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload || payload.length === 0) return null;
-  const value = payload[0]?.value;
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-sm shadow-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="font-semibold text-zinc-900 dark:text-zinc-100">{label}</p>
-      <p className="mt-0.5 text-zinc-500 dark:text-zinc-400">
-        Taxa de cobrança:{" "}
-        <span className="font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPct(value, 0)}</span>
+    <Balao>
+      <p className="font-medium text-tinta">{label}</p>
+      <p className="mt-0.5 text-tinta-2">
+        Cobrado:{" "}
+        <span className="font-medium tabular-nums text-tinta">{fmtPct(payload[0]?.value, 0)}</span>
       </p>
-    </div>
+    </Balao>
   );
 }
 
@@ -307,48 +290,40 @@ function LegendChip({ color, label }: { color: string; label: string }) {
 }
 
 /**
- * Mini gráfico da taxa de cobrança mensal (recebido/esperado). A cor por barra é um
- * estado (cumpriu/quase/falhou a meta), não uma identidade de série — por isso usa a
- * paleta de estado fixa em vez de um hue categórico, sempre acompanhada da legenda
- * por baixo (cor nunca sozinha a transmitir o significado).
+ * Taxa de cobrança mensal. A cor aqui é um estado, não a identidade de uma série, por isso
+ * varia por barra; mas o estado "cumpriu" é ausência de cor. A legenda por baixo garante
+ * que a cor nunca é a única coisa a transmitir o significado.
  */
 export function CollectionRateChart({ data }: { data: CollectionRateDatum[] }) {
-  const palette = useIsDark() ? PALETTE_DARK : PALETTE_LIGHT;
   const yMax = Math.max(1, ...data.map((d) => d.taxa)) * 1.05;
 
   return (
     <div>
       <ResponsiveContainer width="100%" height={160}>
         <ComposedChart data={data} margin={{ top: 4, right: 8, left: 4, bottom: 0 }} barCategoryGap="28%">
-          <CartesianGrid vertical={false} stroke={palette.grid} />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: palette.mutedText }}
-            axisLine={false}
-            tickLine={false}
-          />
+          <XAxis dataKey="label" tick={{ ...EIXO, fontSize: 11 }} axisLine={false} tickLine={false} />
           <YAxis
             domain={[0, yMax]}
             ticks={[0, 0.5, 1]}
             tickFormatter={(v: number) => fmtPct(v, 0)}
-            tick={{ fontSize: 11, fill: palette.mutedText }}
+            tick={{ ...EIXO, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             width={40}
           />
-          <ReferenceLine y={1} stroke={palette.esperado} strokeDasharray="3 2" />
-          <Tooltip content={<RateTooltip />} cursor={{ fill: palette.grid, opacity: 0.4 }} />
-          <Bar dataKey="taxa" name="Taxa de cobrança" fill={COLOR_GOOD} radius={[4, 4, 0, 0]} barSize={16}>
+          <ReferenceLine y={1} stroke={TINTA_3} strokeDasharray="3 2" />
+          <Tooltip content={<RateTooltip />} cursor={{ fill: REGUA, opacity: 0.4 }} />
+          <Bar dataKey="taxa" name="Cobrado" radius={[4, 4, 0, 0]} barSize={16}>
             {data.map((d) => (
-              <Cell key={d.label} fill={rateColor(d.taxa)} />
+              <Cell key={d.label} fill={corDaTaxa(d.taxa)} />
             ))}
           </Bar>
         </ComposedChart>
       </ResponsiveContainer>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-        <LegendChip color={COLOR_GOOD} label="≥ 100%" />
-        <LegendChip color={COLOR_WARNING} label="80–99%" />
-        <LegendChip color={COLOR_CRITICAL} label="< 80%" />
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-tinta-3">
+        <LegendChip color={TINTA} label="tudo cobrado" />
+        <LegendChip color={ATENCAO} label="80 a 99%" />
+        <LegendChip color={PERDA} label="abaixo de 80%" />
       </div>
     </div>
   );
