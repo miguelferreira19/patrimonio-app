@@ -1,7 +1,9 @@
 import { Card, PageHeader } from "@/components/ui";
 import { getSession } from "@/lib/data";
-import type { Landlord, MarketBenchmark, Profile, UpdateCoefficient } from "@/lib/types";
+import { isCurrentProperty, missingFichaFields } from "@/lib/calc";
+import type { Landlord, MarketBenchmark, Profile, Property, UpdateCoefficient } from "@/lib/types";
 import { CoefficientsCard } from "./coefficients-card";
+import { FichasCard, type FichaPorPreencher } from "./fichas-card";
 import { IneCard } from "./ine-card";
 import { LargarFicheiro } from "@/components/importar/largar-ficheiro";
 import { SyncRentsCard } from "./sync-rents-card";
@@ -37,6 +39,7 @@ export default async function AdminPage() {
     ineBenchQ,
     manualBenchQ,
     coefficientsQ,
+    propertiesQ,
   ] = await Promise.all([
     supabase.from("landlords").select("*").order("name"),
     supabase.from("profiles").select("*"),
@@ -46,6 +49,10 @@ export default async function AdminPage() {
     supabase.from("market_benchmarks").select("period,source,level,fetched_at").eq("source", "ine"),
     supabase.from("market_benchmarks").select("*").eq("source", "manual").order("dicofre"),
     supabase.from("update_coefficients").select("*"),
+    supabase
+      .from("properties")
+      .select("id,name,area_m2,typology,dicofre,vpt,status")
+      .order("name"),
   ]);
 
   const landlords = (landlordsQ.data ?? []) as Landlord[];
@@ -53,6 +60,20 @@ export default async function AdminPage() {
   const manualBenchmarks = (manualBenchQ.data ?? []) as MarketBenchmark[];
   const ineRows = (ineBenchQ.data ?? []) as IneBenchmarkRow[];
   const coefficients = (coefficientsQ.data ?? []) as UpdateCoefficient[];
+
+  // Só as frações CORRENTES: um terreno sem área e um imóvel vendido não bloqueiam análise
+  // nenhuma, e enchiam a lista de linhas que nunca se vão preencher (P0-2c).
+  const fichas: FichaPorPreencher[] = ((propertiesQ.data ?? []) as Property[])
+    .filter(isCurrentProperty)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      emFalta: missingFichaFields(p),
+      area_m2: p.area_m2,
+      typology: p.typology,
+      vpt: p.vpt,
+    }))
+    .filter((f) => f.emFalta.length > 0);
 
   const nProperties = propertiesCountQ.count ?? 0;
   const nContracts = contractsCountQ.count ?? 0;
@@ -75,6 +96,8 @@ export default async function AdminPage() {
       />
 
       <LargarFicheiro landlords={landlords} />
+
+      <FichasCard fichas={fichas} />
 
       <SyncRentsCard />
 

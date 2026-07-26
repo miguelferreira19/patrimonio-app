@@ -52,12 +52,17 @@ export default async function CarteiraPage({
   }>;
 }) {
   const sp = await searchParams;
-  const lente: Lente = isLente(sp.lente) ? sp.lente : "cobranca";
   const janela = JANELAS.includes(Number(sp.meses) as 12 | 24) ? Number(sp.meses) : 24;
   const soAtraso = sp.filtro === "atraso";
   const porSenhorio = sp.grupo === "senhorio";
 
   const [{ isAdmin }, snap] = await Promise.all([getSession(), getSnapshot()]);
+
+  // V3: para quem nao pode agir, a Carteira e uma so pergunta — quem esta em atraso. As
+  // outras quatro lentes sao ferramentas de quem cobra, atualiza rendas e decide vender.
+  // A coercao e no servidor, nao so no seletor: escrever `?lente=mercado` a mao nao chega
+  // para as ver.
+  const lente: Lente = !isAdmin ? "risco" : isLente(sp.lente) ? sp.lente : "cobranca";
 
   // A lista TODA de territórios do INE, só para quem edita: é no formulário de fração que
   // se escolhe o território de uma fração que ainda não tem nenhum, e o snapshot só traz os
@@ -112,12 +117,16 @@ export default async function CarteiraPage({
       </Lede>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-regua py-2">
-        <Segmentado
-          opcoes={Object.entries(LENTES).map(([v, label]) => ({ v, label }))}
-          ativo={lente}
-          href={(v) => hrefCom(sp, { lente: v, filtro: undefined })}
-        />
-        <span className="h-4 w-px bg-regua" />
+        {isAdmin && (
+          <>
+            <Segmentado
+              opcoes={Object.entries(LENTES).map(([v, label]) => ({ v, label }))}
+              ativo={lente}
+              href={(v) => hrefCom(sp, { lente: v, filtro: undefined })}
+            />
+            <span className="h-4 w-px bg-regua" />
+          </>
+        )}
         <Segmentado
           opcoes={JANELAS.map((n) => ({ v: String(n), label: `${n}m` }))}
           ativo={String(janela)}

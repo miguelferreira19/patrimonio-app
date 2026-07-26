@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Building2, Percent, Target, TriangleAlert } from "lucide-react";
 import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
 import { sum } from "@/lib/calc";
+import { getSession } from "@/lib/data";
 import { getSnapshotLeve } from "@/lib/portfolio";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
 import { DeviationBadge } from "@/components/kit/badges";
@@ -9,6 +11,12 @@ import { DeviationBadge } from "@/components/kit/badges";
 export const dynamic = "force-dynamic";
 
 export default async function MercadoPage() {
+  // V3: superficie de administracao. Enquanto a `area_m2` estiver por preencher, o desvio
+  // face ao INE e o valor estimado sao nulos na maioria das fracoes — e uma pagina que
+  // responde "n/d" a quem so a abre duas vezes por ano nao merece um lugar no rail.
+  const { isAdmin } = await getSession();
+  if (!isAdmin) redirect("/");
+
   // Fase 1: o marketView de cada fracao ja vem calculado no snapshot (PLANO.md §7.1).
   // P0-2c continua garantido: `correntes` exclui terrenos e imoveis vendidos.
   const snap = await getSnapshotLeve();

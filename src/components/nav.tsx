@@ -39,9 +39,12 @@ interface NavGroup {
 // foram absorvidos pelas lentes da Carteira — as rotas antigas redirecionam para lá, e
 // portanto nenhum bookmark se perdeu.
 //
-// O terceiro destino é o Ano, que na Fase 5 comeu as Despesas e o IRS. O Mercado e a
-// Saúde dos dados continuam a ser o destino das decisões dessas naturezas na fila do
-// Agora — a fila prioriza, a página detalha.
+// O terceiro destino é o Ano, que na Fase 5 comeu as Despesas e o IRS.
+//
+// V3: estes três são o que TODA a gente vê. Quem abre a app duas vezes por ano vem
+// confirmar três coisas — atrasos, agregados e IRS — e é exatamente isto. O Mercado
+// desceu para a administração: sem `area_m2` preenchida não tem números para mostrar,
+// e um destino vazio custa mais atenção do que vale.
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Visão geral",
@@ -52,10 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Referência",
-    items: [
-      { href: `/ano/${new Date().getFullYear()}`, label: "Ano", icon: Landmark },
-      { href: "/mercado", label: "Mercado", icon: TrendingUp },
-    ],
+    items: [{ href: `/ano/${new Date().getFullYear()}`, label: "Ano", icon: Landmark }],
   },
 ];
 
@@ -63,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
 const ADMIN_GROUP: NavGroup = {
   label: "Administração",
   items: [
+    { href: "/mercado", label: "Mercado", icon: TrendingUp },
     { href: "/senhorios", label: "Senhorios", icon: Users },
     { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
     { href: "/admin", label: "Admin", icon: Settings },

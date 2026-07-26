@@ -114,6 +114,38 @@ export async function saveProperty(input: PropertyInput): Promise<ActionResult> 
   }
 }
 
+/** Preenchimento em LOTE da ficha (V3): área, tipologia e VPT de várias frações de uma vez.
+ *
+ *  Existe porque a alternativa era abrir ~61 formulários modais, um por fração, para copiar
+ *  três campos da caderneta predial. É esse preenchimento que desbloqueia o €/m² vs INE, o
+ *  valor estimado e o yield — hoje nulos em quase toda a carteira (PLANO.md Apêndice B.2).
+ *
+ *  Só escreve os campos que vieram preenchidos: um campo deixado em branco NÃO apaga o que
+ *  já lá está, senão gravar a linha de uma fração meia preenchida destruía o resto.
+ */
+export async function preencherFichas(
+  fichas: Array<{ id: string; area_m2?: number | null; typology?: string | null; vpt?: number | null }>,
+): Promise<ActionResult> {
+  try {
+    const { supabase } = await requireAdmin();
+    let n = 0;
+    for (const f of fichas) {
+      const row: Record<string, number | string> = {};
+      if (f.area_m2 != null && f.area_m2 > 0) row.area_m2 = f.area_m2;
+      if (f.typology) row.typology = f.typology.trim();
+      if (f.vpt != null && f.vpt > 0) row.vpt = f.vpt;
+      if (Object.keys(row).length === 0) continue;
+      const { error } = await supabase.from("properties").update(row).eq("id", f.id);
+      if (error) throw new Error(error.message);
+      n++;
+    }
+    refresh();
+    return { ok: true, info: n === 1 ? "1 ficha atualizada." : `${n} fichas atualizadas.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export async function deleteProperty(id: string): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
