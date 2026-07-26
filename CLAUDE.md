@@ -110,14 +110,27 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
 (era o bug B2, que fazia o mesmo mês aparecer vermelho em Pagamentos e verde em Atrasos).
 
 ## Estrutura
-- `src/app/(app)/` páginas autenticadas: Agora (page.tsx), **carteira** (a faixa, com lentes por
-  `searchParams`), fracoes/[id] (ficha), despesas, mercado, senhorios, saude, irs,
-  carta/[contractId], admin. `pagamentos`, `atrasos` e `fracoes` são hoje só **redirects** para a
-  lente equivalente da Carteira — não voltar a pôr conteúdo lá.
+- `src/app/(app)/` páginas autenticadas. **Viewer vê 3 destinos** (Agora, Carteira, Ano); o resto é
+  admin-only, com guarda de página (`redirect("/")`), não só filtro no menu:
+  - Agora (`page.tsx`) — duas leituras SEPARADAS, `Estado` para viewer e `Decisoes` para admin.
+    Não voltar a entrelaçá-las com `isAdmin ?` no meio da árvore.
+  - `carteira` — a faixa, com lentes por `searchParams`. Para viewer a lente é **forçada a
+    `risco` no servidor**; não chega esconder o seletor.
+  - `ano/[ano]` — o documento fiscal. `fracoes/[id]`, `carta/[contractId]`.
+  - Admin: **`analise`** (projeção, série anual, concentração, conselhos), `mercado`, `senhorios`,
+    `saude`, `admin`.
+  - `pagamentos`, `atrasos`, `fracoes`, `despesas` e `irs` são só **redirects** — não voltar a pôr
+    conteúdo lá.
 - `src/components/` ui.tsx, modal.tsx, kit/, faixa/, nav.tsx, charts.tsx, forms.tsx, setup-notice.tsx
 - `src/lib/` cn.ts, format.ts (fmtEur/fmtDate/monthKey/splitEur), calc.ts, arrears.ts (metodologia de
   atrasos — PLANO.md Apêndice A.2), monthcell.ts, health.ts, irs.ts, ine.ts, data.ts, paginate.ts,
   parse.ts, types.ts, supabase/, actions/ — cada um com o seu `*.check.ts`
+- `src/lib/portfolio/` load.ts (o ÚNICO I/O), snapshot.ts, insights.ts (a fila do Agora), risk.ts,
+  ano.ts, e os módulos da V3: **renda.ts** (acumulado do ano, série anual, CAGR, rendas paradas,
+  concentração por inquilino com HHI), **futuro.ts** (projeção a 24 meses aplicando o `pPagar` do
+  risk.ts) e **conselhos.ts**. Os conselhos são uma lista SEPARADA da fila do Agora: reusam o tipo
+  `Insight` mas não entram no `GERADORES` do insights.ts, senão o ritual mensal enchia-se de
+  estratégia de longo prazo.
 - `dados/` scripts Python de análise/import + exports reais por senhorio (Pai, Avo_Miguel, …)
 - `supabase/schema.sql` — fonte de verdade do modelo de dados
 

@@ -10,6 +10,7 @@ import {
   HandCoins,
   Landmark,
   LayoutDashboard,
+  LineChart,
   LogOut,
   Menu,
   ReceiptText,
@@ -63,7 +64,8 @@ const NAV_GROUPS: NavGroup[] = [
 const ADMIN_GROUP: NavGroup = {
   label: "Administração",
   items: [
-    { href: "/mercado", label: "Mercado", icon: TrendingUp },
+    { href: "/analise", label: "Análise", icon: TrendingUp },
+    { href: "/mercado", label: "Mercado", icon: LineChart },
     { href: "/senhorios", label: "Senhorios", icon: Users },
     { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
     { href: "/admin", label: "Admin", icon: Settings },

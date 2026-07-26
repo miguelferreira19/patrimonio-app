@@ -32,6 +32,20 @@ export const getSnapshotLeve = cache(async (): Promise<Snapshot> => {
   return buildSnapshot(raw, today);
 });
 
+/** Snapshot MAIS o `raw` que o produziu, numa só leitura.
+ *
+ *  A `/analise` precisa de coisas que o snapshot não expõe de propósito: o histórico
+ *  completo de pagamentos (o snapshot só passa a janela de 12 meses às superfícies, para
+ *  não desperdiçar payload RSC), as despesas, as atualizações de renda e os coeficientes.
+ *  Em vez de alargar o `Snapshot` com quatro campos que só uma página usa, esta função
+ *  devolve os dois e a página serve-se do que precisa. Continua a ser UMA leitura. */
+export const getSnapshotComRaw = cache(async () => {
+  const supabase = await createClient();
+  const today = new Date();
+  const raw = await loadRaw(supabase, monthKeyFromDate(today));
+  return { raw, snap: buildSnapshot(raw, today), today };
+});
+
 export { buildSnapshot } from "./snapshot";
 export type { Ativo, MesAgregado, Snapshot, SnapshotOptions } from "./snapshot";
 export type { RawData } from "./load";

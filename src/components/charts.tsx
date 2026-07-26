@@ -38,6 +38,7 @@ const TINTA_3 = "var(--s-tinta-3)";
 const REGUA = "var(--s-regua)";
 const ATENCAO = "var(--s-atencao)";
 const PERDA = "var(--s-perda)";
+const FUTURO = "var(--s-futuro)";
 
 const EIXO = { fontSize: 12, fill: TINTA_3 } as const;
 
@@ -255,6 +256,102 @@ export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
           activeDot={false}
         />
         <Tooltip content={<AcumuladoTooltip />} cursor={{ stroke: REGUA }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+export interface ProjecaoDatum {
+  label: string;
+  contratado: number;
+  esperado: number;
+  /** Base da banda (p10) e altura dela (p90 - p10): o Recharts empilha duas áreas para
+   *  desenhar um intervalo, porque não tem primitiva de banda. A de baixo é invisível. */
+  p10: number;
+  banda: number;
+}
+
+function ProjecaoTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload || payload.length === 0) return null;
+  const v = (k: string) => payload.find((p) => p.dataKey === k)?.value;
+  const p10 = v("p10");
+  const banda = v("banda");
+  return (
+    <Balao>
+      <p className="mb-1.5 font-medium text-tinta">{label}</p>
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          <SeriesSwatch color={TINTA_3} dashed />
+          <span className="flex-1 text-tinta-2">Contratado</span>
+          <span className="tabular-nums text-tinta-2">{fmtEur(v("contratado"))}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <SeriesSwatch color={TINTA} />
+          <span className="flex-1 text-tinta-2">Esperado</span>
+          <span className="font-medium tabular-nums text-tinta">{fmtEur(v("esperado"))}</span>
+        </div>
+        {p10 != null && banda != null && (
+          <p className="border-t border-regua pt-1 text-tinta-3">
+            Entre {fmtEur(p10)} e {fmtEur(p10 + banda)}, com 90% de confiança
+          </p>
+        )}
+      </div>
+    </Balao>
+  );
+}
+
+/**
+ * A projeção de receita. A linha cheia é o esperado (renda contratada vezes a
+ * probabilidade de cada inquilino pagar, do modelo de risco); a banda em ardósia é o
+ * intervalo de credibilidade; o tracejado é o contratado, ou seja, o que entraria se
+ * todos pagassem sempre. A distância entre o tracejado e a linha É o risco de crédito,
+ * desenhado, e a queda do tracejado ao longo do tempo são os contratos a expirar.
+ *
+ * Ardósia porque é futuro: a app ainda não sabe. É o mesmo vocabulário de cor da faixa,
+ * onde tudo o que está além da fronteira dos dados é ardósia e hachura.
+ */
+export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+        <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+        <YAxis
+          tickFormatter={(v: number) => fmtEur(v)}
+          tick={EIXO}
+          axisLine={false}
+          tickLine={false}
+          width={72}
+        />
+        <ReferenceLine y={0} stroke={REGUA} />
+        <Area dataKey="p10" stackId="banda" stroke="none" fill="none" isAnimationActive={false} />
+        <Area
+          dataKey="banda"
+          stackId="banda"
+          stroke="none"
+          fill={FUTURO}
+          fillOpacity={0.18}
+          isAnimationActive={false}
+        />
+        <Line
+          dataKey="contratado"
+          name="Contratado"
+          type="monotone"
+          stroke={TINTA_3}
+          strokeWidth={1.5}
+          strokeDasharray="4 3"
+          dot={false}
+          activeDot={false}
+        />
+        <Line
+          dataKey="esperado"
+          name="Esperado"
+          type="monotone"
+          stroke={TINTA}
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 3, fill: TINTA, stroke: "none" }}
+        />
+        <Tooltip content={<ProjecaoTooltip />} cursor={{ stroke: REGUA }} />
       </ComposedChart>
     </ResponsiveContainer>
   );
