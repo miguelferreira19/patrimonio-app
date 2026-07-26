@@ -7,7 +7,8 @@
 // `expectedRent`), em vez de reimplementar essa análise.
 
 import type { ArrearsRow } from "./arrears";
-import { isCurrentProperty } from "./calc";
+import { isCurrentProperty, missingFichaFields } from "./calc";
+import { desalinhamentoDaRenda, type RendaObservada } from "./rent";
 import type { Contract, Property, PropertyOwner } from "./types";
 
 export type HealthSeverity = "erro" | "aviso" | "info";
@@ -31,6 +32,7 @@ export const KIND_LABEL: Record<string, string> = {
   contrato_zombie: "Contratos ativos sem recibos recentes",
   contrato_expirado: "Contratos ativos com data de fim já passada",
   renda_desalinhada: "Renda do contrato diferente da dos recibos",
+  renda_errada: "Renda registada desalinhada dos recibos",
   contratos_sobrepostos: "Contratos sobrepostos na mesma fração",
   renda_invalida: "Rendas a zero ou negativas",
   quotas: "Quotas de propriedade que não somam 100%",
@@ -54,6 +56,9 @@ export interface HealthInput {
   arrears: ArrearsRow[];
   /** Nº de recibos com contract_id nulo (contagem barata, sem ler as linhas todas). */
   orphanReceipts: number;
+  /** A renda que os RECIBOS dizem, por contrato (lib/rent.ts). Opcional: sem ela o check
+   *  `renda_errada` simplesmente não corre. */
+  rendaObservada?: Record<string, RendaObservada>;
   /** YYYY-MM-DD — para o check de contratos com data de fim já passada. */
   today: string;
 }
@@ -193,13 +198,36 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
     });
   }
 
+  // 6b) Renda registada desalinhada dos recibos, NAS DUAS DIREÇÕES.
+  // O `renda_desalinhada` acima só vê rendas ALTAS demais, porque a renda de referência
+  // dos Atrasos está limitada a min(rent, mediana). Uma renda BAIXA demais era invisível —
+  // e era exatamente o erro real na carteira: dois contratos com a renda a valer uma
+  // parcela do último mês (175 em vez de 331, 179 em vez de 290). Ver lib/rent.ts.
+  for (const c of contracts) {
+    if (c.status !== "ativo") continue;
+    const obs = input.rendaObservada?.[c.id];
+    const d = desalinhamentoDaRenda(c.rent, obs ?? null);
+    if (!d) continue;
+    const property = propById.get(c.property_id);
+    issues.push({
+      kind: "renda_errada",
+      severity: "erro",
+      title: property?.name ?? c.tenant_name,
+      detail:
+        d.direcao === "baixa"
+          ? `Renda registada ${c.rent} EUR, mas ${obs!.vezes} meses de recibos repetem ${obs!.valor} EUR. ` +
+            `Faltam ${d.diferenca} EUR/mes. Causa tipica: a renda foi inferida de um mes com apenas ` +
+            `parte dos recibos emitidos. Corrigir na ficha do contrato ou correr "Sincronizar rendas".`
+          : `Renda registada ${c.rent} EUR, acima dos ${obs!.valor} EUR que ${obs!.vezes} meses de ` +
+            `recibos repetem. Confirmar se a renda subiu ou se esta inflacionada.`,
+      href: property ? `/fracoes/${property.id}` : undefined,
+    });
+  }
+
   // 7) Fichas de fração incompletas — bloqueiam o €/m² vs INE na página de Mercado (P0-2).
+  // A regra vive em calc.ts porque a tira de Cobertura conta o mesmo (PLANO.md §7).
   for (const p of properties) {
-    const missing: string[] = [];
-    if (!p.area_m2) missing.push("área");
-    if (!p.typology) missing.push("tipologia");
-    if (!p.dicofre) missing.push("freguesia");
-    if (!p.vpt) missing.push("VPT");
+    const missing = missingFichaFields(p);
     if (missing.length === 0) continue;
     issues.push({
       kind: "ficha_incompleta",

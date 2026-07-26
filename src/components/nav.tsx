@@ -35,28 +35,26 @@ interface NavGroup {
   items: NavLeaf[];
 }
 
-// Grupos do rail — estrutura pensada para crescer: um novo item de topo de
-// nível (ex.: "Atrasos") entra na lista `items` do grupo "Gestão" sem tocar
-// no resto da navegação.
+// TRÊS destinos (PLANO.md §3). Pagamentos, Atrasos e Frações saíram do rail porque
+// foram absorvidos pelas lentes da Carteira — as rotas antigas redirecionam para lá, e
+// portanto nenhum bookmark se perdeu.
+//
+// O terceiro destino é o Ano, que na Fase 5 comeu as Despesas e o IRS. O Mercado e a
+// Saúde dos dados continuam a ser o destino das decisões dessas naturezas na fila do
+// Agora — a fila prioriza, a página detalha.
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Visão geral",
-    items: [{ href: "/", label: "Dashboard", icon: LayoutDashboard }],
-  },
-  {
-    label: "Gestão",
     items: [
-      { href: "/fracoes", label: "Frações", icon: Building2 },
-      { href: "/pagamentos", label: "Pagamentos", icon: HandCoins },
-      { href: "/atrasos", label: "Atrasos", icon: CalendarClock },
-      { href: "/despesas", label: "Despesas", icon: ReceiptText },
+      { href: "/", label: "Agora", icon: LayoutDashboard },
+      { href: "/carteira", label: "Carteira", icon: Building2 },
     ],
   },
   {
     label: "Referência",
     items: [
+      { href: `/ano/${new Date().getFullYear()}`, label: "Ano", icon: Landmark },
       { href: "/mercado", label: "Mercado", icon: TrendingUp },
-      { href: "/irs", label: "IRS", icon: Landmark },
     ],
   },
 ];

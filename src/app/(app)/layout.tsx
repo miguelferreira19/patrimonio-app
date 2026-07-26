@@ -29,9 +29,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const role = profile?.role ?? "viewer";
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-papel">
+      {/* Saltar a navegação: 40 links de rail antes do conteúdo é o que torna a app
+          impraticável só com teclado ou com leitor de ecrã. Só aparece com foco. */}
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-carta focus:px-3 focus:py-2 focus:text-sm focus:text-tinta focus:outline-none focus:ring-2 focus:ring-acao"
+      >
+        Saltar para o conteúdo
+      </a>
       <AppNav role={role} email={user.email ?? null} />
-      <main className="mx-auto max-w-[1360px] p-4 pb-16 md:ml-60 md:px-9 md:pb-16 md:pt-8">
+      <main
+        id="conteudo"
+        tabIndex={-1}
+        className="mx-auto max-w-[1360px] p-4 pb-16 md:ml-60 md:px-9 md:pb-16 md:pt-8"
+      >
         {error && (
           <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">
             <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />

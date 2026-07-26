@@ -1,43 +1,32 @@
 import Link from "next/link";
 import { Building2, Percent, Target, TriangleAlert } from "lucide-react";
 import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import { currentProperties, marketView, sum } from "@/lib/calc";
-import { getSession } from "@/lib/data";
+import { sum } from "@/lib/calc";
+import { getSnapshotLeve } from "@/lib/portfolio";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
-import type { Contract, MarketBenchmark, Property } from "@/lib/types";
-import { DeviationBadge } from "../fracoes/properties-table";
+import { DeviationBadge } from "@/components/kit/badges";
 
 export const dynamic = "force-dynamic";
 
 export default async function MercadoPage() {
-  const { supabase } = await getSession();
+  // Fase 1: o marketView de cada fracao ja vem calculado no snapshot (PLANO.md §7.1).
+  // P0-2c continua garantido: `correntes` exclui terrenos e imoveis vendidos.
+  const snap = await getSnapshotLeve();
 
-  const [propsQ, contractsQ, benchQ] = await Promise.all([
-    supabase.from("properties").select("*"),
-    supabase.from("contracts").select("*").eq("status", "ativo"),
-    supabase.from("market_benchmarks").select("*"),
-  ]);
-
-  // P0-2c: terrenos e imóveis vendidos saem da comparação de mercado (não são
-  // arrendáveis / já não são da família).
-  const properties = currentProperties((propsQ.data ?? []) as Property[]);
-  const contracts = (contractsQ.data ?? []) as Contract[];
-  const benchmarks = (benchQ.data ?? []) as MarketBenchmark[];
-
-  const rows = properties
-    .map((p) => {
-      const active = contracts.find((c) => c.property_id === p.id);
-      const mv = marketView(p, active, benchmarks);
-      return { property: p, contract: active, mv };
-    })
+  const rows = snap.correntes
+    .map((a) => ({ property: a.property, contract: a.activeContract ?? undefined, mv: a.mercado }))
     .sort((a, b) => {
       const da = a.mv.deviation ?? Number.POSITIVE_INFINITY;
       const db = b.mv.deviation ?? Number.POSITIVE_INFINITY;
       return da - db;
     });
 
+  // "Sem benchmarks carregados" e agora derivado do proprio snapshot: se nenhuma fracao
+  // encontrou territorio no INE, nao ha nada para comparar.
+  const benchmarksCarregados = snap.ativos.some((a) => a.mercado.benchmark !== undefined);
+
   const withDev = rows.filter((r) => r.mv.deviation !== null);
-  const totalGap = sum(rows.map((r) => r.mv.gapEurMonth));
+  const totalGap = snap.mercado.potencialMes;
   const nBelow = withDev.filter((r) => r.mv.deviation! <= -0.1).length;
   const withValue = rows.filter((r) => r.mv.estimatedValue !== null);
   const portfolioValue = sum(withValue.map((r) => r.mv.estimatedValue));
@@ -55,7 +44,7 @@ export default async function MercadoPage() {
         description="Comparação das rendas atuais com as medianas do INE por freguesia (novos contratos de arrendamento) e estimativa de valor pelos preços medianos de venda."
       />
 
-      {benchmarks.length === 0 ? (
+      {!benchmarksCarregados ? (
         <EmptyState icon={TriangleAlert}>
           Ainda não há benchmarks carregados. Vai a <strong>Admin → Benchmarks INE</strong> para
           importar as medianas por freguesia, e preenche o DICOFRE e a área de cada fração.

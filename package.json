@@ -11,7 +11,13 @@
     "check:calc": "tsc src/lib/calc.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/calc.check.js",
     "check:parse": "tsc src/lib/parse.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/parse.check.js",
     "check:irs": "tsc src/lib/irs.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/irs.check.js",
-    "check": "npm run check:arrears && npm run check:health && npm run check:calc && npm run check:parse && npm run check:irs"
+    "check:monthcell": "tsc src/lib/monthcell.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/monthcell.check.js",
+    "check:rent": "tsc src/lib/rent.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/rent.check.js",
+    "check:snapshot": "tsc src/lib/portfolio/snapshot.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/snapshot.check.js",
+    "check:risk": "tsc src/lib/portfolio/risk.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/risk.check.js",
+    "check:import": "tsc src/lib/import/plano.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/import/plano.check.js",
+    "check:insights": "tsc src/lib/portfolio/insights.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/insights.check.js",
+    "check": "npm run check:arrears && npm run check:health && npm run check:calc && npm run check:parse && npm run check:irs && npm run check:monthcell && npm run check:rent && npm run check:snapshot && npm run check:insights && npm run check:risk && npm run check:import"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

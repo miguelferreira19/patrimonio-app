@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ReceiptText } from "lucide-react";
 import { DeleteExpenseButton, ExpenseFormButton } from "@/components/forms";
-import { Card, EmptyState, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { Card, EmptyState, Select, Table, Td, Th } from "@/components/ui";
 import { fmtDate, fmtEur } from "@/lib/format";
 import type { Expense, ExpenseCategory } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
@@ -55,11 +55,6 @@ export function ExpensesClient({
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Despesas"
-        description={`${filtered.length} despesas em ${year} · total ${fmtEur(total)}`}
-        actions={isAdmin && <ExpenseFormButton properties={properties} />}
-      />
 
       <div className="flex flex-wrap gap-2">
         {byCategory.map(([cat, v]) => (

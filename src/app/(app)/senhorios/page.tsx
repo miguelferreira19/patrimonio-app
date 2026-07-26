@@ -1,5 +1,6 @@
 import { LandlordFormButton } from "@/components/forms";
 import { Card, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Money } from "@/components/kit";
 import { currentProperties } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { currentMonthKey, fmtEur } from "@/lib/format";
@@ -99,26 +100,51 @@ export default async function SenhoriosPage() {
     receivedByProperty.set(c.property_id, (receivedByProperty.get(c.property_id) ?? 0) + p.amount);
   }
   const expensesByProperty = new Map<string, number>();
-  let expensesLandlordGeral = 0; // despesas sem fração mas atribuídas a um senhorio (ex.: seguro pessoal)
+  // Despesas sem fração mas atribuídas a um senhorio (ex.: seguro pessoal): guardadas
+  // por titular, para entrarem tanto na linha dele como no total da família.
+  const expensesLandlordSemFracao = new Map<string, number>();
   let expensesSemAtribuicao = 0; // despesas sem fração nem senhorio
   for (const e of expenses) {
     if (e.property_id) {
       expensesByProperty.set(e.property_id, (expensesByProperty.get(e.property_id) ?? 0) + e.amount);
     } else if (e.landlord_id) {
-      expensesLandlordGeral += e.amount;
+      expensesLandlordSemFracao.set(
+        e.landlord_id,
+        (expensesLandlordSemFracao.get(e.landlord_id) ?? 0) + e.amount,
+      );
     } else {
       expensesSemAtribuicao += e.amount;
     }
   }
+  const expensesLandlordGeral = Array.from(expensesLandlordSemFracao.values()).reduce(
+    (a, b) => a + b,
+    0,
+  );
 
   interface LandlordVM {
     landlord: Landlord;
     nProps: number;
     statusCounts: Partial<Record<Property["status"], number>>;
     expectedMonthly: number;
+    /** Caixa do ano, POR INTEIRO, das frações deste titular. Numa fração partilhada
+     *  conta a 100% para CADA titular — é a ótica de família (valores por inteiro,
+     *  nunca repartidos por quota). Por isso estas colunas NÃO somam ao total da
+     *  família, e a nota no fim da página di-lo. */
+    receivedYtd: number;
+    expensesYtd: number;
     quotaAvg: number | null;
   }
 
+  // Caixa por titular sobre TODAS as frações que possui, incluindo vendidas e terrenos:
+  // dinheiro que entrou é histórico, não retrato de hoje (o mesmo critério do total da
+  // família, mais abaixo). As colunas de retrato (frações, estado, renda, quota) usam
+  // `owners`, já filtrado por currentProperties.
+  const allPropsByLandlord = new Map<string, Set<string>>();
+  for (const o of allOwners) {
+    const set = allPropsByLandlord.get(o.landlord_id) ?? new Set<string>();
+    set.add(o.property_id);
+    allPropsByLandlord.set(o.landlord_id, set);
+  }
   const rows: LandlordVM[] = landlords.map((l) => {
     const propIds = Array.from(propsByLandlord.get(l.id) ?? []);
     const statusCounts: Partial<Record<Property["status"], number>> = {};
@@ -130,7 +156,23 @@ export default async function SenhoriosPage() {
     }
     const quotas = quotasByLandlord.get(l.id) ?? [];
     const quotaAvg = quotas.length > 0 ? quotas.reduce((a, b) => a + b, 0) / quotas.length : null;
-    return { landlord: l, nProps: propIds.length, statusCounts, expectedMonthly, quotaAvg };
+
+    let receivedYtd = 0;
+    let expensesYtd = expensesLandlordSemFracao.get(l.id) ?? 0;
+    for (const pid of allPropsByLandlord.get(l.id) ?? []) {
+      receivedYtd += receivedByProperty.get(pid) ?? 0;
+      expensesYtd += expensesByProperty.get(pid) ?? 0;
+    }
+
+    return {
+      landlord: l,
+      nProps: propIds.length,
+      statusCounts,
+      expectedMonthly,
+      receivedYtd,
+      expensesYtd,
+      quotaAvg,
+    };
   });
 
   // ---- Total família: somado diretamente sobre as frações distintas (não sobre as
@@ -189,9 +231,13 @@ export default async function SenhoriosPage() {
                   <Td className="text-right tabular-nums">{r.nProps}</Td>
                   <Td className="text-xs text-zinc-500 dark:text-zinc-400">{statusSummary(r.statusCounts)}</Td>
                   <Td className="text-right tabular-nums">{fmtEur(r.expectedMonthly)}</Td>
-                  <Td className="text-right tabular-nums text-zinc-400 dark:text-zinc-500">n/d</Td>
-                  <Td className="text-right tabular-nums text-zinc-400 dark:text-zinc-500">n/d</Td>
-                  <Td className="text-right tabular-nums text-zinc-400 dark:text-zinc-500">n/d</Td>
+                  <Td className="text-right"><Money value={r.receivedYtd} /></Td>
+                  <Td className="text-right">
+                    <Money value={r.expensesYtd > 0 ? -r.expensesYtd : 0} tom={r.expensesYtd > 0 ? "perda" : "tinta-2"} />
+                  </Td>
+                  <Td className="text-right">
+                    <Money value={r.receivedYtd - r.expensesYtd} tom="acao" />
+                  </Td>
                   <Td className="text-right tabular-nums text-zinc-500 dark:text-zinc-400">
                     {r.quotaAvg !== null ? `${r.quotaAvg.toLocaleString("pt-PT")}%` : "n/d"}
                   </Td>
@@ -249,11 +295,11 @@ export default async function SenhoriosPage() {
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Recebido {year}</p>
-                  <p className="tabular-nums text-zinc-400 dark:text-zinc-500">n/d</p>
+                  <Money value={r.receivedYtd} />
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Despesas {year}</p>
-                  <p className="tabular-nums text-zinc-400 dark:text-zinc-500">n/d</p>
+                  <Money value={r.expensesYtd > 0 ? -r.expensesYtd : 0} tom={r.expensesYtd > 0 ? "perda" : "tinta-2"} />
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Líquido {year}</p>
@@ -290,8 +336,14 @@ export default async function SenhoriosPage() {
             </div>
           </div>
         </div>
+        <p className="mt-2 text-xs text-tinta-2">
+          Nota: as colunas por senhorio são POR INTEIRO, não repartidas por quota (ótica de
+          família). Uma fração com dois titulares conta a 100% na linha de cada um, por isso
+          as linhas somadas dão mais do que o total da família, que conta cada fração uma só
+          vez. Para valores repartidos por quota, ver a página de IRS.
+        </p>
         {nForaDoCorrente > 0 && (
-          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="mt-2 text-xs text-tinta-2">
             Nota: {nForaDoCorrente} {nForaDoCorrente === 1 ? "fração" : "frações"} (terrenos ou já
             vendidas) não contam nas frações, nos estados nem na renda mensal. O que receberam e
             custaram em {year} continua incluído no total da família.

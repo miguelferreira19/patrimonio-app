@@ -180,4 +180,36 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(cessado.length, 0);
 }
 
-console.log("health: casos OK (A, B, C, C2, D, E, F, G, H, I)");
+// J — renda BAIXA demais face aos recibos. Este erro era INVISÍVEL: o check
+// `renda_desalinhada` só vê rendas altas, porque a renda de referência dos Atrasos está
+// limitada a min(rent, mediana). Caso real: 1825765 a 175 EUR quando 18 meses repetem 331.
+{
+  const issues = computeHealth({
+    properties: [property("p1", { name: "Repeses First" })],
+    contracts: [contract("c1", { property_id: "p1", rent: 175 })],
+    owners: [],
+    arrears: [],
+    orphanReceipts: 0,
+    rendaObservada: { c1: { valor: 331, vezes: 18 } },
+    today: "2026-07-20",
+  });
+  const erro = issues.find((i) => i.kind === "renda_errada");
+  assert.ok(erro, "renda 175 contra 331 nos recibos tem de dar erro");
+  assert.equal(erro.severity, "erro");
+  assert.ok(erro.detail.includes("156"), "diz quanto falta por mes");
+
+  // E a atualizacao anual pelo coeficiente (~2%) NAO pode disparar: eram 19 dos 21
+  // desvios da carteira real, e alertar sobre eles tornaria o aviso inutil.
+  const semAlerta = computeHealth({
+    properties: [property("p1", { name: "1ESQ" })],
+    contracts: [contract("c1", { property_id: "p1", rent: 317 })],
+    owners: [],
+    arrears: [],
+    orphanReceipts: 0,
+    rendaObservada: { c1: { valor: 311, vezes: 12 } },
+    today: "2026-07-20",
+  });
+  assert.equal(semAlerta.filter((i) => i.kind === "renda_errada").length, 0, "2% e o coeficiente");
+}
+
+console.log("health: casos OK (A, B, C, C2, D, E, F, G, H, I, J)");

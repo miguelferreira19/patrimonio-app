@@ -1,46 +1,305 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   V2 · SISTEMA VISUAL "PAPEL E TINTA"                        (PLANO.md §10)
+
+   REGRA FUNDADORA
+   O que está confirmado é TINTA. O que exige ação é VERDE-COFRE. O que precisa
+   de atenção é ÂMBAR. O que é perda é VERMELHO. O que é desconhecido ou futuro
+   é ARDÓSIA. NÃO HÁ VERDE DE "OK" — uma carteira sã é preta sobre papel.
+
+   COMO ESTE FICHEIRO ESTÁ ORGANIZADO (e porquê)
+   1) Escalas Tailwind redefinidas (zinc/teal/emerald/amber/red/sky). A V1 tem
+      ~6.300 linhas de UI com estas classes cruas e pares explícitos do tipo
+      `bg-white dark:bg-zinc-900`. Redefinir as ESCALAS repaleta a app inteira
+      sem tocar em nenhum ficheiro, e mantém todos esses pares válidos — por
+      isso as escalas são estáticas e MONOTÓNICAS (nunca trocam de ponta com o
+      tema), com uma exceção comentada no `emerald-950`.
+   2) Tokens SEMÂNTICOS (papel/carta/tinta/acao/...) com flip por
+      `prefers-color-scheme`. Código NOVO usa só estes: `bg-carta text-tinta`
+      funciona nos dois temas SEM `dark:`. É o que mata o pareamento manual.
+   3) Tempos e curvas de animação.
+   4) Utilitários próprios (hachura, tecido de fim de tabela).
+
+   REGRA PARA CÓDIGO NOVO: usar (2). As classes zinc/teal/... são LEGADO da V1;
+   desaparecem à medida que as fases 2 a 6 reescrevem as páginas.
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   1) ESCALAS TAILWIND REDEFINIDAS
+   --------------------------------------------------------------------------- */
+@theme {
+  /* NEUTRO (era zinc) — papel quente e tinta quente.
+     Papéis herdados da V1 que TÊM de continuar a funcionar:
+       50/100 superfícies claras · 200 hairlines · 400/500 texto ténue
+       800/900 superfícies escuras · 900 texto principal claro · 950 rail/nav */
+  --color-zinc-50: #fbfaf8;
+  --color-zinc-100: #f4f2ed;
+  --color-zinc-200: #e8e5de;
+  --color-zinc-300: #d6d2c9;
+  /* 400 e 500 medidos no browser, não escolhidos a olho:
+     500 é o texto ténue mais usado da app (78 usos) e tem de passar 4.5:1 sobre
+     o papel — a #7e7a70 dava 4.10. 400 serve dois papéis em tensão (terciário no
+     claro, secundário no escuro, 88 usos em `dark:`): a #aba69b dava 2.32 no
+     claro, pior que a V1; este valor dá ~2.8 no claro e ~6.3 no escuro. */
+  --color-zinc-400: #9a958a;
+  --color-zinc-500: #75716a;
+  --color-zinc-600: #625e56;
+  --color-zinc-700: #4b4841;
+  --color-zinc-800: #302d28;
+  --color-zinc-900: #1e1c19;
+  --color-zinc-950: #100f0d;
+
+  /* AÇÃO (era teal) — verde-cofre. Interativo E dinheiro por ganhar: são a
+     mesma coisa, dinheiro que só existe se agires. Resolve a colisão da V1,
+     onde o âmbar era ao mesmo tempo "atenção" e "oportunidade".
+       800 botão primário · 700 link/ativo · 600 anel de foco
+       400/300 texto sobre fundo escuro (rail, painel do login) */
+  --color-teal-50: #e8f2ef;
+  --color-teal-100: #d2e7e1;
+  --color-teal-200: #a8d0c6;
+  --color-teal-300: #74b3a5;
+  --color-teal-400: #4aa391;
+  --color-teal-500: #21806d;
+  --color-teal-600: #16705e;
+  --color-teal-700: #106453;
+  --color-teal-800: #0d5a4e;
+  --color-teal-900: #0a4a41;
+  --color-teal-950: #063029;
+
+  /* CONFIRMADO (era emerald) — pergaminho e tinta, SEM verde. É aqui que a
+     regra fundadora entra em vigor em toda a V1 de uma vez: o mês pago, o
+     recibo emitido e o "tudo em dia" passam a ler-se como tinta calma em vez
+     de semáforo verde. A distinção face ao neutro é o PESO DA TINTA (texto a
+     700 = quase preto), não o matiz.
+     EXCEÇÃO deliberada: o 950 é MAIS CLARO que o 900. A V1 só o usa como
+     `dark:bg-emerald-950/40`, e um quase-preto a 40% sobre um cartão escuro
+     seria invisível — a célula paga tem de ler-se como preenchida. */
+  --color-emerald-50: #efede6;
+  --color-emerald-100: #e4e1d7;
+  --color-emerald-200: #d8d3c4;
+  --color-emerald-300: #c0bbac;
+  --color-emerald-400: #a9a497;
+  --color-emerald-500: #6b665a;
+  --color-emerald-600: #4f4b41;
+  --color-emerald-700: #26241f;
+  --color-emerald-800: #1c1a16;
+  --color-emerald-900: #16140f;
+  --color-emerald-950: #3b372d;
+
+  /* ATENÇÃO (era amber) — âmbar quente. Parcial, elegível a agir, a confirmar.
+     Nunca oportunidade: oportunidade é ação (verde-cofre). */
+  --color-amber-50: #fbf1e1;
+  --color-amber-100: #f6e4c6;
+  --color-amber-200: #edcb93;
+  --color-amber-300: #dfae5e;
+  --color-amber-400: #cd9433;
+  --color-amber-500: #b4761a;
+  --color-amber-600: #96620f;
+  --color-amber-700: #7c500e;
+  --color-amber-800: #64400e;
+  --color-amber-900: #472e0a;
+  --color-amber-950: #2a1a06;
+
+  /* PERDA (era red) — vermelho terroso, não néon. Falta, perda esperada,
+     limiar excedido. Nunca avisos genéricos (esses são âmbar). */
+  --color-red-50: #fbedec;
+  --color-red-100: #f7dad8;
+  --color-red-200: #efb5b1;
+  --color-red-300: #e28c86;
+  --color-red-400: #d0635b;
+  --color-red-500: #b3352f;
+  --color-red-600: #a22e29;
+  --color-red-700: #8b2723;
+  --color-red-800: #711f1c;
+  --color-red-900: #551715;
+  --color-red-950: #300c0b;
+
+  /* FUTURO / DESCONHECIDO (era sky) — ardósia. A cor do que a app AINDA NÃO
+     SABE: além da fronteira do conhecido, projeções, "por saber". É a peça que
+     separa visualmente medido de estimado. */
+  --color-sky-50: #edf0f5;
+  --color-sky-100: #dce2eb;
+  --color-sky-200: #bcc6d6;
+  --color-sky-300: #96a5bc;
+  --color-sky-400: #7186a4;
+  --color-sky-500: #566c8b;
+  --color-sky-600: #4a5c78;
+  --color-sky-700: #3d4c63;
+  --color-sky-800: #313c4e;
+  --color-sky-900: #252d3a;
+  --color-sky-950: #161b23;
+}
+
+/* ---------------------------------------------------------------------------
+   2) TOKENS SEMÂNTICOS (para código NOVO) — trocam de par com o tema
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: light dark;
+
+  /* superfície */
+  --s-papel: #fbfaf8;
+  --s-carta: #ffffff;
+  --s-elevado: #ffffff;
+  --s-vellum: #efede6; /* fundo de "confirmado" */
+
+  /* tinta */
+  --s-tinta: #1e1c19; /* texto principal, valores fechados — 16.3:1 */
+  --s-tinta-2: #625e56; /* secundário — 6.2:1 */
+  --s-tinta-3: #75716a; /* ténue, mas ainda legível — 4.6:1 */
+  --s-regua: rgba(30, 28, 25, 0.1); /* hairline: substitui sombras */
+  --s-regua-forte: rgba(30, 28, 25, 0.18);
+
+  /* significado */
+  --s-acao: #0d5a4e;
+  --s-acao-forte: #106453;
+  --s-acao-tenue: #e8f2ef;
+  --s-atencao: #7c500e;
+  --s-atencao-tenue: #fbf1e1;
+  --s-perda: #8b2723;
+  --s-perda-tenue: #fbedec;
+  --s-futuro: #4a5c78;
+  --s-futuro-tenue: #edf0f5;
+
+  /* fim de tabela (Table edgeFade em ui.tsx usa style inline em hex, não segue
+     classes `dark:` — tem de trocar de par pelo próprio browser) */
+  --fade-surface: #ffffff;
+  --fade-edge: rgba(30, 28, 25, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --s-papel: #0c0c0d;
+    --s-carta: #141416;
+    --s-elevado: #1b1b1e;
+    --s-vellum: #26241f;
+
+    /* no escuro a "tinta" é clara: é o mesmo papel invertido, não outra cor */
+    --s-tinta: #f2f0ea;
+    --s-tinta-2: #aba69b;
+    /* medido no browser: a #7e7a70 dava 4.30:1 sobre o cartão escuro, abaixo de 4.5,
+       e este token carrega texto de 11px (tira de cobertura, notas, placeholders). */
+    --s-tinta-3: #8b877d;
+    --s-regua: rgba(242, 240, 234, 0.1);
+    --s-regua-forte: rgba(242, 240, 234, 0.18);
+
+    --s-acao: #4aa391;
+    --s-acao-forte: #74b3a5;
+    --s-acao-tenue: rgba(74, 163, 145, 0.14);
+    --s-atencao: #cd9433;
+    --s-atencao-tenue: rgba(205, 148, 51, 0.14);
+    --s-perda: #d0635b;
+    --s-perda-tenue: rgba(208, 99, 91, 0.14);
+    --s-futuro: #96a5bc;
+    --s-futuro-tenue: rgba(150, 165, 188, 0.14);
+
+    --fade-surface: #141416;
+    --fade-edge: rgba(242, 240, 234, 0.14);
+  }
+}
+
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo,
     Consolas, monospace;
+  /* Serifa SÓ para texto que se lê: ledes, títulos do Ano, linha de dinheiro.
+     Nunca em chrome de UI. */
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, "Times New Roman", serif;
+
+  --color-papel: var(--s-papel);
+  --color-carta: var(--s-carta);
+  --color-elevado: var(--s-elevado);
+  --color-vellum: var(--s-vellum);
+
+  --color-tinta: var(--s-tinta);
+  --color-tinta-2: var(--s-tinta-2);
+  --color-tinta-3: var(--s-tinta-3);
+  --color-regua: var(--s-regua);
+  --color-regua-forte: var(--s-regua-forte);
+
+  --color-acao: var(--s-acao);
+  --color-acao-forte: var(--s-acao-forte);
+  --color-acao-tenue: var(--s-acao-tenue);
+  --color-atencao: var(--s-atencao);
+  --color-atencao-tenue: var(--s-atencao-tenue);
+  --color-perda: var(--s-perda);
+  --color-perda-tenue: var(--s-perda-tenue);
+  --color-futuro: var(--s-futuro);
+  --color-futuro-tenue: var(--s-futuro-tenue);
 }
 
-body {
-  background-color: var(--color-zinc-50);
-  color: var(--color-zinc-900);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* P3-3: tema escuro segue o SO/browser (prefers-color-scheme), sem seletor manual na
-   app — color-scheme fica a cargo do Viewport export em layout.tsx. Cores de "fim de
-   tabela" (Table edgeFade em ui.tsx) trocam de par light/dark por variável CSS, porque
-   ali são hex diretos num style inline (Recharts/gradientes não seguem classes `dark:`). */
+/* ---------------------------------------------------------------------------
+   3) TEMPO E MOVIMENTO
+   Nada acima de 420ms. Nada em loop. Entrada só no mount.
+   --------------------------------------------------------------------------- */
 :root {
-  --fade-surface: #fff;
-  --fade-edge: rgba(24, 24, 27, 0.16);
+  --t-instant: 90ms;
+  --t-fast: 140ms;
+  --t-base: 200ms;
+  --t-slow: 280ms;
+  --t-sheet: 320ms;
+  --t-count: 420ms;
+  --e-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --e-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fade-surface: #18181b;
-    --fade-edge: rgba(228, 228, 231, 0.14);
-  }
-  body {
-    background-color: var(--color-zinc-950);
-    color: var(--color-zinc-100);
-  }
+/* ---------------------------------------------------------------------------
+   BASE
+   --------------------------------------------------------------------------- */
+body {
+  background-color: var(--s-papel);
+  color: var(--s-tinta);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* O € e os cêntimos de uma figura monetária: a magnitude tem de se ler
+   primeiro. Usado pelo componente <Money> (kit/money.tsx). */
+.money-minor {
+  font-size: 0.72em;
+  opacity: 0.55;
+  font-feature-settings: "tnum";
 }
 
 /* Painel esquerdo do login: glow radial muito subtil, sem néon. */
 .login-glow {
   background:
-    radial-gradient(60% 55% at 15% 10%, color-mix(in srgb, var(--color-teal-500) 14%, transparent), transparent 70%),
+    radial-gradient(
+      60% 55% at 15% 10%,
+      color-mix(in srgb, var(--color-teal-500) 16%, transparent),
+      transparent 70%
+    ),
     var(--color-zinc-950);
 }
 
-/* Transição de entrada dos modais: só no mount; fecho é instantâneo (sem lógica extra). */
+/* ---------------------------------------------------------------------------
+   4) HACHURA — o vocabulário do que NÃO é dado medido (PLANO.md §5)
+   `tecido-vazio`: não havia contrato (vazio/fora do período).
+   `tecido-futuro`: além da fronteira do conhecido — a app ainda não sabe.
+   Ambos usam hachura em vez de cor cheia para que "sem dado" nunca se confunda
+   com "dado a zero", e para que a distinção não dependa só da cor.
+   --------------------------------------------------------------------------- */
+.tecido-vazio {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--s-regua) 0 1px,
+    transparent 1px 5px
+  );
+}
+
+.tecido-futuro {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--s-futuro-tenue) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   ANIMAÇÕES
+   --------------------------------------------------------------------------- */
 @keyframes overlay-in {
   from {
     opacity: 0;
@@ -61,15 +320,7 @@ body {
   }
 }
 
-.animate-overlay-in {
-  animation: overlay-in 150ms ease-out;
-}
-
-.animate-modal-in {
-  animation: modal-in 150ms ease-out;
-}
-
-/* Entrada do cabeçalho hero. Uma vez, no mount — nunca em loop. */
+/* Entrada de cabeçalho/lede. Uma vez, no mount — nunca em loop. */
 @keyframes rise {
   from {
     opacity: 0;
@@ -81,14 +332,96 @@ body {
   }
 }
 
+/* Painel lateral (Sheet/ficha): entra da direita no desktop. */
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-overlay-in {
+  animation: overlay-in var(--t-fast) var(--e-out);
+}
+
+.animate-modal-in {
+  animation: modal-in var(--t-base) var(--e-out);
+}
+
 .animate-rise {
-  animation: rise 500ms ease both;
+  animation: rise var(--t-slow) var(--e-out) both;
+}
+
+.animate-sheet-in {
+  animation: sheet-in var(--t-sheet) var(--e-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-modal-in,
-  .animate-overlay-in {
+  .animate-overlay-in,
+  .animate-sheet-in {
     animation: none;
+  }
+  /* Mudanças de estado ficam instantâneas em vez de transitadas. */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+/* ============================================================
+   IMPRESSÃO — o Ano imprime-se para a família (PLANO.md §11).
+   Regra: o que é navegação e ação desaparece; o que é o documento fica.
+   Papel branco e tinta preta, porque tinta de cor num relatório anual é
+   dinheiro deitado fora e o tema escuro imprime-se a um borrão.
+   ============================================================ */
+@media print {
+  :root {
+    --cor-papel: #ffffff;
+    --cor-carta: #ffffff;
+    --cor-elevado: #ffffff;
+    --cor-tinta: #000000;
+    --cor-tinta-2: #333333;
+    --cor-tinta-3: #555555;
+  }
+
+  nav,
+  aside,
+  [data-print="none"] {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  /* Um bloco não se parte a meio entre páginas: uma cascata cortada ao meio
+     obriga a folhear para trás para perceber o número. */
+  section,
+  dl,
+  table {
+    break-inside: avoid;
+  }
+
+  /* Os `<details>` do diff e das decisões silenciadas imprimem-se abertos: em
+     papel não há como os abrir. */
+  details > summary {
+    display: none;
+  }
+  details > *:not(summary) {
+    display: block !important;
+  }
+
+  a[href^="/"]::after {
+    content: "";
   }
 }

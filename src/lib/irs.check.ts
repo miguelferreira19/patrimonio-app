@@ -10,6 +10,7 @@ import {
   computeLandlordFiscalYear,
   parseMatriz,
   progressiveTax,
+  receiptTotalsByProperty,
   reducedRateEligibility,
   yearsBetween,
 } from "./irs";
@@ -73,16 +74,33 @@ assert.equal(bracketsForYear(2020).bracketsYear, 2025, "ano anterior à tabela m
   ];
 
   const r = computeLandlordFiscalYear("L1", 2025, owners, receipts, expenses);
-  assert.equal(r.grossRent, 1750, "(3000+500) x 50% -- o recibo de 2024 fica de fora");
+  // B1: a renda ilíquida é `amount`, e SÓ `amount`. Somar-lhe a retenção contava-a
+  // duas vezes. Antes desta correção esperava-se 1750 = (3000+500) x 50%.
+  assert.equal(r.grossRent, 1500, "3000 x 50% -- o recibo de 2024 fica de fora");
   assert.equal(r.withholding, 250, "500 x 50%");
   assert.equal(r.deductibleExpenses, 750, "(1200 imi + 300 condominio) x 50%");
   assert.equal(r.toConfirmExpenses, 2_500, "5000 obras x 50% -- não deduzido, só listado");
-  assert.equal(r.netIncome, 1_000, "1750 - 750");
-  assert.equal(r.autonomousTax, 280, "1000 x 28%");
-  assert.equal(r.englobedTax, progressiveTax(1_000, B2025), "consistente com progressiveTax");
-  assert.equal(r.englobedTax, 125, "1000 x 12,5% (1º escalão só) à mão");
-  assert.equal(r.bestRegime, "englobamento", "125 < 280");
-  assert.equal(r.bestTax, 125);
+  assert.equal(r.netIncome, 750, "1500 - 750");
+  assert.equal(r.autonomousTax, 210, "750 x 28%");
+  assert.equal(r.englobedTax, progressiveTax(750, B2025), "consistente com progressiveTax");
+  assert.equal(r.englobedTax, 93.75, "750 x 12,5% (1º escalão só) à mão");
+  assert.equal(r.bestRegime, "englobamento", "93,75 < 210");
+  assert.equal(r.bestTax, 93.75);
+}
+{
+  // B1, caso de regressão dedicado: a retenção NUNCA entra na renda ilíquida.
+  // Este teste falharia com a versão anterior de receiptTotalsByProperty
+  // (`amount + withholding` dava 1000 em vez de 800). Se alguém voltar a trocar a
+  // semântica de receipts.amount, falha aqui e não no Anexo F de um cliente.
+  const totais = receiptTotalsByProperty(
+    [{ property_id: "p1", amount: 800, withholding: 200, issue_date: "2025-03-10" }],
+    2025,
+  );
+  const t = totais.get("p1");
+  assert.ok(t, "fração presente");
+  assert.equal(t.grossRent, 800, "ilíquido = coluna Valor do recibo");
+  assert.equal(t.withholding, 200, "retenção reportada à parte, como crédito");
+  assert.equal(t.grossRent - t.withholding, 600, "líquido recebido = ilíquido - retenção");
 }
 {
   // Rendimento líquido elevado -> a taxa autónoma de 28% ganha ao englobamento.
@@ -259,7 +277,7 @@ assert.equal(yearsBetween("2006-01-01", "2026-01-01"), 20);
   const row = rows[0];
   assert.equal(row.contractId, "c1");
   assert.deepEqual(row.matriz, { freguesia: "182341", tipo: "U", artigo: "2381", fracaoSeccao: "K" });
-  assert.equal(row.grossRent, 1_750, "(3000+500) x 50%");
+  assert.equal(row.grossRent, 1_500, "3000 x 50% -- B1: sem somar a retenção");
   assert.equal(row.withholding, 250, "500 x 50%");
   assert.equal(row.imi, 600, "1200 x 50%");
   assert.equal(row.condominio, 150, "300 x 50%");

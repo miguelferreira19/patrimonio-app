@@ -2,6 +2,12 @@
 
 export type Role = "admin" | "viewer";
 
+/** De onde vem um numero. Vive aqui, e nao no componente <Confianca>, porque e um facto
+ *  de DOMINIO (proveniencia), nao de apresentacao: os geradores de decisoes atribuem-no.
+ *  `medido` sai de um recibo/contrato; `estimado` de um modelo ou mediana; `assumido`
+ *  depende de uma premissa que a app nao consegue confirmar. */
+export type Nivel = "medido" | "estimado" | "assumido";
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -78,10 +84,18 @@ export interface Receipt {
   ref_month: string;
   period_start: string | null;
   period_end: string | null;
-  amount: number;              // "Importância recebida" (líquida de retenção)
-  withholding: number;         // retenção na fonte (bruto menos importância recebida)
+  // ATENÇÃO (bug B1, 2026-07-24): `amount` é o valor ILÍQUIDO, a coluna "Valor" do
+  // ListaRecibos — NÃO a "Importância recebida". O líquido é `amount - withholding`.
+  // É o que os dois caminhos de import escrevem (gerar_sql_import.py e o wizard).
+  // Quem guarda o cash líquido é `payments.amount`. Ver a nota em irs.ts.
+  amount: number;              // valor ilíquido faturado (coluna "Valor")
+  withholding: number;         // retenção na fonte (ilíquido menos importância recebida)
   issue_date: string | null;
   source: string;
+  /** Recibo "Anulado" no Portal (S2, Fase 0). Hoje o import descarta os anulados, por
+   *  isso está sempre false; a partir da Fase 6 passam a ser gravados marcados, e as
+   *  leituras que contam dinheiro filtram `cancelled = false`. */
+  cancelled?: boolean;
 }
 
 export type PaymentMethod = "transferencia" | "dinheiro" | "outro";
@@ -139,4 +153,16 @@ export interface MarketBenchmark {
 export interface UpdateCoefficient {
   year: number;
   coefficient: number;
+}
+
+/** Estado de uma decisão da fila do Agora (S3). A chave é (kind, subject); `subject`
+ *  vazio significa "a decisão é da carteira inteira", que é o caso da maioria dos
+ *  geradores — eles emitem UM item agregado, não um por contrato. */
+export interface InsightState {
+  kind: string;
+  subject: string;
+  snoozed_until: string | null;
+  dismissed_at: string | null;
+  note: string | null;
+  updated_at: string;
 }

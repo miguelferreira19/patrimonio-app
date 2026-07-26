@@ -4,11 +4,17 @@ App para gerir o património de arrendamento da família: frações, contratos, 
 
 ## O que faz
 
-- **Rent roll + pagamentos** — grelha mensal por contrato, com rendas em falta e taxa de cobrança.
-- **Despesas e lucro** — IMI, condomínio, seguros, obras e financiamento, por fração e por senhorio.
-- **Benchmarks de mercado (INE)** — compara as rendas atuais com as medianas €/m² por freguesia, e estima o valor de cada fração.
-- **Import do Portal das Finanças** — importa os recibos de renda exportados do Portal e cria frações/contratos automaticamente.
-- **Multi-senhorio com quotas** — reparte rendimentos e despesas por titular (compropriedade), como base para o IRS de cada um.
+Três superfícies, não um menu de nove páginas:
+
+- **Agora** — o que está a acontecer e o que decidir hoje, com cada decisão avaliada em euros por ano.
+- **Carteira** — uma faixa com uma linha por fração e o tempo para a direita, lida por lentes
+  (cobrança, renda, mercado, risco, vazios). A altura de cada célula é a fração da renda recebida.
+- **Ano** — o documento fiscal: rendas, despesas dedutíveis, escolha entre englobamento e taxa
+  autónoma, art. 72.º, AIMI e o quadro 4.1 do Anexo F. Imprime-se.
+
+Por baixo: import dos recibos do Portal das Finanças com diff antes de escrever, benchmarks de renda
+e venda do INE, modelo de risco de crédito por contrato (PD bayesiana, curva de cura, estágios IFRS 9)
+e multi-senhorio com quotas para repartir o IRS por titular.
 
 ## Stack
 
@@ -23,18 +29,27 @@ Depois de configurado, duplo clique em [`start.cmd`](start.cmd) para arrancar em
 ## Estrutura de pastas
 
 ```
-src/app/(app)/       páginas autenticadas: dashboard, fracoes, pagamentos, despesas, mercado, senhorios, admin
+src/app/(app)/       Agora (page.tsx), carteira, ano/[ano], fracoes/[id], carta/[contractId],
+                     mercado, senhorios, saude, admin. As rotas antigas (pagamentos, atrasos,
+                     fracoes, despesas, irs) são redirects para a lente equivalente.
 src/app/login/       página e formulário de login
-src/components/      componentes partilhados (ui, forms, nav, charts, setup-notice)
-src/lib/             tipos, formatação, cálculos de negócio, parsing, ficha técnica INE
-src/lib/actions/     Server Actions (crud, import, market)
-src/lib/supabase/    clientes Supabase (browser e servidor)
+src/components/      ui, modal, nav, forms, charts + kit/ (Money, Lede, Confianca, Cobertura),
+                     faixa/ (a grelha mensal, implementação única), agora/, ano/, importar/
+src/lib/             cálculos de negócio, cada um com o seu *.check.ts: arrears, calc, irs,
+                     monthcell, rent, health, ine, format, parse
+src/lib/portfolio/   o snapshot: load (o único I/O), snapshot, insights, risk, ano
+src/lib/actions/     Server Actions (crud, importar, import, market, insights)
 supabase/            schema.sql (idempotente) e seed_demo.sql (dados fictícios)
 ```
+
+## Testes
+
+`npm run check` corre os self-checks puros de cada módulo de cálculo (sem base de dados e sem
+framework de testes). `npm run build` é o gate antes de qualquer deploy. Ambos correm em CI a cada
+push para `main`.
 
 ## Roadmap
 
 - Conciliação automática com extrato bancário.
-- Contratos com alertas de atualização anual de renda (coeficiente legal).
-- Exportação para IRS — Anexo F.
+- Projeção de cashflow a 24 meses e recomendações de carteira (superfície `/analise`).
 - Arquivo de documentos por fração/contrato.

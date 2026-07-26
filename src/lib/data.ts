@@ -1,5 +1,5 @@
 import { createClient } from "./supabase/server";
-import { paginateAll } from "./paginate";
+import { paginateAll, paginateAllParallel } from "./paginate";
 import type { Payment, Role } from "./types";
 
 /** TODOS os pagamentos da carteira, paginados para não perder linhas ao max-rows do Supabase
@@ -9,7 +9,7 @@ import type { Payment, Role } from "./types";
 export async function fetchAllPayments(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<Payment[]> {
-  return paginateAll<Payment>(async (from, to) => {
+  const pagina = async (from: number, to: number) => {
     const { data, error } = await supabase
       .from("payments")
       .select("*")
@@ -18,7 +18,16 @@ export async function fetchAllPayments(
       .range(from, to);
     if (error) throw error;
     return (data ?? []) as Payment[];
-  });
+  };
+
+  // Contar primeiro (head: true, não traz linhas) para pedir as páginas todas em paralelo:
+  // são 6 idas ao Supabase e o snapshot faz isto em cada página. Se a contagem falhar,
+  // cai na versão sequencial — mais lenta, mas nunca perde linhas.
+  const { count, error } = await supabase
+    .from("payments")
+    .select("id", { count: "exact", head: true });
+  if (error || count === null) return paginateAll<Payment>(pagina);
+  return paginateAllParallel<Payment>(count, pagina);
 }
 
 /** Sessão + papel do utilizador atual (para uso nas páginas server). */

@@ -17,18 +17,22 @@ export function contractActiveInMonth(c: Contract, monthKey: string): boolean {
   return true;
 }
 
+/** Só as colunas que o rent roll usa: deixa passar tanto um `Payment` completo como a
+ *  leitura mínima do histórico (ver PaymentLight em portfolio/load.ts). */
+export type RollPayment = Pick<Payment, "contract_id" | "ref_month" | "amount">;
+
 export interface MonthRollRow {
   contract: Contract;
   property: Property | undefined;
   expected: number;
-  payment: Payment | undefined;
+  payment: RollPayment | undefined;
 }
 
 /** Rent roll de um mês: contratos ativos com o respetivo pagamento (ou falta dele). */
 export function monthRoll(
   monthKey: string,
   contracts: Contract[],
-  payments: Payment[],
+  payments: RollPayment[],
   propertiesById: Map<string, Property>,
 ): MonthRollRow[] {
   const payByContract = new Map(
@@ -236,9 +240,33 @@ export function currentProperties<T extends Pick<Property, "status">>(list: T[])
   return list.filter(isCurrentProperty);
 }
 
+/** Campos da ficha da fração que estão em falta, por nome PT-PT.
+ *
+ *  Vive aqui (e não dentro do `computeHealth`) porque tem DOIS consumidores com
+ *  propósitos diferentes: a Saúde dos dados, que os lista como anomalia, e a tira de
+ *  Cobertura, que os conta para dizer o que a app não sabe. A regra tem de ser a
+ *  mesma nos dois — são estes 4 campos que bloqueiam o €/m² vs INE, o valor estimado
+ *  e metade dos casos de art. 72.º (ver PLANO.md, Apêndice B.2).
+ */
+export function missingFichaFields(
+  p: Pick<Property, "area_m2" | "typology" | "dicofre" | "vpt">,
+): string[] {
+  const missing: string[] = [];
+  if (!p.area_m2) missing.push("área");
+  if (!p.typology) missing.push("tipologia");
+  if (!p.dicofre) missing.push("freguesia");
+  if (!p.vpt) missing.push("VPT");
+  return missing;
+}
+
 /** Lista de territórios (freguesias/concelhos) disponível nos benchmarks, para o formulário da fração. */
+export type GeoBenchmark = Pick<
+  MarketBenchmark,
+  "dicofre" | "parish_name" | "municipality" | "level"
+>;
+
 export function geoOptionsFromBenchmarks(
-  benchmarks: MarketBenchmark[],
+  benchmarks: GeoBenchmark[],
 ): Array<{ code: string; label: string; level: "freguesia" | "concelho" }> {
   const seen = new Map<string, { code: string; label: string; level: "freguesia" | "concelho" }>();
   for (const b of benchmarks) {

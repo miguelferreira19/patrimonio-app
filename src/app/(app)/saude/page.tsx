@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, ListChecks, XCircle } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import { computeArrears } from "@/lib/arrears";
-import { fetchAllPayments, getSession } from "@/lib/data";
-import { todayISO } from "@/lib/format";
+import { getSession } from "@/lib/data";
+import { getSnapshot } from "@/lib/portfolio";
 import {
   KIND_LABEL,
   SEVERITY_LABEL,
@@ -12,7 +11,7 @@ import {
   groupByKind,
   type HealthSeverity,
 } from "@/lib/health";
-import type { Contract, Property, PropertyOwner } from "@/lib/types";
+import type { PropertyOwner } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -23,43 +22,41 @@ const TONE: Record<HealthSeverity, "red" | "amber" | "zinc"> = {
 };
 
 export default async function SaudePage() {
-  const { supabase, isAdmin } = await getSession();
+  const { isAdmin } = await getSession();
 
   if (!isAdmin) {
     return (
       <Card>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Área reservada ao administrador.</p>
+        <p className="text-sm text-tinta-2">Area reservada ao administrador.</p>
       </Card>
     );
   }
 
-  const [propsQ, contractsQ, ownersQ, payments, orphansQ] = await Promise.all([
-    supabase.from("properties").select("*"),
-    supabase.from("contracts").select("*"),
-    supabase.from("property_owners").select("*"),
-    fetchAllPayments(supabase),
-    // Contagem, não as linhas: os recibos passam das 5000 e aqui só interessa quantos ficaram
-    // sem contrato associado.
-    supabase.from("receipts").select("id", { count: "exact", head: true }).is("contract_id", null),
-  ]);
+  // Fase 1: era o TERCEIRO sitio a correr `computeArrears` sobre o historico completo no
+  // mesmo request (dashboard, Atrasos e aqui). Agora le o snapshot.
+  //
+  // Nota sobre equivalencia: o snapshot calcula os atrasos so sobre contratos de fracoes
+  // CORRENTES, enquanto esta pagina os calculava sobre todos os ativos. Nao muda nada,
+  // porque `computeHealth` comeca por descartar terrenos e vendidos e tudo o que os
+  // referencia -- essas linhas eram calculadas e atiradas fora.
+  const snap = await getSnapshot();
 
-  const properties = (propsQ.data ?? []) as Property[];
-  const contracts = (contractsQ.data ?? []) as Contract[];
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
-
-  const { rows: arrears } = computeArrears(
-    contracts.filter((c) => c.status === "ativo"),
-    payments,
-    new Date(),
+  const owners: PropertyOwner[] = snap.ativos.flatMap((a) =>
+    a.titulares.map((t) => ({
+      property_id: a.property.id,
+      landlord_id: t.landlord.id,
+      quota: t.quota,
+    })),
   );
 
   const issues = computeHealth({
-    properties,
-    contracts,
+    properties: snap.ativos.map((a) => a.property),
+    contracts: snap.ativos.flatMap((a) => a.contracts),
     owners,
-    arrears,
-    orphanReceipts: orphansQ.count ?? 0,
-    today: todayISO(),
+    arrears: snap.arrears.rows,
+    orphanReceipts: snap.cobertura.recibosOrfaos,
+    rendaObservada: snap.rendaObservadaPorContrato,
+    today: snap.hoje,
   });
   const counts = countBySeverity(issues);
   const groups = groupByKind(issues);
@@ -138,7 +135,7 @@ export default async function SaudePage() {
 
       <p className="text-xs text-zinc-400 dark:text-zinc-500">
         As verificações de contratos parados e de renda desalinhada usam a mesma base da página de{" "}
-        <Link href="/atrasos" className="text-teal-700 hover:underline dark:text-teal-400">
+        <Link href="/carteira?lente=risco&filtro=atraso" className="text-teal-700 hover:underline dark:text-teal-400">
           Atrasos
         </Link>
         .

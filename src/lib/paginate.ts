@@ -15,3 +15,30 @@ export async function paginateAll<T>(
   }
   return all;
 }
+
+/** O mesmo, mas com o total sabido de antemão: dispara as páginas em PARALELO.
+ *
+ *  Porque existe: o `paginateAll` espera por cada página antes de pedir a seguinte. Com
+ *  5.100 pagamentos são 6 idas ao Supabase EM SÉRIE, e o snapshot da V2 faz isso em TODAS
+ *  as páginas — foi o que pôs as Frações e os Atrasos a "pensar". Com o total conhecido,
+ *  paga-se uma latência em vez de seis.
+ *
+ *  ponytail: escrituras concorrentes entre a contagem e as leituras podem deslocar os
+ *  offsets e fazer escapar uma linha. Nesta app há UM utilizador a escrever e as escritas
+ *  são raras; a versão sequencial tem a mesma fragilidade. Se um dia houver escrita
+ *  concorrente a sério, o caminho é uma view materializada, não mais paginação.
+ */
+export async function paginateAllParallel<T>(
+  total: number,
+  fetchPage: (from: number, to: number) => Promise<T[]>,
+  pageSize = 1000,
+): Promise<T[]> {
+  if (total <= 0) return [];
+  const nPaginas = Math.ceil(total / pageSize);
+  const blocos = await Promise.all(
+    Array.from({ length: nPaginas }, (_, i) =>
+      fetchPage(i * pageSize, i * pageSize + pageSize - 1),
+    ),
+  );
+  return blocos.flat();
+}

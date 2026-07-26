@@ -18,10 +18,13 @@ import {
   RentUpdateButton,
 } from "@/components/forms";
 import { Badge, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Celula, CelulaLegenda } from "@/components/faixa/celula";
+import { Money } from "@/components/kit";
+import { monthCellStatus, type MonthCellData } from "@/lib/monthcell";
 import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacancyGaps } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
-import { EPSILON_EUR, isMonthSettled, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
+import { lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import type {
   Contract,
   Expense,
@@ -35,7 +38,7 @@ import type {
   UpdateCoefficient,
 } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
-import { DeviationBadge } from "../properties-table";
+import { DeviationBadge } from "@/components/kit/badges";
 
 export const dynamic = "force-dynamic";
 
@@ -45,17 +48,13 @@ export const dynamic = "force-dynamic";
 // de Atrasos (src/lib/arrears.ts: EPSILON_EUR, lastDueMonthKey com carência de
 // GRACE_DAYS dias) em vez de duplicar a regra com números diferentes.
 
-type HistMonthStatus = "pago" | "parcial" | "falta" | "fora";
-
-interface HistMonthCell {
-  month: string; // "YYYY-MM-01"
-  status: HistMonthStatus;
-  paid: number;
-}
-
+// A célula é a mesma de Atrasos e de Pagamentos (lib/monthcell.ts + faixa/celula.tsx).
+// A V1 tinha aqui uma terceira implementação, com o seu próprio mapa de cores e as suas
+// próprias regras — era assim que o mesmo mês aparecia com estados diferentes em páginas
+// diferentes (bugs B2/L3 do PLANO.md).
 interface HistYearBlock {
   year: number;
-  months: HistMonthCell[]; // 12 células, Jan..Dez
+  months: MonthCellData[]; // 12 células, Jan..Dez
   totalReceived: number;
   monthsMissing: number;
 }
@@ -98,24 +97,21 @@ function buildContractHistory(
 
   const years: HistYearBlock[] = [];
   for (let y = startYear; y <= currentYear; y++) {
-    const months = yearMonthKeys(y).map((m): HistMonthCell => {
+    const months = yearMonthKeys(y).map((m): MonthCellData => {
       const paid = monthSums.get(m) ?? 0;
       const withinContract = (!startMonthKey || m >= startMonthKey) && (!endMonthKey || m <= endMonthKey);
-      let status: HistMonthStatus;
-      // Mesma prioridade de computeArrearsRow (arrears.ts): fora do período do contrato
-      // vence sempre, independentemente de existir pagamento nesse mês.
-      if (!withinContract) {
-        status = "fora";
-      } else if (isMonthSettled(paid, expected)) {
-        status = "pago";
-      } else if (paid >= EPSILON_EUR) {
-        status = "parcial";
-      } else if (m <= lastDue) {
-        status = "falta";
-      } else {
-        status = "fora"; // dentro do contrato mas ainda não vencido
-      }
-      return { month: m, status, paid };
+      // Mesma prioridade de computeArrearsRow: fora do período do contrato vence sempre.
+      // Nota: meses dentro do contrato mas depois de `lastDue` passam a `futuro` (hachura
+      // ardósia) em vez de `fora` (cinzento) — antes pareciam "fora do contrato", quando
+      // na verdade são meses que a app ainda não conhece.
+      const status = monthCellStatus({
+        month: m,
+        paid,
+        expected,
+        activeInMonth: withinContract,
+        horizon: lastDue,
+      });
+      return { month: m, status, paid, expected };
     });
     const totalReceived = sum(months.map((m) => m.paid));
     const monthsMissing = months.filter((m) => m.status === "falta").length;
@@ -124,48 +120,18 @@ function buildContractHistory(
   return { contract, years };
 }
 
-const HIST_TONE: Record<HistMonthStatus, string> = {
-  pago: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-  parcial: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  falta: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
-  fora: "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600",
-};
-
-function histCellTitle(cell: HistMonthCell): string {
-  const label = monthLabel(cell.month);
-  switch (cell.status) {
-    case "pago":
-      return `${label}: pago (${fmtEur(cell.paid, 2)})`;
-    case "parcial":
-      return `${label}: parcial (${fmtEur(cell.paid, 2)})`;
-    case "falta":
-      return `${label}: em falta`;
-    default:
-      return `${label}: fora do período do contrato`;
-  }
-}
-
 function YearBlock({ block }: { block: HistYearBlock }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-100 p-2.5 sm:flex-row sm:items-center dark:border-zinc-800">
+    <div className="flex flex-col gap-2 rounded-lg border border-regua p-2.5 sm:flex-row sm:items-center">
       <div className="grid flex-1 grid-cols-6 gap-1 sm:grid-cols-12">
         {block.months.map((cell) => (
-          <div
-            key={cell.month}
-            title={histCellTitle(cell)}
-            className={cn(
-              "flex h-9 items-center justify-center rounded font-mono text-[10px]",
-              HIST_TONE[cell.status],
-            )}
-          >
-            {monthLabel(cell.month, false)}
-          </div>
+          <Celula key={cell.month} cell={cell} className="h-9" />
         ))}
       </div>
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:w-40 sm:justify-end sm:border-t-0 sm:border-l sm:pl-3 sm:pt-0">
-        <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">{block.year}</span>
-        <span className="tabular-nums">{fmtEur(block.totalReceived)}</span>
-        {block.monthsMissing > 0 && <Badge tone="red">{block.monthsMissing} em falta</Badge>}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-regua pt-2 text-xs text-tinta-2 sm:w-40 sm:justify-end sm:border-t-0 sm:border-l sm:pl-3 sm:pt-0">
+        <span className="font-medium tabular-nums text-tinta">{block.year}</span>
+        <Money value={block.totalReceived} escala="sm" tom="tinta-2" />
+        {block.monthsMissing > 0 && <Badge tone="perda">{block.monthsMissing} em falta</Badge>}
       </div>
     </div>
   );
@@ -288,7 +254,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
       {/* Cabeçalho */}
       <div>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          <Link href="/fracoes" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
+          <Link href="/carteira?lente=renda" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
             Frações
           </Link>
           <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">/</span>
@@ -535,24 +501,10 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-[11px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-emerald-400" aria-hidden="true" />
-            Pago
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-amber-400" aria-hidden="true" />
-            Parcial
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-red-400" aria-hidden="true" />
-            Em falta
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-zinc-300 dark:bg-zinc-700" aria-hidden="true" />
-            Fora do período do contrato
-          </span>
-        </div>
+        <CelulaLegenda
+          className="mt-4 border-t border-regua pt-3"
+          estados={["pago", "parcial", "falta", "fora", "futuro"]}
+        />
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -1,14 +1,7 @@
 import Link from "next/link";
-import {
-  AlertCircle,
-  CheckCircle2,
-  DoorOpen,
-  Download,
-  Plus,
-  Target,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { CheckCircle2, Download, Plus } from "lucide-react";
+import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
+import { Retrato } from "@/components/agora/retrato";
 import {
   CollectionRateChart,
   FlowLegend,
@@ -16,89 +9,31 @@ import {
   type CollectionRateDatum,
   type MonthlyFlowDatum,
 } from "@/components/charts";
-import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
-import {
-  currentProperties,
-  expensesInMonth,
-  marketView,
-  monthRoll,
-  sum,
-  upcomingContractEnds,
-  vacancyGaps,
-} from "@/lib/calc";
-import { computeArrears } from "@/lib/arrears";
-import { fetchAllPayments, getSession } from "@/lib/data";
-import {
-  addMonthsKey,
-  currentMonthKey,
-  fmtDate,
-  fmtEur,
-  fmtPct,
-  lastMonthsKeys,
-  monthLabel,
-  todayISO,
-} from "@/lib/format";
-import type { Contract, Expense, Landlord, MarketBenchmark, Property, Receipt } from "@/lib/types";
-import { DeviationBadge } from "./fracoes/properties-table";
+import { buttonClass, Card, EmptyState, PageHeader } from "@/components/ui";
+import { Cobertura, Confianca, Money } from "@/components/kit";
+import { getSession } from "@/lib/data";
+import { getSnapshot } from "@/lib/portfolio";
+import { GRUPO_LABEL, agrupar, construirFila } from "@/lib/portfolio/insights";
+import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-function collectionTone(taxa: number): "green" | "amber" | "red" {
-  if (taxa >= 1) return "green";
-  if (taxa >= 0.8) return "amber";
-  return "red";
-}
+export default async function AgoraPage() {
+  const [{ isAdmin }, snap] = await Promise.all([getSession(), getSnapshot()]);
+  const thisMonth = snap.meses[snap.meses.length - 1];
 
-// Sem nome: o perfil só garante email, e "Bom dia, migue@..." seria pior que nada.
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 13) return "Bom dia";
-  if (h < 20) return "Boa tarde";
-  return "Boa noite";
-}
-
-export default async function DashboardPage() {
-  const { supabase, isAdmin } = await getSession();
-
-  const months = lastMonthsKeys(12);
-  const fetchFloor = lastMonthsKeys(13)[0];
-  const thisMonth = currentMonthKey();
-
-  const [propsQ, contractsQ, landlordsQ, benchQ, payments, expensesQ, receiptsMonthQ] =
-    await Promise.all([
-      supabase.from("properties").select("*"),
-      supabase.from("contracts").select("*"),
-      supabase.from("landlords").select("*"),
-      supabase.from("market_benchmarks").select("*"),
-      // Histórico COMPLETO e paginado (mesma fonte da tab de Atrasos) — os atrasos do dashboard
-      // passam pela mesma computeArrears, por isso precisam do histórico todo, não só de 12 meses.
-      fetchAllPayments(supabase),
-      supabase.from("expenses").select("*").gte("expense_date", fetchFloor),
-      // Checklist "Este mês": a fonte são os RECIBOS (o que foi emitido no Portal), não os
-      // pagamentos. Um mês só tem tantas linhas como contratos ativos — bem abaixo das 1000.
-      supabase.from("receipts").select("contract_id,pf_contract_no").eq("ref_month", thisMonth),
-    ]);
-
-  const properties = (propsQ.data ?? []) as Property[];
-  const contracts = (contractsQ.data ?? []) as Contract[];
-  // Pedido no fetch para uso futuro (ex.: filtro por senhorio); esta versão do
-  // dashboard ainda não tem nenhum elemento que o mostre.
-  const landlords = (landlordsQ.data ?? []) as Landlord[];
-  const benchmarks = (benchQ.data ?? []) as MarketBenchmark[];
-  const expenses = (expensesQ.data ?? []) as Expense[];
-
-  if (properties.length === 0) {
+  if (snap.ativos.length === 0) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Dashboard" description={monthLabel(currentMonthKey())} />
+        <PageHeader title="Agora" description={monthLabel(thisMonth)} />
         <Card title="Bem-vindo">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-tinta-2">
             Começa por importar os recibos do Portal das Finanças em{" "}
-            <Link href="/admin" className="font-medium text-teal-700 hover:underline dark:text-teal-400">
+            <Link href="/admin" className="font-medium text-acao hover:underline">
               Admin → Importar
             </Link>
             , ou cria frações manualmente em{" "}
-            <Link href="/fracoes" className="font-medium text-teal-700 hover:underline dark:text-teal-400">
+            <Link href="/carteira?lente=renda" className="font-medium text-acao hover:underline">
               Frações
             </Link>
             .
@@ -108,264 +43,215 @@ export default async function DashboardPage() {
     );
   }
 
-  const propertiesById = new Map(properties.map((p) => [p.id, p]));
+  const fila = construirFila(snap);
+  const grupos = agrupar(fila.itens);
+  const currentAgg = snap.fluxo[snap.fluxo.length - 1];
+  const nItens = fila.itens.length;
 
-  // P0-2c: terrenos e imóveis vendidos não entram em NENHUMA métrica corrente do
-  // dashboard (fluxo, atrasos, ocupação, potencial de mercado). Filtra os contratos
-  // uma vez aqui e reusa daí para baixo — mais simples do que repetir a condição em
-  // cada cálculo.
-  const currentProps = currentProperties(properties);
-  const currentPropertyIds = new Set(currentProps.map((p) => p.id));
-  const currentContracts = contracts.filter((c) => currentPropertyIds.has(c.property_id));
-
-  // ---------- Fluxo mensal (12 meses) ----------
-  const monthAggs = months.map((m) => {
-    const roll = monthRoll(m, currentContracts, payments, propertiesById);
-    const esperado = sum(roll.map((r) => r.expected));
-    const recebido = sum(roll.map((r) => r.payment?.amount));
-    const despesasMes = sum(expensesInMonth(expenses, m).map((e) => e.amount));
-    const liquido = recebido - despesasMes;
-    const taxa = esperado > 0 ? recebido / esperado : 0;
-    const isJan = m.slice(5, 7) === "01";
-    return {
-      month: m,
-      label: monthLabel(m, isJan),
-      esperado,
-      recebido,
-      despesas: despesasMes,
-      liquido,
-      taxa,
-    };
-  });
-
-  const flowData: MonthlyFlowDatum[] = monthAggs.map(
-    ({ month, label, esperado, recebido, liquido }) => ({
-      month,
-      label,
-      esperado,
-      recebido,
-      liquido,
-    }),
-  );
-  const rateData: CollectionRateDatum[] = monthAggs.map(({ label, taxa }) => ({ label, taxa }));
-  const currentAgg = monthAggs[monthAggs.length - 1];
-
-  // ---------- Rendas em atraso ----------
-  // Fonte ÚNICA: a MESMA computeArrears da página de Atrasos (renda de referência, horizonte de
-  // dados, cadência, contratos cessados sem baixa). Antes o dashboard tinha lógica própria
-  // (janela 12m, renda inteira por mês) que divergia da tab — daí os números não baterem certo.
-  const activeContracts = currentContracts.filter((c) => c.status === "ativo");
-  const { rows: arrearsRows, summary: arrearsSummary } = computeArrears(
-    activeContracts,
-    payments,
-    new Date(),
-  );
-  const lateRows = arrearsRows
-    .filter((r) => r.streak >= 1 && r.severity !== "ritmo_proprio")
-    .sort((a, b) => b.debt - a.debt || b.streak - a.streak)
-    .map((r) => ({
-      contractId: r.contractId,
-      property: propertiesById.get(r.propertyId),
-      tenantName: r.tenantName,
-      monthsLate: r.streak,
-      totalLate: r.debt,
-      stale: r.stale,
-    }));
-
-  // ---------- Este mês: recibos por emitir (P1-3) ----------
-  // Emitido = existe recibo do mês para o contrato. Os recibos importados trazem contract_id,
-  // mas os que ainda não foram reconciliados só têm o nº de contrato do Portal — aceitam-se os
-  // dois como prova de emissão.
-  const issued = new Set<string>();
-  for (const r of (receiptsMonthQ.data ?? []) as Array<Partial<Receipt>>) {
-    if (r.contract_id) issued.add(r.contract_id);
-    if (r.pf_contract_no) issued.add(r.pf_contract_no);
-  }
-  const arrearsById = new Map(arrearsRows.map((r) => [r.contractId, r]));
-  const toIssue = activeContracts
-    .filter((c) => {
-      if (issued.has(c.id) || (c.pf_contract_no && issued.has(c.pf_contract_no))) return false;
-      // Contratos de cadência própria (ex.: trimestral) só entram no mês em que voltam a vencer.
-      const row = arrearsById.get(c.id);
-      const cadence = row?.cadence ?? 1;
-      if (cadence >= 2 && row?.lastPaidMonth) {
-        return addMonthsKey(row.lastPaidMonth, cadence) <= thisMonth;
-      }
-      return true;
-    })
-    .map((c) => ({ contract: c, property: propertiesById.get(c.property_id) }))
-    .sort((a, b) => (a.property?.name ?? "").localeCompare(b.property?.name ?? "", "pt"));
-
-  // ---------- Ocupação (P2-9) ----------
-  // Ocupada = tem contrato ativo. Deriva dos contratos e não de properties.status, que é um
-  // campo manual que fica desatualizado quando um contrato cessa.
-  const occupiedIds = new Set(activeContracts.map((c) => c.property_id));
-  const vacant = currentProps.filter((p) => !occupiedIds.has(p.id));
-  const occupancy = currentProps.length > 0 ? occupiedIds.size / currentProps.length : 0;
-
-  // Vazios em ABERTO (frações sem contrato ativo neste momento): renda perdida desde que
-  // ficaram vagas. Não soma o histórico de vazios já fechados — é só o "sangramento" atual.
-  const openGaps = vacancyGaps(currentContracts, todayISO()).filter((g) => g.gapEnd === null);
-  const lostRentNow = sum(openGaps.map((g) => g.lostRent));
-
-  // ---------- Contratos a terminar em breve (P2-8, só o alerta) ----------
-  const endingSoon = upcomingContractEnds(activeContracts, todayISO(), 90).map((c) => ({
-    contract: c,
-    property: propertiesById.get(c.property_id),
+  const flowData: MonthlyFlowDatum[] = snap.fluxo.map((m) => ({
+    month: m.month,
+    label: monthLabel(m.month, m.month.slice(5, 7) === "01"),
+    esperado: m.esperadoContratado,
+    recebido: m.recebido,
+    liquido: m.liquido,
+  }));
+  const rateData: CollectionRateDatum[] = snap.fluxo.map((m) => ({
+    label: monthLabel(m.month, m.month.slice(5, 7) === "01"),
+    taxa: m.taxa,
   }));
 
-  // ---------- Vs. mercado ----------
-  const marketRows = currentProps.map((p) => {
-    const active = currentContracts.find((c) => c.property_id === p.id && c.status === "ativo");
-    const mv = marketView(p, active, benchmarks);
-    return { property: p, mv };
-  });
-  const marketPotential = sum(marketRows.map((r) => r.mv.gapEurMonth));
-  const belowMarket = marketRows
-    .filter((r) => r.mv.deviation !== null && r.mv.deviation < 0)
-    .sort((a, b) => (a.mv.deviation ?? 0) - (b.mv.deviation ?? 0))
-    .slice(0, 5);
-
-  // Resumo em linguagem natural: o stakeholder não-técnico lê a frase, não os KPIs.
-  // Sai dos mesmos números que os cartões mostram — não há aqui nenhum cálculo novo.
-  const heroSummary = [
-    `Cobraste ${fmtPct(currentAgg.taxa, 0)} do esperado este mês.`,
-    arrearsSummary.contractsInArrears > 0
-      ? `${arrearsSummary.contractsInArrears} ${arrearsSummary.contractsInArrears === 1 ? "contrato está" : "contratos estão"} em atraso.`
-      : "Nenhum contrato está em atraso.",
-    toIssue.length > 0
-      ? `Faltam ${toIssue.length} ${toIssue.length === 1 ? "recibo" : "recibos"} por emitir.`
-      : "Os recibos do mês estão todos emitidos.",
-  ].join(" ");
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PageHeader
         eyebrow={monthLabel(thisMonth)}
-        title={greeting()}
-        description={heroSummary}
+        title={
+          !isAdmin ? (
+            <>
+              A carteira rendeu <Money value={snap.totais.recebido12m} escala="hero" tom="tinta" />{" "}
+              nos últimos 12 meses.
+            </>
+          ) : nItens === 0 ? (
+            "Nada a decidir."
+          ) : (
+            <>
+              Se fizeres estas {nItens} {nItens === 1 ? "coisa" : "coisas"}, ganhas{" "}
+              <Money value={fila.total} escala="hero" tom="acao" /> este ano.
+            </>
+          )
+        }
+        description={
+          !isAdmin
+            ? `${snap.correntes.length} frações${snap.horizon ? `, com recibos até ${monthLabel(snap.horizon)}` : ""}. ${
+                snap.arrears.summary.contractsInArrears === 0
+                  ? "Nenhum contrato em atraso."
+                  : `${snap.arrears.summary.contractsInArrears} contratos em atraso, a serem tratados.`
+              }`
+            : nItens === 0
+            ? `A carteira está em ordem${snap.horizon ? ` até ${monthLabel(snap.horizon)}` : ""}. Cobraste ${fmtPct(currentAgg.taxa, 0)} do esperado este mês.`
+            : fila.totalAssumido > 0
+              ? `Mais ${fmtEur(fila.totalAssumido)} dependem de premissas que a app não confirma, e por isso não entram no número acima.`
+              : undefined
+        }
         actions={
           <>
             {isAdmin && (
-              <a
-                href="/api/export"
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-900"
-              >
+              <a href="/api/export" className={buttonClass({ variant: "outline" })}>
                 <Download size={15} strokeWidth={1.75} />
                 Exportar
               </a>
             )}
-            <Link
-              href="/pagamentos"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-teal-800 px-3.5 text-sm font-medium text-white shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900"
-            >
-              <Plus size={15} strokeWidth={2} />
-              Registar pagamento
-            </Link>
+            {isAdmin && (
+              <Link href="/carteira?lente=cobranca" className={buttonClass()}>
+                <Plus size={15} strokeWidth={2} />
+                Registar pagamento
+              </Link>
+            )}
           </>
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          label="Recebido este mês"
-          value={fmtEur(currentAgg.recebido)}
-          sub={`de ${fmtEur(currentAgg.esperado)} esperados · taxa ${fmtPct(currentAgg.taxa, 0)}`}
-          tone={collectionTone(currentAgg.taxa)}
-          icon={Wallet}
-        />
-        <Link
-          href="/atrasos"
-          className="block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-        >
-          <StatCard
-            label="Rendas em falta"
-            value={arrearsSummary.contractsInArrears}
-            sub={`${fmtEur(arrearsSummary.totalDebt)} de dívida estimada · ver Atrasos`}
-            tone={arrearsSummary.contractsInArrears > 0 ? "red" : "green"}
-            icon={AlertCircle}
-          />
-        </Link>
-        <StatCard
-          label="Lucro do mês"
-          value={fmtEur(currentAgg.liquido)}
-          sub={`despesas: ${fmtEur(currentAgg.despesas)}`}
-          tone="teal"
-          icon={TrendingUp}
-        />
-        <StatCard
-          label="Potencial de mercado"
-          value={fmtEur(marketPotential)}
-          sub="por mês, se rendas à mediana INE"
-          tone="amber"
-          icon={Target}
-        />
-        <Link
-          href="/fracoes"
-          className="col-span-2 block rounded-lg transition-shadow duration-150 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 xl:col-span-1 dark:focus-visible:ring-offset-zinc-950"
-        >
-          <StatCard
-            label="Ocupação"
-            value={fmtPct(occupancy, 0)}
-            sub={
-              vacant.length === 0
-                ? `${currentProps.length} frações, todas arrendadas`
-                : `${vacant.length} sem contrato ativo: ${vacant
-                    .slice(0, 3)
-                    .map((p) => p.name)
-                    .join(", ")}${vacant.length > 3 ? "…" : ""}` +
-                  (lostRentNow > 0 ? ` · ~${fmtEur(lostRentNow)} perdidos` : "")
-            }
-            tone={vacant.length === 0 ? "green" : "zinc"}
-            icon={DoorOpen}
-          />
-        </Link>
-      </div>
+      <Cobertura factos={snap.cobertura} />
 
+      {/* O retrato: como a carteira ESTÁ, antes de qualquer decisão. É a resposta à
+          pergunta do viewer ("como é que isto está?"), que a fila não responde — e para
+          quem decide serve de contexto ao que vem a seguir. */}
+      <Retrato snap={snap} />
+
+      {/* A fila só aparece a quem pode agir. Um viewer não tem botões, por isso uma fila
+          de decisões seria uma lista de frustrações — vê o retrato e o fluxo. */}
+      {isAdmin ? (
+        nItens === 0 ? (
+          <EmptyState icon={CheckCircle2}>
+            Nenhuma decisão acima do limiar de materialidade.
+            {fila.residuais.n > 0 &&
+              ` ${fila.residuais.n} ${fila.residuais.n === 1 ? "sinal" : "sinais"} abaixo de ${fmtEur(250)}/ano.`}
+          </EmptyState>
+        ) : (
+          <div className="space-y-5">
+            {grupos.map((g) => (
+              <section key={g.grupo}>
+                <header className="mb-2 flex items-baseline justify-between gap-3 border-b border-regua pb-1.5">
+                  <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
+                    {GRUPO_LABEL[g.grupo]}
+                  </h2>
+                  <Money value={g.euros} escala="sm" tom="tinta-2" />
+                </header>
+                <ul className="divide-y divide-regua">
+                  {g.itens.map((item) => (
+                    <li
+                      key={item.kind + item.titulo}
+                      className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-medium text-tinta">{item.titulo}</p>
+                        <p className="mt-0.5 text-sm text-tinta-2">{item.porque}</p>
+                        {item.conta && (
+                          <p className="mt-1 text-xs text-tinta-3">
+                            {item.conta} <Confianca nivel={item.confianca} conta={item.conta} />
+                          </p>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {item.acoes.map((a) =>
+                            a.externo ? (
+                              <a
+                                key={a.label}
+                                href={a.href}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={buttonClass({ variant: "outline", size: "sm" })}
+                              >
+                                {a.label}
+                              </a>
+                            ) : (
+                              <Link
+                                key={a.label}
+                                href={a.href}
+                                className={buttonClass({ variant: "outline", size: "sm" })}
+                              >
+                                {a.label}
+                              </Link>
+                            ),
+                          )}
+                          <DecisaoAcoes kind={item.kind} subject={item.subject} />
+                        </div>
+                      </div>
+                      <Money
+                        value={item.euros}
+                        escala="lg"
+                        tom={item.grupo === "risco" ? "perda" : "acao"}
+                        className="shrink-0 sm:text-right"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+            {fila.residuais.n > 0 && (
+              <p className="border-t border-regua pt-3 text-xs text-tinta-3">
+                {fila.residuais.n} {fila.residuais.n === 1 ? "sinal" : "sinais"} abaixo do limiar de
+                materialidade ({fmtEur(250)}/ano), no total de {fmtEur(fila.residuais.euros)}. A app
+                não os mostra para não gastar a tua atenção com eles.
+              </p>
+            )}
+            {fila.silenciadas.length > 0 && (
+              <details className="border-t border-regua pt-3 text-xs text-tinta-3">
+                <summary className="cursor-pointer select-none">
+                  {fila.silenciadas.length}{" "}
+                  {fila.silenciadas.length === 1 ? "decisão silenciada" : "decisões silenciadas"}
+                </summary>
+                <ul className="mt-2 space-y-1.5">
+                  {fila.silenciadas.map(({ item, ate, dispensada }) => (
+                    <li key={item.kind + item.titulo} className="flex flex-wrap gap-x-2">
+                      <span className="text-tinta-2">{item.titulo}</span>
+                      <span>
+                        {dispensada
+                          ? "dispensada"
+                          : `adiada até ${new Date(ate!).toLocaleDateString("pt-PT")}`}
+                        {" · "}
+                        <ReporDecisao kind={item.kind} subject={item.subject} />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )
+      ) : null}
+
+      {isAdmin && (
       <Card
         title="Este mês: recibos por emitir"
         subtitle={`${monthLabel(thisMonth)} · contratos ativos ainda sem recibo emitido`}
-        actions={
-          <a
-            href="https://imoveis.portaldasfinancas.gov.pt/arrendamento/consultarElementosContratos/locador"
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm font-medium text-teal-700 hover:underline dark:text-teal-400"
-          >
-            Abrir Portal das Finanças
-          </a>
-        }
       >
-        {toIssue.length === 0 ? (
+        {snap.recibosPorEmitir.length === 0 ? (
           <EmptyState icon={CheckCircle2}>
             Todos os contratos ativos já têm recibo deste mês.
           </EmptyState>
         ) : (
           <div className="grid max-h-80 gap-2 overflow-y-auto md:grid-cols-2">
-            {toIssue.map(({ contract, property }) => (
+            {snap.recibosPorEmitir.map(({ contract, property }) => (
               <div
                 key={contract.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+                className="flex items-center justify-between gap-2 rounded-lg border border-regua p-3"
               >
                 <div className="min-w-0">
                   {property ? (
                     <Link
                       href={`/fracoes/${property.id}`}
-                      className="font-medium text-teal-700 hover:underline dark:text-teal-400"
+                      className="font-medium text-acao hover:underline"
                     >
                       {property.name}
                     </Link>
                   ) : (
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">?</span>
+                    <span className="font-medium text-tinta">?</span>
                   )}
-                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{contract.tenant_name}</p>
+                  <p className="truncate text-xs text-tinta-2">{contract.tenant_name}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
-                    {fmtEur(contract.rent)}
-                  </p>
+                  <Money value={contract.rent} />
                   {contract.pf_contract_no && (
-                    <p className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{contract.pf_contract_no}</p>
+                    <p className="font-mono text-xs text-tinta-3">{contract.pf_contract_no}</p>
                   )}
                 </div>
               </div>
@@ -373,207 +259,27 @@ export default async function DashboardPage() {
           </div>
         )}
       </Card>
+      )}
 
-      <Card
-        title="Contratos a terminar em breve"
-        subtitle="Próximos 90 dias · sem cálculo de prazos legais de renovação/denúncia, confirmar caso a caso"
-      >
-        {endingSoon.length === 0 ? (
-          <EmptyState icon={CheckCircle2}>Nenhum contrato ativo termina nos próximos 90 dias.</EmptyState>
-        ) : (
-          <div className="grid max-h-80 gap-2 overflow-y-auto md:grid-cols-2">
-            {endingSoon.map(({ contract, property }) => (
-              <div
-                key={contract.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-              >
-                <div className="min-w-0">
-                  {property ? (
-                    <Link
-                      href={`/fracoes/${property.id}`}
-                      className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                    >
-                      {property.name}
-                    </Link>
-                  ) : (
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">?</span>
-                  )}
-                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{contract.tenant_name}</p>
-                </div>
-                <p className="shrink-0 tabular-nums text-sm font-semibold text-amber-700 dark:text-amber-400">
-                  {fmtDate(contract.end_date)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <Card title="Últimos 12 meses" actions={<FlowLegend />}>
+      {/* O gráfico voltou (pedido do utilizador, 2026-07-25). Sai da Fase 7 a decisão de
+          o apagar: a faixa da Carteira responde "que meses falharam, em que fração", e
+          este responde "quanto entrou contra quanto era esperado, mês a mês" — e é essa a
+          leitura que a família quer. Fica DEPOIS da fila, porque contexto não se põe à
+          frente de uma decisão. */}
+      <Card title="Últimos 12 meses" subtitle="esperado, recebido e líquido" actions={<FlowLegend />}>
         <MonthlyFlowChart data={flowData} />
-        <div className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800">
-          <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">Taxa de cobrança mensal</p>
+        <div className="mt-4 border-t border-regua pt-3">
+          <p className="mb-1 text-xs font-medium text-tinta-2">Taxa de cobrança mensal</p>
           <CollectionRateChart data={rateData} />
         </div>
+        <p className="mt-3 text-xs text-tinta-3">
+          Mês a mês, a carteira inteira. Para ver que fração falhou que mês, a{" "}
+          <Link href="/carteira" className="text-acao hover:underline">
+            faixa da Carteira
+          </Link>{" "}
+          mostra as duas coisas ao mesmo tempo.
+        </p>
       </Card>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Rendas em atraso">
-          {lateRows.length === 0 ? (
-            <EmptyState icon={CheckCircle2}>Sem rendas em atraso.</EmptyState>
-          ) : (
-            <>
-              <div className="hidden max-h-80 overflow-y-auto md:block">
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Fração</Th>
-                      <Th>Inquilino</Th>
-                      <Th className="text-right">Meses em atraso</Th>
-                      <Th className="text-right">Dívida estimada</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lateRows.map((r) => (
-                      <tr key={r.contractId} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                        <Td>
-                          {r.property ? (
-                            <Link
-                              href={`/fracoes/${r.property.id}`}
-                              className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                            >
-                              {r.property.name}
-                            </Link>
-                          ) : (
-                            "?"
-                          )}
-                        </Td>
-                        <Td>{r.tenantName}</Td>
-                        <Td className="text-right tabular-nums">{r.monthsLate}</Td>
-                        <Td className="text-right tabular-nums text-red-700 dark:text-red-400">
-                          {r.stale ? "·" : fmtEur(r.totalLate)}
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-              <div className="max-h-80 space-y-2 overflow-y-auto md:hidden">
-                {lateRows.map((r) => (
-                  <div
-                    key={r.contractId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-                  >
-                    <div className="min-w-0">
-                      {r.property ? (
-                        <Link
-                          href={`/fracoes/${r.property.id}`}
-                          className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                        >
-                          {r.property.name}
-                        </Link>
-                      ) : (
-                        <span className="font-medium text-zinc-700 dark:text-zinc-300">?</span>
-                      )}
-                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{r.tenantName}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="tabular-nums font-semibold text-red-700 dark:text-red-400">
-                        {r.stale ? "·" : fmtEur(r.totalLate)}
-                      </p>
-                      <p className="tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
-                        {r.monthsLate} {r.monthsLate === 1 ? "mês" : "meses"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-
-        <Card title="Mais abaixo do mercado">
-          {belowMarket.length === 0 ? (
-            <EmptyState icon={TrendingUp}>
-              {benchmarks.length === 0 ? (
-                <>
-                  Ainda não há benchmarks INE carregados. Vai a <strong>Admin → Benchmarks INE</strong>{" "}
-                  para importar as medianas por freguesia.
-                </>
-              ) : (
-                "Nenhuma fração está abaixo da mediana do mercado."
-              )}
-            </EmptyState>
-          ) : (
-            <>
-              <div className="hidden md:block">
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Fração</Th>
-                      <Th>Desvio</Th>
-                      <Th className="text-right">Potencial/mês</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {belowMarket.map((r) => (
-                      <tr key={r.property.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                        <Td>
-                          <Link
-                            href={`/fracoes/${r.property.id}`}
-                            className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                          >
-                            {r.property.name}
-                          </Link>
-                        </Td>
-                        <Td><DeviationBadge deviation={r.mv.deviation} /></Td>
-                        <Td className="text-right tabular-nums text-amber-700 dark:text-amber-400">
-                          {r.mv.gapEurMonth ? `+${fmtEur(r.mv.gapEurMonth)}` : "n/d"}
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-              <div className="space-y-2 md:hidden">
-                {belowMarket.map((r) => (
-                  <div
-                    key={r.property.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        href={`/fracoes/${r.property.id}`}
-                        className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                      >
-                        {r.property.name}
-                      </Link>
-                      <div className="mt-1">
-                        <DeviationBadge deviation={r.mv.deviation} />
-                      </div>
-                    </div>
-                    <p className="shrink-0 tabular-nums font-semibold text-amber-700 dark:text-amber-400">
-                      {r.mv.gapEurMonth ? `+${fmtEur(r.mv.gapEurMonth)}` : "n/d"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-      </div>
-
-      <p className="text-xs text-zinc-400 dark:text-zinc-500">
-        Ver também{" "}
-        <Link href="/mercado" className="text-teal-700 hover:underline dark:text-teal-400">
-          Mercado
-        </Link>{" "}
-        e{" "}
-        <Link href="/pagamentos" className="text-teal-700 hover:underline dark:text-teal-400">
-          Pagamentos
-        </Link>
-        .
-      </p>
     </div>
   );
 }

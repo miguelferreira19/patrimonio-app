@@ -20,6 +20,37 @@ export function fmtEur(v: number | null | undefined, decimals: 0 | 2 = 0): strin
   return (decimals === 0 ? eur0 : eur2).format(v);
 }
 
+/** Partes de uma figura monetária, para o componente <Money>.
+ *
+ *  A magnitude tem de se ler PRIMEIRO: os cêntimos e o símbolo € são ruído
+ *  tipográfico numa coluna de valores. Este helper separa-os para que a UI possa
+ *  esbater a parte menor (ver `.money-minor` em globals.css).
+ *
+ *  Usa `formatToParts` em vez de partir a string à mão porque o pt-PT põe o €
+ *  DEPOIS do número, com espaço, e usa vírgula decimal e espaço de milhares —
+ *  nada disso se deve assumir em código.
+ *
+ *  `−` é o menos verdadeiro (U+2212), não o hífen: alinha com os dígitos
+ *  tabulares e nunca se confunde com um traço de união.
+ */
+export function splitEur(
+  v: number | null | undefined,
+  decimals: 0 | 2 = 0,
+): { major: string; minor: string } | null {
+  if (v === null || v === undefined || Number.isNaN(v)) return null;
+  const parts = (decimals === 0 ? eur0 : eur2).formatToParts(v);
+  let major = "";
+  let minor = "";
+  let seenDecimalOrCurrency = false;
+  for (const p of parts) {
+    if (p.type === "decimal" || p.type === "currency") seenDecimalOrCurrency = true;
+    const text = p.type === "minusSign" ? "−" : p.value;
+    if (seenDecimalOrCurrency) minor += text;
+    else major += text;
+  }
+  return { major, minor };
+}
+
 export function fmtNum(v: number | null | undefined, digits = 1): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "·";
   return new Intl.NumberFormat("pt-PT", {

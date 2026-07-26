@@ -1,20 +1,25 @@
 // Sem "use client": estas primitivas são partilhadas (server + client). Nenhuma usa
-// hooks; o Modal só é renderizado por componentes client (forms, grelhas), onde os
-// handlers são válidos. Marcar este ficheiro como client criaria uma fronteira de
-// serialização e as páginas server deixariam de poder passar icon={LucideIcon}.
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { ArrowDown, ArrowUp, X, type LucideIcon } from "lucide-react";
+// hooks. Marcar este ficheiro como client criaria uma fronteira de serialização e as
+// páginas server deixariam de poder passar `icon={LucideIcon}` — crasha em runtime sem
+// falhar o build (hotfix de 2026-07-20, ver CLAUDE.md). O Modal, que precisa de hooks
+// para Esc/foco/scroll, vive em `./modal` e é re-exportado aqui.
+//
+// V2: as cores vêm de tokens SEMÂNTICOS (bg-carta, text-tinta, border-regua, text-acao)
+// que trocam de par com o tema sozinhos — não há `dark:` nenhum nestas primitivas.
+// Ver PLANO.md §10 e o cabeçalho de globals.css.
+import { type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { Lede } from "./kit/lede";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Re-exportado para o código que já importa `cn` daqui (nav.tsx, forms.tsx, grelhas…).
+export { cn };
+export { Modal } from "./modal";
 
 // ---------- Cabeçalho de página ----------
-// Título + descrição + ações à direita, para ritmo uniforme entre páginas.
-// `eyebrow` liga o modo "hero" do redesign: sobre-título a acento, h1 maior e resumo em
-// linguagem natural. Sem eyebrow o cabeçalho fica como estava (páginas não redesenhadas).
+/** @deprecated Usar `Lede` de `@/components/kit`. Fica como adaptador enquanto as
+ *  páginas da V1 não passam para as superfícies da V2 (fases 2 a 6 do PLANO.md).
+ *  `eyebrow` liga o modo hero, como na V1. */
 export function PageHeader({
   eyebrow,
   title,
@@ -28,41 +33,22 @@ export function PageHeader({
   actions?: ReactNode;
   className?: string;
 }) {
-  const hero = Boolean(eyebrow);
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-start justify-between gap-3",
-        hero && "animate-rise items-end gap-6",
-        className,
-      )}
+    <Lede
+      eyebrow={eyebrow}
+      title={title}
+      actions={actions}
+      variant={eyebrow ? "hero" : "plain"}
+      className={className}
     >
-      <div>
-        {eyebrow && (
-          <p className="text-xs font-medium uppercase tracking-[0.06em] text-teal-700 dark:text-teal-400">
-            {eyebrow}
-          </p>
-        )}
-        <h1
-          className={cn(
-            "font-semibold tracking-tight text-zinc-900 dark:text-zinc-100",
-            hero ? "mt-1.5 text-2xl leading-tight md:text-3xl" : "text-xl md:text-2xl",
-          )}
-        >
-          {title}
-        </h1>
-        {description && (
-          <p className={cn("mt-2 text-sm text-zinc-500 dark:text-zinc-400", hero && "max-w-[520px] text-pretty")}>
-            {description}
-          </p>
-        )}
-      </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-    </div>
+      {description}
+    </Lede>
   );
 }
 
 // ---------- Card ----------
+// Separação por hairline, não por sombra: a 43 linhas de densidade as sombras são
+// ruído. Elevação fica reservada a overlays (Modal, ficha, comando) — PLANO.md §10.3.
 export function Card({
   title,
   subtitle,
@@ -77,17 +63,12 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-[14px] border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900",
-        className,
-      )}
-    >
+    <section className={cn("rounded-xl border border-regua bg-carta", className)}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-regua px-4 py-3">
           <div>
-            {title && <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>}
+            {title && <h2 className="text-sm font-medium text-tinta">{title}</h2>}
+            {subtitle && <p className="mt-0.5 text-xs text-tinta-2">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </header>
@@ -98,61 +79,79 @@ export function Card({
 }
 
 // ---------- Botões ----------
-type ButtonVariant = "primary" | "outline" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "outline" | "ghost" | "danger";
+type ButtonSize = "sm" | "md";
 
-export function Button({
+const VARIANTES: Record<ButtonVariant, string> = {
+  // primary/danger são superfícies opacas com contraste próprio nos dois temas.
+  primary: "bg-teal-800 text-white hover:bg-teal-900",
+  outline: "border border-regua-forte bg-carta text-tinta hover:bg-vellum",
+  ghost: "text-tinta-2 hover:bg-vellum hover:text-tinta",
+  danger: "bg-red-600 text-white hover:bg-red-700",
+};
+
+const TAMANHOS: Record<ButtonSize, string> = {
+  sm: "h-8 px-2.5 text-xs",
+  md: "h-9 px-3.5 text-sm",
+};
+
+/** Classes de botão, para os casos em que o elemento NÃO pode ser um <button>:
+ *  `<Link>` do Next, `<a href="/api/export">`, `<label>` de input de ficheiro.
+ *
+ *  Existe para matar as 5 strings de classes copiadas à mão que a V1 tinha espalhadas
+ *  (dashboard ×2, atrasos, IRS, admin) — o estilo do CTA passa a ter uma só fonte. */
+export function buttonClass({
   variant = "primary",
   size = "md",
   className,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+}: {
   variant?: ButtonVariant;
-  size?: "sm" | "md";
-}) {
-  // primary/danger são superfícies opacas com contraste próprio — não precisam de par
-  // escuro. outline/ghost partem de branco/zinc claro e precisam de par escuro explícito.
-  const variants: Record<ButtonVariant, string> = {
-    primary: "bg-teal-800 text-white hover:bg-teal-900",
-    outline:
-      "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 " +
-      "dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800",
-    ghost: "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-  };
-  const sizes = {
-    sm: "h-8 px-2.5 text-xs",
-    md: "h-9 px-3.5 text-sm",
-  };
-  return (
-    <button
-      className={cn(
-        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition",
-        "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900",
-        "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
-        sizes[size],
-        variants[variant],
-        className,
-      )}
-      {...props}
-    />
+  size?: ButtonSize;
+  className?: string;
+} = {}) {
+  return cn(
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition",
+    "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
+    TAMANHOS[size],
+    VARIANTES[variant],
+    className,
   );
+}
+
+interface ButtonComum {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+  children?: ReactNode;
+}
+
+type ButtonProps =
+  | (ButtonComum & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className"> & { as?: "button" })
+  | (ButtonComum & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "className"> & { as: "a" });
+
+export function Button(props: ButtonProps) {
+  const { variant, size, className, ...rest } = props;
+  const classes = buttonClass({ variant, size, className });
+  if (rest.as === "a") {
+    const { as: _as, ...anchor } = rest;
+    return <a {...anchor} className={classes} />;
+  }
+  const { as: _as, ...button } = rest as { as?: "button" } & React.ButtonHTMLAttributes<HTMLButtonElement>;
+  return <button {...button} className={classes} />;
 }
 
 // ---------- Formulários ----------
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <label className={cn("mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300", className)}>
-      {children}
-    </label>
+    <label className={cn("mb-1.5 block text-sm font-medium text-tinta", className)}>{children}</label>
   );
 }
 
 const controlClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 " +
-  "placeholder:text-zinc-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20 " +
-  "disabled:bg-zinc-50 disabled:text-zinc-400 " +
-  "dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 " +
-  "dark:disabled:bg-zinc-800/60 dark:disabled:text-zinc-500";
+  "w-full rounded-lg border border-regua-forte bg-carta px-3 text-sm text-tinta " +
+  "placeholder:text-tinta-3 focus:border-acao focus:outline-none focus:ring-2 focus:ring-acao/20 " +
+  "disabled:bg-vellum disabled:text-tinta-3";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(controlClass, "h-9", props.className)} />;
@@ -176,10 +175,43 @@ export function Field({ label, children }: { label: ReactNode; children: ReactNo
 }
 
 // ---------- Badge ----------
-type BadgeTone = "green" | "red" | "amber" | "zinc" | "teal" | "blue";
+// Os nomes novos são semânticos; os antigos (green/red/amber/zinc/teal/blue) ficam
+// como ALIAS para não haver um varrimento de call sites no meio da transição.
+// Nota: `confirmado` NÃO é verde — é pergaminho com tinta cheia. Um estado
+// confirmado distingue-se de um neutro pelo PESO DA TINTA, não pelo matiz
+// (PLANO.md §10.1: "o que está feito é tinta").
+type BadgeTone =
+  | "confirmado"
+  | "perda"
+  | "atencao"
+  | "neutro"
+  | "acao"
+  | "futuro"
+  | "green"
+  | "red"
+  | "amber"
+  | "zinc"
+  | "teal"
+  | "blue";
+
+const BADGE_TONES: Record<BadgeTone, string> = {
+  confirmado: "bg-vellum text-tinta ring-regua-forte",
+  perda: "bg-perda-tenue text-perda ring-perda/20",
+  atencao: "bg-atencao-tenue text-atencao ring-atencao/20",
+  neutro: "bg-vellum/60 text-tinta-2 ring-regua",
+  acao: "bg-acao-tenue text-acao ring-acao/20",
+  futuro: "bg-futuro-tenue text-futuro ring-futuro/20",
+  // aliases da V1
+  green: "bg-vellum text-tinta ring-regua-forte",
+  red: "bg-perda-tenue text-perda ring-perda/20",
+  amber: "bg-atencao-tenue text-atencao ring-atencao/20",
+  zinc: "bg-vellum/60 text-tinta-2 ring-regua",
+  teal: "bg-acao-tenue text-acao ring-acao/20",
+  blue: "bg-futuro-tenue text-futuro ring-futuro/20",
+};
 
 export function Badge({
-  tone = "zinc",
+  tone = "neutro",
   className,
   children,
 }: {
@@ -187,19 +219,11 @@ export function Badge({
   className?: string;
   children: ReactNode;
 }) {
-  const tones: Record<BadgeTone, string> = {
-    green: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-400/20",
-    red: "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-400/20",
-    amber: "bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-400 dark:ring-amber-400/20",
-    zinc: "bg-zinc-100 text-zinc-600 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-400/20",
-    teal: "bg-teal-50 text-teal-700 ring-teal-600/20 dark:bg-teal-950/40 dark:text-teal-400 dark:ring-teal-400/20",
-    blue: "bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-950/40 dark:text-sky-400 dark:ring-sky-400/20",
-  };
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-        tones[tone],
+        BADGE_TONES[tone],
         className,
       )}
     >
@@ -210,12 +234,10 @@ export function Badge({
 
 // ---------- Tabela ----------
 // `edgeFade`: indício visual (CSS puro, sem listeners de scroll) de que a tabela
-// continua para a direita — usado nas grelhas largas (Pagamentos) onde o scroll
-// horizontal é aceitável. Duas camadas de fundo: uma sombra "presa" ao contentor
+// continua para a direita. Duas camadas: uma sombra "presa" ao contentor
 // (background-attachment: scroll) e uma cobertura "presa" ao fim do conteúdo
-// (background-attachment: local) que a tapa assim que se chega ao fim. As cores vêm de
-// variáveis CSS (--fade-surface/--fade-edge, ver globals.css) porque um style inline
-// não segue classes `dark:` — têm de trocar de par com o tema pelo próprio browser.
+// (local) que a tapa ao chegar ao fim. As cores vêm de variáveis CSS
+// (--fade-surface/--fade-edge) porque um style inline não segue classes de tema.
 const edgeFadeStyle: CSSProperties = {
   backgroundImage:
     "linear-gradient(to left, var(--fade-surface), var(--fade-surface) 24px, transparent 44px), " +
@@ -236,10 +258,7 @@ export function Table({
   edgeFade?: boolean;
 }) {
   return (
-    <div
-      className={cn("overflow-x-auto", className)}
-      style={edgeFade ? edgeFadeStyle : undefined}
-    >
+    <div className={cn("overflow-x-auto", className)} style={edgeFade ? edgeFadeStyle : undefined}>
       <table className="w-full min-w-max border-collapse text-sm">{children}</table>
     </div>
   );
@@ -249,7 +268,7 @@ export function Th({ children, className }: { children?: ReactNode; className?: 
   return (
     <th
       className={cn(
-        "border-b border-zinc-200 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400",
+        "border-b border-regua px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-tinta-3",
         className,
       )}
     >
@@ -268,51 +287,47 @@ export function Td({
   colSpan?: number;
 }) {
   return (
-    <td
-      colSpan={colSpan}
-      className={cn("border-b border-zinc-100 px-3 py-2.5 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300", className)}
-    >
+    <td colSpan={colSpan} className={cn("border-b border-regua px-3 py-2.5 text-tinta-2", className)}>
       {children}
     </td>
   );
 }
 
 // ---------- KPI ----------
+/** @deprecated A V2 não tem grelhas de KPI: um número sem decisão associada não
+ *  aparece (PLANO.md §2, princípio 1). Fica enquanto as páginas da V1 existirem. */
 export function StatCard({
   label,
   value,
   sub,
   tone = "zinc",
   icon: Icon,
-  delta,
 }: {
   label: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
   tone?: "zinc" | "green" | "red" | "teal" | "amber";
   icon?: LucideIcon;
-  delta?: { value: ReactNode; direction?: "up" | "down" };
 }) {
+  // "green" já não é verde: é tinta cheia. Ver a nota do Badge.
   const tones = {
-    zinc: "text-zinc-900 dark:text-zinc-100",
-    green: "text-emerald-700 dark:text-emerald-400",
-    red: "text-red-700 dark:text-red-400",
-    teal: "text-teal-700 dark:text-teal-400",
-    amber: "text-amber-700 dark:text-amber-400",
+    zinc: "text-tinta",
+    green: "text-tinta",
+    red: "text-perda",
+    teal: "text-acao",
+    amber: "text-atencao",
   };
-  // A caixa do ícone acompanha o tom do valor — o cartão passa o estado antes de se ler
-  // o número, sem que a cor seja o único portador do significado (o `sub` diz-no por extenso).
   const iconTones = {
-    zinc: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
-    green: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-    red: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
-    teal: "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400",
-    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    zinc: "bg-vellum text-tinta-2",
+    green: "bg-vellum text-tinta",
+    red: "bg-perda-tenue text-perda",
+    teal: "bg-acao-tenue text-acao",
+    amber: "bg-atencao-tenue text-atencao",
   };
   return (
-    <div className="h-full rounded-[14px] border border-zinc-200 bg-white p-4 shadow-xs transition duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-8px_rgba(15,118,110,0.22)] dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="h-full rounded-xl border border-regua bg-carta p-4 transition-colors duration-150 hover:border-regua-forte">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-zinc-500 dark:text-zinc-400">{label}</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-tinta-3">{label}</p>
         {Icon && (
           <span
             className={cn(
@@ -324,60 +339,10 @@ export function StatCard({
           </span>
         )}
       </div>
-      <p className={cn("mt-2.5 text-[27px] font-semibold leading-none tracking-tight tabular-nums", tones[tone])}>
+      <p className={cn("mt-2.5 text-[27px] font-medium leading-none tracking-tight tabular-nums", tones[tone])}>
         {value}
       </p>
-      {delta && (
-        <p
-          className={cn(
-            "mt-1.5 inline-flex items-center gap-0.5 text-xs font-medium tabular-nums",
-            delta.direction === "down" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400",
-          )}
-        >
-          {delta.direction === "down" ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-          {delta.value}
-        </p>
-      )}
-      {sub && <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">{sub}</p>}
-    </div>
-  );
-}
-
-// ---------- Modal ----------
-export function Modal({
-  open,
-  onClose,
-  title,
-  children,
-  wide,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: ReactNode;
-  children: ReactNode;
-  wide?: boolean;
-}) {
-  if (!open) return null;
-  return (
-    <div className="animate-overlay-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-zinc-950/40 p-4 backdrop-blur-[2px] sm:items-center dark:bg-black/60">
-      <div
-        className={cn(
-          "animate-modal-in my-8 w-full rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900",
-          wide ? "max-w-3xl" : "max-w-lg",
-        )}
-      >
-        <header className="flex items-center justify-between border-b border-zinc-200 px-5 py-3.5 dark:border-zinc-800">
-          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{title}</h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-            aria-label="Fechar"
-          >
-            <X size={16} />
-          </button>
-        </header>
-        <div className="p-5">{children}</div>
-      </div>
+      {sub && <p className="mt-1.5 text-xs text-tinta-2">{sub}</p>}
     </div>
   );
 }
@@ -397,16 +362,16 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/60",
+        "flex flex-col items-center gap-3 rounded-lg border border-dashed border-regua-forte bg-vellum/40 px-4 py-10 text-center",
         className,
       )}
     >
       {Icon && (
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-vellum text-tinta-3">
           <Icon size={20} strokeWidth={1.75} />
         </span>
       )}
-      <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">{children}</p>
+      <p className="max-w-sm text-sm text-tinta-2">{children}</p>
       {action}
     </div>
   );

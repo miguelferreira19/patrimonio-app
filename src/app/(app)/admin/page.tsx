@@ -3,7 +3,7 @@ import { getSession } from "@/lib/data";
 import type { Landlord, MarketBenchmark, Profile, UpdateCoefficient } from "@/lib/types";
 import { CoefficientsCard } from "./coefficients-card";
 import { IneCard } from "./ine-card";
-import { PfImportWizard } from "./pf-import-wizard";
+import { LargarFicheiro } from "@/components/importar/largar-ficheiro";
 import { SyncRentsCard } from "./sync-rents-card";
 import { UsersCard } from "./users-card";
 
@@ -74,7 +74,7 @@ export default async function AdminPage() {
         description={`${nProperties} frações · ${nContracts} contratos · ${nReceipts} recibos`}
       />
 
-      <PfImportWizard landlords={landlords} />
+      <LargarFicheiro landlords={landlords} />
 
       <SyncRentsCard />
 

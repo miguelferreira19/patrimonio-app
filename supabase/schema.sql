@@ -373,3 +373,231 @@ where p.status not in ('vendido', 'terreno')
   and not exists (
     select 1 from public.receipts r where r.property_id = p.id
   );
+
+-- ============================================================
+-- V2 · FASE 0 (2026-07-24) — migração idempotente. Colar no SQL Editor.
+-- Ver PLANO.md §7.2 (S1, S2, S6) e §1 (bugs B4, B7).
+-- Nada aqui apaga ou altera dados existentes: só acrescenta índices e uma coluna.
+-- ============================================================
+
+-- S1 · Fecha o bug B4: DERIVA DE SCHEMA.
+-- Estes dois índices únicos são a base de todo o import idempotente (o gerador
+-- faz `on conflict (matriz_article)` e `on conflict (pf_contract_no)`), mas até
+-- hoje só existiam dentro de dados/gerar_sql_import.py — uma base de dados criada
+-- a partir deste ficheiro NÃO tinha dedupe por artigo matricial nem por número de
+-- contrato do Portal, e um reimport duplicaria frações e contratos em silêncio.
+-- NULLs não colidem em índices únicos do Postgres, por isso frações sem artigo
+-- matricial e contratos sem número do Portal continuam a poder existir aos pares.
+create unique index if not exists properties_matriz_uq
+  on public.properties (matriz_article);
+
+create unique index if not exists contracts_pfno_uq
+  on public.contracts (pf_contract_no);
+
+-- S2 · Fecha o bug B7: recibos ANULADOS não tinham representação.
+-- O Portal marca recibos como "Anulado" (21 no export do Pai, 43 no do Avô) e o
+-- parse simplesmente descarta-os: o rasto vive só nos Analise_*.md. Com esta
+-- coluna, o import da app (Fase 6) passa a gravá-los marcados em vez de os perder,
+-- e o ecrã de diff pode dizer "1 anulado, excluído" com prova.
+-- Default false: todos os recibos já importados são válidos, que é a verdade.
+-- ORDEM IMPORTA: o filtro `cancelled = false` nas queries que contam dinheiro
+-- (página /irs e /api/irs) só entra na Fase 6, quando o import passar a escrever
+-- a coluna. Adicioná-lo antes de este bloco estar colado no SQL Editor rebentaria
+-- essas páginas com "column does not exist" em produção.
+alter table public.receipts
+  add column if not exists cancelled boolean not null default false;
+
+-- S6 · O snapshot da V2 varre a carteira por contrato-mês (uma faixa por fração,
+-- 24 a 60 meses cada). Sem estes índices é um seq scan sobre >5000 linhas por
+-- cada construção.
+create index if not exists receipts_contract_month
+  on public.receipts (contract_id, ref_month);
+
+create index if not exists payments_contract_month
+  on public.payments (contract_id, ref_month);
+
+-- ============================================================
+-- V2 (2026-07-25) — CORREÇÃO: sync_contract_rents escrevia rendas ERRADAS.
+-- Colar no SQL Editor e depois correr "Sincronizar rendas" no Admin.
+--
+-- O que estava mal: a função pegava no mês MAIS RECENTE com recibos. Esse é
+-- justamente o mês menos fiável -- pode ter só parte dos recibos emitidos.
+-- Em contratos cuja renda mensal vem repartida em vários recibos (16 dos 24
+-- meses no 1825765 "Repeses First", 10 em 18 no 68665 "1PES"), o último mês
+-- tinha só uma das parcelas e a renda ficou a valer essa parcela:
+--   Repeses First: renda 175 EUR, quando 18 meses repetem 331 EUR
+--   1PES:          renda 179 EUR, quando 10 meses repetem 290 EUR
+-- Total subavaliado: 267 EUR/mes, ~3.200 EUR/ano.
+--
+-- Correção: em vez do último mês, usa o total mensal que MAIS SE REPETE nos
+-- últimos 12 meses, desempatando pelo mais recente. Um mês parcial aparece uma
+-- única vez e perde; uma atualização de renda real aparece 2+ vezes e ganha,
+-- porque é a mais recente entre as que se repetem.
+-- ============================================================
+create or replace function public.sync_contract_rents()
+returns int
+language sql
+as $$
+  with monthly as (
+    select contract_id, ref_month, sum(amount) as total
+    from public.receipts
+    where contract_id is not null
+      and ref_month >= (date_trunc('month', current_date) - interval '12 months')
+    group by contract_id, ref_month
+  ),
+  frequencia as (
+    select contract_id, total, count(*) as vezes, max(ref_month) as ultimo
+    from monthly
+    group by contract_id, total
+  ),
+  escolhido as (
+    -- Entre os valores que se repetem (vezes >= 2), o mais RECENTE. Se nenhum se
+    -- repetir (contrato com 1 só mês de recibos), fica o mais recente que houver.
+    select distinct on (contract_id) contract_id, total as amount
+    from frequencia
+    order by contract_id, (vezes >= 2) desc, ultimo desc, total desc
+  ),
+  updated as (
+    update public.contracts c
+    set rent = e.amount
+    from escolhido e
+    where e.contract_id = c.id
+      and c.status = 'ativo'
+      and c.rent is distinct from e.amount
+      -- Nunca pisar uma atualização de renda DELIBERADA que ainda não tem recibos:
+      -- uma decisão humana explícita vence um valor inferido dos recibos.
+      and not exists (
+        select 1
+        from public.rent_updates ru
+        where ru.contract_id = c.id
+          and ru.effective_date > (
+            select coalesce(max(m.ref_month), '1900-01-01'::date) from monthly m
+            where m.contract_id = c.id
+          )
+      )
+    returning c.id
+  )
+  select count(*)::int from updated;
+$$;
+
+-- ============================================================
+-- V2 (2026-07-25) — sync_contract_rents nunca mais pode PIORAR uma renda.
+-- Colar no SQL Editor. Substitui a versão de cima.
+--
+-- O que aconteceu: a versão anterior já tinha corrido e baixado o 68665
+-- ("1PES") de 296 para 290. O 296 é o valor registado no Portal (atualização
+-- anual de jan/2026); os recibos só o mostram UMA vez porque o contrato deixou
+-- de emitir recibos em fev/2026. O valor que "se repete" era o antigo.
+--
+-- Regra nova, em duas linhas do WHERE:
+--   1) o valor escolhido tem de repetir-se >= 3 meses (REPETICOES_MIN em
+--      src/lib/rent.ts). Sem isso, não há prova — fica o que lá está.
+--   2) só escreve se a diferença for > 5% (DESALINHAMENTO_MIN, mesmo ficheiro).
+--      Abaixo disso está a atualização anual pelo coeficiente (~2%), e aí a
+--      renda REGISTADA é mais fiável do que a inferida dos recibos.
+--
+-- O efeito prático: o botão só consegue mexer no que a página de Saúde já
+-- mostrava a vermelho — os erros grosseiros (175 em vez de 331, 47% abaixo)
+-- que motivaram a função. Nunca mais rói 6 EUR a uma renda certa.
+-- ============================================================
+create or replace function public.sync_contract_rents()
+returns int
+language sql
+as $$
+  with monthly as (
+    select contract_id, ref_month, sum(amount) as total
+    from public.receipts
+    where contract_id is not null
+      and ref_month >= (date_trunc('month', current_date) - interval '12 months')
+    group by contract_id, ref_month
+  ),
+  frequencia as (
+    select contract_id, total, count(*) as vezes, max(ref_month) as ultimo
+    from monthly
+    group by contract_id, total
+  ),
+  escolhido as (
+    -- Entre os valores com prova (>= 3 meses iguais), o mais RECENTE.
+    select distinct on (contract_id) contract_id, total as amount
+    from frequencia
+    where vezes >= 3
+    order by contract_id, ultimo desc, total desc
+  ),
+  updated as (
+    update public.contracts c
+    set rent = e.amount
+    from escolhido e
+    where e.contract_id = c.id
+      and c.status = 'ativo'
+      and c.rent is distinct from e.amount
+      -- Só erros grosseiros. Dentro dos 5% manda a renda registada.
+      and abs(e.amount - c.rent) > c.rent * 0.05
+      -- Nunca pisar uma atualização de renda DELIBERADA que ainda não tem
+      -- recibos: uma decisão humana explícita vence um valor inferido.
+      and not exists (
+        select 1
+        from public.rent_updates ru
+        where ru.contract_id = c.id
+          and ru.effective_date > (
+            select coalesce(max(m.ref_month), '1900-01-01'::date) from monthly m
+            where m.contract_id = c.id
+          )
+      )
+    returning c.id
+  )
+  select count(*)::int from updated;
+$$;
+
+-- Repõe o estrago que a versão antiga já fez (conferido contra o
+-- ListaContratos.xls do Portal em 2026-07-25 por dados/auditoria_rendas.py).
+update public.contracts set rent = 296.00
+where pf_contract_no = '68665' and rent = 290.00;
+
+-- ============================================================
+-- V2 · FASE 2 — S3: adiar/dispensar decisões (PLANO.md §7.2).
+-- Colar no SQL Editor.
+--
+-- A fila do Agora é recalculada a cada request a partir do snapshot. Sem estado
+-- persistido, "já tratei disto" não sobrevive a um F5 e a fila mente. Uma linha
+-- por (kind, subject): `subject` vazio = a decisão é da carteira inteira; caso
+-- contrário é o id da entidade (fração, contrato).
+--
+-- Adiar tem data; dispensar não tem — é para sinais que estão CERTOS e que o
+-- utilizador decidiu não agir (um terreno que nunca vai ser arrendado). Ambos
+-- são reversíveis por delete, e nenhum apaga o facto: o gerador continua a
+-- correr, só não mostra.
+-- ============================================================
+create table if not exists public.insight_state (
+  kind text not null,
+  subject text not null default '',
+  snoozed_until date,
+  dismissed_at timestamptz,
+  note text,
+  updated_at timestamptz not null default now(),
+  primary key (kind, subject)
+);
+
+alter table public.insight_state enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'insight_state'
+      and policyname = 'insight_state_select'
+  ) then
+    create policy insight_state_select on public.insight_state
+      for select to authenticated using (true);
+  end if;
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'insight_state'
+      and policyname = 'insight_state_write'
+  ) then
+    create policy insight_state_write on public.insight_state
+      for all to authenticated
+      using (public.is_admin()) with check (public.is_admin());
+  end if;
+end $$;
+
+grant select, insert, update, delete on public.insight_state to authenticated;

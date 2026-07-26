@@ -32,7 +32,7 @@ function NaoDisponivel({ propertyId, children }: { propertyId?: string; children
   return (
     <div className="space-y-4">
       <p className="text-xs text-zinc-500">
-        <Link href="/fracoes" className="hover:text-teal-700 hover:underline">
+        <Link href="/carteira?lente=renda" className="hover:text-teal-700 hover:underline">
           Frações
         </Link>
         {propertyId && (
@@ -148,7 +148,7 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
       <PrintStyles />
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <p className="text-xs text-zinc-500">
-          <Link href="/fracoes" className="hover:text-teal-700 hover:underline">
+          <Link href="/carteira?lente=renda" className="hover:text-teal-700 hover:underline">
             Frações
           </Link>
           <span className="mx-1.5 text-zinc-300">/</span>

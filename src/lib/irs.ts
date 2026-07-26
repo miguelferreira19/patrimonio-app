@@ -130,7 +130,8 @@ function yearOf(dateISO: string | null): number | null {
 }
 
 export interface PropertyReceiptTotals {
-  /** amount + withholding, por inteiro (fração) — a quota do senhorio aplica-se depois. */
+  /** Renda ILÍQUIDA (= `receipts.amount`), por inteiro (fração) — a quota do senhorio
+   *  aplica-se depois. Ver a nota sobre a semântica de `amount` em receiptTotalsByProperty. */
   grossRent: number;
   withholding: number;
 }
@@ -141,6 +142,17 @@ export interface PropertyReceiptTotals {
  * emitido em janeiro por rendas de meses do ano anterior conta TODO no ano de emissão; é a
  * armadilha do Anexo F assinalada no PLANO.md (P2-2/P2-6). Os recibos já vêm sem "Anulado"
  * (excluído no import, ver dados/gerar_sql_import.py).
+ *
+ * SEMÂNTICA DE `receipts.amount` (bug B1, corrigido 2026-07-24 — não voltar a trocar):
+ * `amount` é o valor ILÍQUIDO (coluna "Valor" do ListaRecibos) e `withholding` é a
+ * retenção; o líquido recebido é `amount − withholding`. É o que AMBOS os caminhos de
+ * import escrevem: `dados/gerar_sql_import.py` (amount = fatia de `Valor`,
+ * withholding = fatia de `Valor` − fatia de "Importância recebida") e o wizard
+ * (`actions/import.ts`, mapeia "Valor" e deixa withholding a 0).
+ * Esta função fazia `amount + withholding`, o que somava a retenção DUAS vezes e
+ * inflacionava as rendas ilíquidas do Anexo F. Estava latente só porque a coluna
+ * `withholding` ainda está a 0 em toda a BD; explodia no reimport pendente
+ * (PLANO.md, Apêndice B.1). Quem é líquido é `payments.amount`, não este.
  */
 export function receiptTotalsByProperty(
   receipts: IrsReceiptInput[],
@@ -151,7 +163,7 @@ export function receiptTotalsByProperty(
     if (!r.property_id) continue;
     if (yearOf(r.issue_date) !== year) continue;
     const cur = out.get(r.property_id) ?? { grossRent: 0, withholding: 0 };
-    cur.grossRent += r.amount + r.withholding;
+    cur.grossRent += r.amount;
     cur.withholding += r.withholding;
     out.set(r.property_id, cur);
   }

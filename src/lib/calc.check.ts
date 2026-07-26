@@ -1,6 +1,6 @@
 // Self-check de calc.ts. Correr com `npm run check:calc`.
 import assert from "node:assert/strict";
-import { currentProperties, isCurrentProperty, rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
+import { currentProperties, isCurrentProperty, missingFichaFields, rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
 import type { Contract, Property, RentUpdate, UpdateCoefficient } from "./types";
 
 function contract(over: Partial<Contract> = {}): Contract {
@@ -119,6 +119,31 @@ function property(over: Partial<Property> = {}): Property {
     property({ id: "d", status: "vago" }),
   ];
   assert.deepEqual(currentProperties(list).map((p) => p.id), ["a", "d"]);
+}
+
+// missingFichaFields: a regra tem DOIS consumidores (Saúde dos dados e a tira de
+// Cobertura) e tem de dar o mesmo nos dois. A ordem dos nomes é a que a UI mostra.
+{
+  assert.deepEqual(
+    missingFichaFields({ area_m2: null, typology: null, dicofre: null, vpt: null }),
+    ["área", "tipologia", "freguesia", "VPT"],
+  );
+  assert.deepEqual(
+    missingFichaFields({ area_m2: 64, typology: "T2", dicofre: "182341", vpt: 50_000 }),
+    [],
+    "ficha completa não devolve nada",
+  );
+  assert.deepEqual(
+    missingFichaFields({ area_m2: 64, typology: "", dicofre: "182341", vpt: 50_000 }),
+    ["tipologia"],
+    "string vazia conta como em falta",
+  );
+  // 0 é falsy e é o caso real: uma fração com VPT 0 ou área 0 está por preencher,
+  // não preenchida a zero. Documentado aqui para não ser "corrigido" para != null.
+  assert.deepEqual(
+    missingFichaFields({ area_m2: 0, typology: "T1", dicofre: "182341", vpt: 0 }),
+    ["área", "VPT"],
+  );
 }
 
 console.log("calc.check.ts: OK");
