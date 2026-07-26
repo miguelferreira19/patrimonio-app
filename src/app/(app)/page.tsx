@@ -26,7 +26,7 @@ import {
   type MonthlyFlowDatum,
 } from "@/components/charts";
 import { buttonClass, EmptyState } from "@/components/ui";
-import { Cobertura, Confianca, Lede, Money } from "@/components/kit";
+import { Cobertura, Confianca, Lede, Money, Seccao } from "@/components/kit";
 import { getSession } from "@/lib/data";
 import { getSnapshot, type Snapshot } from "@/lib/portfolio";
 import { GRUPO_LABEL, agrupar, construirFila } from "@/lib/portfolio/insights";
@@ -207,7 +207,11 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
       ) : (
         <div className="space-y-6">
           {grupos.map((g) => (
-            <Seccao key={g.grupo} titulo={GRUPO_LABEL[g.grupo]} valor={g.euros}>
+            <Seccao
+              key={g.grupo}
+              titulo={GRUPO_LABEL[g.grupo]}
+              valor={<Money value={g.euros} escala="sm" tom="tinta-2" />}
+            >
               <ul className="divide-y divide-regua">
                 {g.itens.map((item) => (
                   <li key={item.kind + item.titulo} className="py-3">
@@ -316,28 +320,6 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
 // ============================================================
 // Peças partilhadas
 // ============================================================
-
-/** R2: agrupar é uma hairline e uma etiqueta, não uma caixa. Uma página que é uma pilha
- *  de cartões é a assinatura de UI gerada, e a V1 tinha nove deles empilhados. */
-function Seccao({
-  titulo,
-  valor,
-  children,
-}: {
-  titulo: string;
-  valor?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <header className="mb-2 flex items-baseline justify-between gap-3 border-b border-regua pb-1.5">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{titulo}</h2>
-        {valor !== undefined && <Money value={valor} escala="sm" tom="tinta-2" />}
-      </header>
-      {children}
-    </section>
-  );
-}
 
 function Fluxo({
   flowData,

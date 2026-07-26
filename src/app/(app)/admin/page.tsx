@@ -114,7 +114,7 @@ export default async function AdminPage() {
 
       <Card title="Cópia de segurança">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Descarrega a carteira toda num ficheiro Excel — frações, contratos, recibos, pagamentos,
+          Descarrega a carteira toda num ficheiro Excel: frações, contratos, recibos, pagamentos,
           despesas, senhorios e quotas, uma folha por tabela. Os dados vivem só no Supabase; guarda
           uma cópia de vez em quando.
         </p>

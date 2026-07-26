@@ -154,7 +154,7 @@ export function LargarFicheiro({
                   ))}
                 </ul>
                 <p className="mt-1.5 font-sans">
-                  Nenhum destes é escrito. O import nunca sobrepõe o que já existe — se o
+                  Nenhum destes é escrito. O import nunca sobrepõe o que já existe: se o
                   ficheiro estiver certo, corrige na base à mão.
                 </p>
               </details>

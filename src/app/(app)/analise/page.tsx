@@ -14,7 +14,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ProjecaoChart, type ProjecaoDatum } from "@/components/charts";
-import { Confianca, Figure, Lede, Money } from "@/components/kit";
+import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
 import { buttonClass } from "@/components/ui";
 import { getSession } from "@/lib/data";
 import { getSnapshotComRaw } from "@/lib/portfolio";
@@ -383,35 +383,6 @@ function Ranking({
 }
 
 // ============================================================
-
-/** R2: agrupar é uma hairline e uma etiqueta, não um cartão. A `nota` é a única prosa
- *  permitida, e vive no cabeçalho, nunca por baixo de um gráfico (R4). */
-function Seccao({
-  titulo,
-  nota,
-  valor,
-  children,
-}: {
-  titulo: string;
-  nota?: string;
-  valor?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <header className="mb-3 border-b border-regua pb-1.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
-            {titulo}
-          </h2>
-          {valor}
-        </div>
-        {nota && <p className="mt-1 max-w-[75ch] text-xs text-tinta-3">{nota}</p>}
-      </header>
-      {children}
-    </section>
-  );
-}
 
 function Numero({
   label,

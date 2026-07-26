@@ -14,8 +14,8 @@ import { carregarAno } from "@/lib/portfolio/ano";
 import { getSession } from "@/lib/data";
 import { Cascata, type Degrau } from "@/components/ano/cascata";
 import { ExpensesClient } from "@/components/ano/despesas-client";
-import { Lede, Money } from "@/components/kit";
-import { Badge, buttonClass, Card, EmptyState, Table, Td, Th } from "@/components/ui";
+import { Lede, Money, Seccao } from "@/components/kit";
+import { Badge, buttonClass, EmptyState, Table, Td, Th } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { AIMI_THRESHOLD_COUPLE, AIMI_THRESHOLD_SINGLE } from "@/lib/irs";
 import { fmtEur, fmtPct } from "@/lib/format";
@@ -147,11 +147,11 @@ export default async function AnoPage({
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Card title="Como o dinheiro do ano se decompõe">
+        <Seccao titulo="Como o dinheiro do ano se decompõe">
           <Cascata degraus={degraus} />
-        </Card>
+        </Seccao>
 
-        <Card title="A decisão do ano" subtitle="o que fazer com este ano fiscal">
+        <Seccao titulo="A decisão do ano" nota="o que fazer com este ano fiscal">
           <ol className="space-y-4">
             <Decisao
               n={1}
@@ -173,7 +173,7 @@ export default async function AnoPage({
                   .slice(0, 3)
                   .map((e) => `${e.propertyName} (${e.anos} anos, ${fmtPct(e.rate, 0)})`)
                   .join(", ")}${elegiveisArt72.length > 3 ? `, e outros ${elegiveisArt72.length - 3}` : ""}.`}
-                conta="(28% − taxa elegível) × renda anual. Exige comunicação à AT — Portaria 110/2019; sem ela a taxa não se aplica."
+                conta="(28% − taxa elegível) × renda anual. Exige comunicação à AT, Portaria 110/2019; sem ela a taxa não se aplica."
               />
             )}
             <Decisao
@@ -185,19 +185,19 @@ export default async function AnoPage({
               }
               euros={0}
               porque={`VPT imputado ${fmtEur(aimi.totalVpt)}. Limite individual ${fmtEur(AIMI_THRESHOLD_SINGLE)}${
-                aimi.overSingle ? " — ultrapassado" : " — não atingido"
+                aimi.overSingle ? ", ultrapassado" : ", não atingido"
               }; limite de casal ${fmtEur(AIMI_THRESHOLD_COUPLE)}${
-                aimi.overCouple ? " — ultrapassado" : " — não atingido"
+                aimi.overCouple ? ", ultrapassado" : ", não atingido"
               }.`}
               conta="A app não calcula o AIMI em euros de propósito: a taxa e o limite dependem de se opta pela tributação conjunta, e isso ela não sabe. Diz o VPT e que limites são cruzados; o valor confirma-se na nota da AT. É dedutível no quadro 9 do Anexo F."
             />
           </ol>
-        </Card>
+        </Seccao>
       </section>
 
-      <Card
-        title="Anexo F, quadro 4.1"
-        subtitle={`${anexoF.length} ${anexoF.length === 1 ? "linha" : "linhas"} · valores já com a quota de ${escolhido.landlord.name}`}
+      <Seccao
+        titulo="Anexo F, quadro 4.1"
+        nota={`${anexoF.length} ${anexoF.length === 1 ? "linha" : "linhas"}, com a quota de ${escolhido.landlord.name} já aplicada.`}
       >
         {anexoF.length === 0 ? (
           <EmptyState>Sem rendas declaradas neste ano para este senhorio.</EmptyState>
@@ -243,10 +243,10 @@ export default async function AnoPage({
         )}
         <p className="mt-3 text-xs text-tinta-3">
           As rendas são o valor ILÍQUIDO do recibo; o líquido é rendas menos retenção. Somar a
-          retenção ao ilíquido sobre-declara o rendimento — foi o bug B1, e está coberto no
-          `irs.check.ts`.
+          retenção ao ilíquido sobre-declara o rendimento: foi o bug B1, e está coberto no
+          irs.check.ts.
         </p>
-      </Card>
+      </Seccao>
 
       <section id="despesas" className="scroll-mt-6">
         <ExpensesClient
