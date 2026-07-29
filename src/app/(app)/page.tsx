@@ -1,16 +1,28 @@
-// O AGORA (PLANO.md §4, revisto na V3).
+// O AGORA (PLANO.md §4, revisto na V3, reordenado em 2026-07-29).
 //
-// A V2 fez esta página falar. A V3 fá-la calar-se: o topo era uma frase inteira como
-// título mais outra como descrição, cada decisão trazia cinco elementos de texto, e o
-// gráfico levava um parágrafo a explicar-se. Oito decisões davam uma parede de texto.
+// A V2 fez esta página falar. A V3 fê-la calar-se: um número herói (R1), agrupamento por
+// hairline em vez de cartões (R2), o porquê atrás de um `<details>` (R3), e nenhum
+// parágrafo a explicar um gráfico (R4).
 //
-// Agora: um número herói (R1), agrupamento por hairline em vez de cartões (R2), o porquê
-// atrás de um `<details>` em vez de sempre ligado (R3), e nenhum parágrafo a explicar um
-// gráfico (R4). As regras estão no V3.md.
+// O QUE MUDOU AGORA, e porquê. A página tinha QUATRO aberturas em fila — número herói,
+// tira de cobertura, seis números do retrato, e só depois o conteúdo — todas com o mesmo
+// peso visual. Quatro coisas a falar ao mesmo tempo é o mesmo que nenhuma: o olho não tem
+// onde pousar, e era isso, e não a cor, que fazia a página parecer densa.
 //
-// As duas leituras estão separadas em vez de entrelaçadas por ternários: quem decide vê a
-// fila, quem só confirma vê o estado. Eram a mesma árvore com `isAdmin ?` em sete sítios,
-// e era isso que tornava a página impossível de ler no código e no ecrã.
+// A ordem passa a ser a de uma primeira página:
+//   1. A ABERTURA — o número que importa e, ao lado, a curva do ano. Juntos, porque
+//      respondem à mesma pergunta ("como vai isto?") e separados obrigavam a atravessar a
+//      página inteira para cruzar os dois. A curva era o ÚLTIMO bloco; é o objeto mais
+//      legível que aqui existe e estava escondido no fim.
+//   2. O CORPO — as decisões (admin) ou quem está em atraso (viewer).
+//   3. O CONTEXTO — o retrato dos seis números, agora em voz baixa: é referência, não
+//      manchete.
+//   4. O RODAPÉ DE HONESTIDADE — a cobertura. Continua a dizer tudo o que a app não sabe,
+//      mas deixa de disputar a atenção com o dinheiro logo no topo: informação sobre o
+//      CONHECIMENTO não é manchete (PLANO.md §7.5).
+//
+// As duas leituras continuam separadas em vez de entrelaçadas por ternários: quem decide
+// vê a fila, quem só confirma vê o estado.
 
 import Link from "next/link";
 import { CheckCircle2, Download, Plus } from "lucide-react";
@@ -34,25 +46,26 @@ export default async function AgoraPage() {
   const thisMonth = snap.meses[snap.meses.length - 1];
 
   return (
-    <div className="space-y-6">
-      {isAdmin ? (
-        <Decisoes snap={snap} thisMonth={thisMonth} />
-      ) : (
-        <Estado snap={snap} />
-      )}
+    <div className="space-y-12">
+      {isAdmin ? <Decisoes snap={snap} thisMonth={thisMonth} /> : <Estado snap={snap} />}
 
-      <Acumulado snap={snap} />
+      {/* Contexto e honestidade, por esta ordem e no fim: nenhum dos dois é a razão por
+          que se abre esta página, e os dois são precisos quando se quer conferir. */}
+      <Retrato snap={snap} />
+
+      <Cobertura factos={snap.cobertura} />
     </div>
   );
 }
 
-/** O ano até hoje contra o ano passado. Foi o que faltou desde sempre: a app tinha 12 anos
- *  de série mensal na base e mostrava 12 meses móveis, que nunca respondem a "quanto já
- *  entrou este ano?". */
-function Acumulado({ snap }: { snap: Snapshot }) {
-  if (snap.acumulado.length === 0) return null;
+// ============================================================
+// A abertura: o número que importa, e a curva do ano ao lado
+// ============================================================
 
-  const data: AcumuladoDatum[] = snap.acumulado.map((p) => ({
+/** Duas colunas assimétricas (5/7): o número precisa de ar à volta, a curva precisa de
+ *  largura. No telemóvel empilham, e o número vem primeiro — é o que se lê num relance. */
+function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNode }) {
+  const dados: AcumuladoDatum[] = snap.acumulado.map((p) => ({
     label: monthLabel(p.mes, false),
     esteAno: p.esteAno,
     anoAnterior: p.anoAnterior,
@@ -65,28 +78,36 @@ function Acumulado({ snap }: { snap: Snapshot }) {
   const delta = ultimo ? ultimo.esteAno! - ultimo.anoAnterior : 0;
   const variacao = ultimo && ultimo.anoAnterior > 0 ? delta / ultimo.anoAnterior : null;
 
+  if (dados.length === 0) return <section>{children}</section>;
+
   return (
-    <section>
-      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-3 border-b border-regua pb-1.5">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
-          Acumulado do ano
-        </h2>
-        {ultimo && (
-          <p className="text-xs text-tinta-2">
-            <Money value={ultimo.esteAno!} escala="sm" />
-            {" até "}
-            {monthLabel(ultimo.mes, false)}
-            {variacao !== null && (
-              <span className={delta < 0 ? "text-perda" : "text-tinta-2"}>
-                {" · "}
-                {delta >= 0 ? "+" : ""}
-                {fmtPct(variacao, 0)} face ao ano passado
-              </span>
-            )}
-          </p>
-        )}
-      </header>
-      <AcumuladoChart data={data} />
+    <section className="grid gap-8 lg:grid-cols-12 lg:gap-10">
+      <div className="lg:col-span-5">{children}</div>
+
+      <div className="lg:col-span-7">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-regua pb-1.5">
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
+            Acumulado do ano
+          </h2>
+          {ultimo && (
+            <p className="text-xs text-tinta-2">
+              <Money value={ultimo.esteAno!} escala="sm" />
+              {" até "}
+              {monthLabel(ultimo.mes, false)}
+              {variacao !== null && (
+                <span className={delta < 0 ? "text-perda" : "text-tinta-2"}>
+                  {" · "}
+                  {delta >= 0 ? "+" : ""}
+                  {fmtPct(variacao, 0)} face ao ano passado
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+        <div className="mt-3">
+          <AcumuladoChart data={dados} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -96,39 +117,52 @@ function Acumulado({ snap }: { snap: Snapshot }) {
 // ============================================================
 
 /** A pergunta do viewer não é "o que faço?", é "como é que isto está?". Um número grande,
- *  os seis do retrato, e quem está em atraso. Nada mais: não tem botões, e uma fila de
+ *  a curva do ano, e quem está em atraso. Nada mais: não tem botões, e uma fila de
  *  decisões sem botões é uma lista de frustrações. */
 function Estado({ snap }: { snap: Snapshot }) {
   const atrasados = snap.correntes
     .filter((a) => (a.arrears?.streak ?? 0) > 0)
     .sort((a, b) => (b.arrears?.debt ?? 0) - (a.arrears?.debt ?? 0));
+  const totalEmAtraso = atrasados.reduce((acc, a) => acc + (a.arrears?.debt ?? 0), 0);
 
   return (
-    <>
-      <Lede eyebrow="Últimos 12 meses" title={<Money value={snap.totais.recebido12m} escala="hero" />}>
-        {snap.correntes.length} frações,{" "}
-        {snap.ocupacao.vagas.length === 0
-          ? "todas arrendadas"
-          : `${snap.ocupacao.vagas.length} por arrendar`}
-        {snap.horizon ? `. Contas fechadas até ${monthLabel(snap.horizon)}.` : "."}
-      </Lede>
+    <div className="space-y-12">
+      <Abertura snap={snap}>
+        <Lede
+          eyebrow="Últimos 12 meses"
+          title={<Money value={snap.totais.recebido12m} escala="hero" />}
+        >
+          {snap.correntes.length} frações,{" "}
+          {snap.ocupacao.vagas.length === 0
+            ? "todas arrendadas"
+            : `${snap.ocupacao.vagas.length} por arrendar`}
+          {snap.horizon ? `. Contas fechadas até ${monthLabel(snap.horizon)}.` : "."}
+        </Lede>
+      </Abertura>
 
-      <Retrato snap={snap} />
-
-      <Seccao titulo="Quem está em atraso">
+      <Seccao
+        titulo="Quem está em atraso"
+        valor={
+          atrasados.length > 0 ? <Money value={totalEmAtraso} escala="sm" tom="perda" /> : undefined
+        }
+      >
         {atrasados.length === 0 ? (
           <EmptyState icon={CheckCircle2}>Nenhum contrato em atraso.</EmptyState>
         ) : (
           <ul className="divide-y divide-regua">
             {atrasados.map((a) => (
-              <li key={a.property.id} className="flex items-baseline justify-between gap-4 py-2.5">
+              <li key={a.property.id} className="flex items-baseline justify-between gap-4 py-3">
                 <div className="min-w-0">
-                  <Link href={`/fracoes/${a.property.id}`} className="font-medium text-tinta hover:text-acao">
+                  <Link
+                    href={`/fracoes/${a.property.id}`}
+                    className="font-medium text-tinta transition-colors duration-150 hover:text-acao"
+                  >
                     {a.property.name}
                   </Link>
                   <p className="truncate text-sm text-tinta-2">
                     {a.activeContract?.tenant_name}
-                    {a.arrears && `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} sem pagar`}
+                    {a.arrears &&
+                      `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} sem pagar`}
                   </p>
                 </div>
                 <Money value={a.arrears?.debt ?? 0} escala="lg" tom="perda" className="shrink-0" />
@@ -137,7 +171,7 @@ function Estado({ snap }: { snap: Snapshot }) {
           </ul>
         )}
       </Seccao>
-    </>
+    </div>
   );
 }
 
@@ -151,31 +185,28 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
   const n = fila.itens.length;
 
   return (
-    <>
-      <Lede
-        eyebrow={monthLabel(thisMonth)}
-        title={n === 0 ? "Nada a decidir." : <Money value={fila.total} escala="hero" tom="acao" />}
-        actions={
-          <>
-            <a href="/api/export" className={buttonClass({ variant: "outline" })}>
-              <Download size={15} strokeWidth={1.75} />
-              Exportar
-            </a>
-            <Link href="/carteira?lente=cobranca" className={buttonClass()}>
-              <Plus size={15} strokeWidth={2} />
-              Registar pagamento
-            </Link>
-          </>
-        }
-      >
-        {n === 0
-          ? `A carteira está em ordem. Cobraste ${fmtPct(snap.fluxo[snap.fluxo.length - 1].taxa, 0)} do esperado este mês.`
-          : `A ganhar este ano, se fizeres as ${n} coisas em baixo.`}
-      </Lede>
-
-      <Cobertura factos={snap.cobertura} />
-
-      <Retrato snap={snap} />
+    <div className="space-y-12">
+      <Abertura snap={snap}>
+        <Lede
+          title={n === 0 ? "Nada a decidir." : <Money value={fila.total} escala="hero" tom="acao" />}
+          actions={
+            <>
+              <a href="/api/export" className={buttonClass({ variant: "outline" })}>
+                <Download size={15} strokeWidth={1.75} />
+                Exportar
+              </a>
+              <Link href="/carteira?lente=cobranca" className={buttonClass()}>
+                <Plus size={15} strokeWidth={2} />
+                Registar pagamento
+              </Link>
+            </>
+          }
+        >
+          {n === 0
+            ? `A carteira está em ordem. Cobraste ${fmtPct(snap.fluxo[snap.fluxo.length - 1].taxa, 0)} do esperado este mês.`
+            : `A ganhar este ano, se fizeres as ${n} coisas em baixo.`}
+        </Lede>
+      </Abertura>
 
       {n === 0 ? (
         <EmptyState icon={CheckCircle2}>
@@ -184,32 +215,41 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
             ` ${fila.residuais.n} ${fila.residuais.n === 1 ? "sinal" : "sinais"} abaixo de ${fmtEur(250)}/ano.`}
         </EmptyState>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-10">
           {grupos.map((g) => (
             <Seccao
               key={g.grupo}
               titulo={GRUPO_LABEL[g.grupo]}
               valor={<Money value={g.euros} escala="sm" tom="tinta-2" />}
             >
-              {/* Caixas, nao uma lista: com 6-8 decisoes a lista virava uma coluna
-                  comprida a pedir scroll, e o que interessa e ver o conjunto de uma vez.
-                  Hairline e nao Card — nada disto esta elevado (R2). */}
+              {/* Caixas, não uma lista: com 6-8 decisões a lista virava uma coluna
+                  comprida a pedir scroll, e o que interessa é ver o conjunto de uma vez.
+                  Hairline e não Card — nada disto está elevado (R2). A régua fina da
+                  esquerda separa "a ganhar" de "a perder" sem gastar um fundo de cor. */}
               <ul className="grid gap-3 sm:grid-cols-2">
                 {g.itens.map((item) => (
                   <li
                     key={item.kind + item.titulo}
-                    className="rounded-xl border border-regua bg-carta p-3.5"
+                    className="relative overflow-hidden rounded-xl border border-regua bg-carta p-4 transition-colors duration-200 hover:border-regua-forte"
                   >
-                    <div className="flex items-baseline justify-between gap-4">
-                      <p className="text-[15px] font-medium text-tinta">{item.titulo}</p>
-                      <Money
-                        value={item.euros}
-                        escala="lg"
-                        tom={item.grupo === "risco" ? "perda" : "acao"}
-                        className="shrink-0"
-                      />
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={`absolute inset-y-0 left-0 w-[2px] ${
+                        item.grupo === "risco" ? "bg-perda/40" : "bg-acao/40"
+                      }`}
+                    />
+                    {/* O valor primeiro e sozinho na linha: a pergunta é sempre "quanto
+                        vale isto?", e um número encostado ao título perde-se ao lado dele. */}
+                    <Money
+                      value={item.euros}
+                      escala="lg"
+                      tom={item.grupo === "risco" ? "perda" : "acao"}
+                    />
+                    <p className="mt-1 text-[15px] font-medium leading-snug text-tinta">
+                      {item.titulo}
+                    </p>
+
+                    <div className="mt-3.5 flex flex-wrap items-center gap-2">
                       {item.acoes.map((a) =>
                         a.externo ? (
                           <a
@@ -235,7 +275,7 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
                       {/* R3: o porquê e a aritmética existem sempre, mas não gastam uma
                           linha por item enquanto ninguém os pede. */}
                       <details className="ml-auto text-xs">
-                        <summary className="cursor-pointer select-none text-tinta-3 hover:text-tinta-2">
+                        <summary className="cursor-pointer select-none text-tinta-3 transition-colors duration-150 hover:text-tinta-2">
                           porquê
                         </summary>
                         <p className="mt-1.5 max-w-[60ch] text-tinta-2">{item.porque}</p>
@@ -263,7 +303,8 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
                   {fila.silenciadas.map(({ item, ate, dispensada }, i) => (
                     <span key={item.kind + item.titulo}>
                       {i > 0 && ", "}
-                      {item.titulo} ({dispensada ? "dispensada" : `até ${new Date(ate!).toLocaleDateString("pt-PT")}`},{" "}
+                      {item.titulo} (
+                      {dispensada ? "dispensada" : `até ${new Date(ate!).toLocaleDateString("pt-PT")}`},{" "}
                       <ReporDecisao kind={item.kind} subject={item.subject} />)
                     </span>
                   ))}
@@ -284,7 +325,10 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
               >
                 <div className="min-w-0">
                   {property ? (
-                    <Link href={`/fracoes/${property.id}`} className="font-medium text-tinta hover:text-acao">
+                    <Link
+                      href={`/fracoes/${property.id}`}
+                      className="font-medium text-tinta transition-colors duration-150 hover:text-acao"
+                    >
                       {property.name}
                     </Link>
                   ) : (
@@ -298,7 +342,7 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
           </ul>
         </Seccao>
       )}
-    </>
+    </div>
   );
 }
 

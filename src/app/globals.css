@@ -332,6 +332,18 @@ body {
   }
 }
 
+/* Menu de administração do masthead: cai do topo, curto. */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Painel lateral (Sheet/ficha): entra da direita no desktop. */
 @keyframes sheet-in {
   from {
@@ -360,11 +372,16 @@ body {
   animation: sheet-in var(--t-sheet) var(--e-out) both;
 }
 
+.animate-menu {
+  animation: menu-in var(--t-fast) var(--e-out);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-modal-in,
   .animate-overlay-in,
-  .animate-sheet-in {
+  .animate-sheet-in,
+  .animate-menu {
     animation: none;
   }
   /* Mudanças de estado ficam instantâneas em vez de transitadas. */

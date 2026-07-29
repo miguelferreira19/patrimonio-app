@@ -105,6 +105,12 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
   barra é a fração da renda recebida**); `faixa.tsx` é a linha por fração com eixo, fronteira
   desenhada e coluna da direita por lente; `pagamento-modal.tsx` é o formulário de marcar pagamento.
   É a ÚNICA implementação da grelha mensal — as três da V1 foram apagadas na Fase 3.
+- **`src/components/masthead.tsx`** — a navegação desde 2026-07-29: cabeçalho em papel com o nome
+  em Newsreader e os destinos como separadores (colam ao topo no scroll), admin num menu à direita.
+  Substituiu o rail escuro por o rail ser vocabulário de dashboard SaaS colado a um sistema de
+  papel-e-tinta — a app tinha duas personalidades. **O `nav.tsx` fica no repo, intacto**: voltar
+  atrás é trocar o import no `(app)/layout.tsx` e repor a margem do `<main>` (instruções em
+  comentário no próprio ficheiro).
 - `src/components/{nav,forms,charts,setup-notice}.tsx` — V1. O `charts.tsx` chegou a ser apagado na
   Fase 7 e **voltou** a pedido do utilizador (2026-07-25): a faixa responde "que mês falhou em que
   fração", o gráfico responde "quanto entrou contra o esperado, mês a mês", e é essa a leitura que a
@@ -120,8 +126,10 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
 (era o bug B2, que fazia o mesmo mês aparecer vermelho em Pagamentos e verde em Atrasos).
 
 ## Estrutura
-- `src/app/(app)/` páginas autenticadas. **Viewer vê 3 destinos** (Agora, Carteira, Ano); o resto é
-  admin-only, com guarda de página (`redirect("/")`), não só filtro no menu:
+- `src/app/(app)/` páginas autenticadas. **Viewer vê 4 destinos** (Agora, Carteira, Mercado, Ano);
+  o resto é admin-only, com guarda de página (`redirect("/")`), não só filtro no menu.
+  O Mercado subiu a destino de família em 2026-07-29: só era admin por não ter números
+  (áreas por preencher + bug B5 do território), e as duas razões acabaram.
   - Agora (`page.tsx`) — duas leituras SEPARADAS, `Estado` para viewer e `Decisoes` para admin.
     Não voltar a entrelaçá-las com `isAdmin ?` no meio da árvore.
   - `carteira` — a faixa, com lentes por `searchParams`. Para viewer a lente é **forçada a

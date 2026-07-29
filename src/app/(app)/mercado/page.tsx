@@ -1,212 +1,208 @@
+// MERCADO. Desde 2026-07-29 é destino de TODA a gente, a pedido do utilizador: saiu da
+// administração quando não tinha números para mostrar (área por preencher em quase toda a
+// carteira, e o código de território errado — bug B5), e essas duas razões desapareceram.
+//
+// Por ser agora uma superfície de família, foi reescrita no idioma da V3: um número herói
+// em vez de um `PageHeader` com um parágrafo (R1), hairlines em vez de uma grelha de
+// `StatCard` (R2), e o "porquê" de cada limitação encostado ao número a que se aplica, em
+// vez de um rodapé de letra miúda que ninguém lê (R3).
+//
+// A HONESTIDADE DESTA PÁGINA, que é o mais fácil de estragar aqui:
+//  - as medianas do INE são de ALOJAMENTOS FAMILIARES e de NOVOS contratos. Dizem quanto
+//    se cobraria hoje, não o que é legal aumentar num contrato em vigor;
+//  - o INE só publica ~330 freguesias, e nenhuma é desta carteira: a mediana é a do
+//    CONCELHO, e isso tem de estar à vista, não numa nota de rodapé;
+//  - loja, garagem e arrecadação não têm benchmark (`benchmarkForMetric` em calc.ts) —
+//    comparar uma garagem com a mediana de habitação não é uma estimativa fraca, é uma
+//    comparação sem significado.
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { Building2, Percent, Target, TriangleAlert } from "lucide-react";
-import { Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
+import { Building2 } from "lucide-react";
+import { EmptyState } from "@/components/ui";
+import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
+import { DeviationBadge } from "@/components/kit/badges";
 import { sum } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { getSnapshotLeve } from "@/lib/portfolio";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
-import { DeviationBadge } from "@/components/kit/badges";
 
 export const dynamic = "force-dynamic";
 
 export default async function MercadoPage() {
-  // V3: superficie de administracao. Enquanto a `area_m2` estiver por preencher, o desvio
-  // face ao INE e o valor estimado sao nulos na maioria das fracoes — e uma pagina que
-  // responde "n/d" a quem so a abre duas vezes por ano nao merece um lugar no rail.
-  const { isAdmin } = await getSession();
-  if (!isAdmin) redirect("/");
+  await getSession();
 
-  // Fase 1: o marketView de cada fracao ja vem calculado no snapshot (PLANO.md §7.1).
-  // P0-2c continua garantido: `correntes` exclui terrenos e imoveis vendidos.
+  // Fase 1: o marketView de cada fração já vem calculado no snapshot (PLANO.md §7.1).
+  // P0-2c continua garantido: `correntes` exclui terrenos e imóveis vendidos.
   const snap = await getSnapshotLeve();
 
-  const rows = snap.correntes
+  const linhas = snap.correntes
     .map((a) => ({ property: a.property, contract: a.activeContract ?? undefined, mv: a.mercado }))
-    .sort((a, b) => {
-      const da = a.mv.deviation ?? Number.POSITIVE_INFINITY;
-      const db = b.mv.deviation ?? Number.POSITIVE_INFINITY;
-      return da - db;
-    });
+    .sort((a, b) => (a.mv.deviation ?? Infinity) - (b.mv.deviation ?? Infinity));
 
-  // "Sem benchmarks carregados" e agora derivado do proprio snapshot: se nenhuma fracao
-  // encontrou territorio no INE, nao ha nada para comparar.
-  const benchmarksCarregados = snap.ativos.some((a) => a.mercado.benchmark !== undefined);
+  const comparaveis = linhas.filter((r) => r.mv.benchmark !== undefined);
+  const comDesvio = linhas.filter((r) => r.mv.deviation !== null);
+  const comValor = linhas.filter((r) => r.mv.estimatedValue !== null);
 
-  const withDev = rows.filter((r) => r.mv.deviation !== null);
-  const totalGap = snap.mercado.potencialMes;
-  const nBelow = withDev.filter((r) => r.mv.deviation! <= -0.1).length;
-  const withValue = rows.filter((r) => r.mv.estimatedValue !== null);
-  const portfolioValue = sum(withValue.map((r) => r.mv.estimatedValue));
-  const totalRentYear = sum(withValue.map((r) => (r.contract?.rent ?? 0) * 12));
-  const avgYield = portfolioValue > 0 ? totalRentYear / portfolioValue : null;
+  const potencialMes = snap.mercado.potencialMes;
+  const abaixo = comDesvio.filter((r) => r.mv.deviation! <= -0.1);
+  const valorCarteira = sum(comValor.map((r) => r.mv.estimatedValue));
+  const rendaAnual = sum(comValor.map((r) => (r.contract?.rent ?? 0) * 12));
+  const yieldMedio = valorCarteira > 0 ? rendaAnual / valorCarteira : null;
 
-  const missingData = rows.filter(
-    (r) => r.contract && (r.mv.deviation === null || r.mv.estimatedValue === null),
-  ).length;
+  const semDados = linhas.filter((r) => r.contract && r.mv.benchmark === undefined).length;
+  const porConcelho = comparaveis.filter((r) => r.mv.benchmark?.level === "concelho").length;
+
+  if (comparaveis.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Lede eyebrow="Mercado" title="Ainda não há com que comparar.">
+          Nenhuma fração encontrou território no INE. Em <strong>Admin</strong>, atualiza os
+          benchmarks e confirma a freguesia e a área nas fichas.
+        </Lede>
+        <EmptyState icon={Building2}>Sem medianas carregadas.</EmptyState>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Mercado"
-        description="Comparação das rendas atuais com as medianas do INE (novos contratos de arrendamento) e estimativa de valor pelos preços medianos de venda. O INE só publica ~330 freguesias: fora dessas, e é o caso de toda esta carteira, a mediana é a do CONCELHO. Só habitação — loja, garagem e arrecadação não se comparam a medianas de alojamentos."
-      />
+    <div className="space-y-8">
+      <Lede eyebrow="Mercado" title={<Money value={valorCarteira} escala="hero" />}>
+        O que a carteira valeria hoje, em {comValor.length} de {linhas.length} frações: as que têm
+        área medida e mediana de venda do INE.{" "}
+        <Confianca
+          nivel="estimado"
+          conta={`Σ área × mediana de venda (€/m²) das ${comValor.length} frações de habitação com área conhecida = ${fmtEur(valorCarteira)}. É uma ordem de grandeza a partir de medianas públicas, nunca uma avaliação.`}
+        />
+      </Lede>
 
-      {!benchmarksCarregados ? (
-        <EmptyState icon={TriangleAlert}>
-          Ainda não há benchmarks carregados. Vai a <strong>Admin → Benchmarks INE</strong> para
-          importar as medianas por freguesia, e preenche o DICOFRE e a área de cada fração.
-        </EmptyState>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard
-              label="Potencial por mês (rendas abaixo do mercado)"
-              value={totalGap > 0 ? `+${fmtEur(totalGap)}` : fmtEur(0)}
-              sub={`${fmtEur(totalGap * 12)} por ano, se tudo fosse posto à mediana`}
-              tone="amber"
-              icon={Target}
-            />
-            <StatCard
-              label="Frações ≥10% abaixo do mercado"
-              value={nBelow}
-              sub={`em ${withDev.length} frações com dados`}
-              tone={nBelow > 0 ? "red" : "green"}
-              icon={TriangleAlert}
-            />
-            <StatCard
-              label="Valor estimado da carteira"
-              value={fmtEur(portfolioValue)}
-              sub={`${withValue.length} frações com área e benchmark`}
-              tone="teal"
-              icon={Building2}
-            />
-            <StatCard
-              label="Yield bruto médio"
-              value={fmtPct(avgYield, 1)}
-              sub="rendas anuais / valor estimado"
-              icon={Percent}
-            />
-          </div>
+      <Seccao titulo="Leitura da carteira">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+          <Facto
+            rotulo="Renda por captar"
+            valor={<Money value={potencialMes} escala="lg" tom={potencialMes > 0 ? "acao" : "tinta-2"} />}
+            nota={
+              potencialMes > 0
+                ? `${fmtEur(potencialMes * 12)} por ano, se tudo fosse à mediana`
+                : "nenhuma renda abaixo da mediana"
+            }
+          />
+          <Facto
+            rotulo="Abaixo do mercado"
+            valor={<Figure value={String(abaixo.length)} escala="lg" tom={abaixo.length > 0 ? "atencao" : "tinta"} />}
+            nota={`10% ou mais abaixo, em ${comDesvio.length} com renda e área`}
+          />
+          <Facto
+            rotulo="Yield bruto"
+            valor={<Figure value={fmtPct(yieldMedio, 1)} escala="lg" />}
+            nota="renda anual sobre o valor estimado"
+          />
+          <Facto
+            rotulo="Sem comparação"
+            valor={<Figure value={String(semDados)} escala="lg" tom={semDados > 0 ? "tinta-2" : "tinta"} />}
+            nota={semDados > 0 ? "falta área, freguesia, ou não é habitação" : "todas comparadas"}
+          />
+        </dl>
+        <p className="mt-4 max-w-[72ch] text-xs leading-relaxed text-tinta-3">
+          As medianas são de <strong className="font-medium text-tinta-2">novos</strong> contratos:
+          dizem quanto se cobraria hoje a quem entrasse agora, não o que é legal aumentar a quem já
+          cá está (isso segue o coeficiente anual).
+          {porConcelho > 0 && (
+            <>
+              {" "}
+              O INE só publica cerca de 330 freguesias e nenhuma é desta carteira:{" "}
+              {porConcelho === comparaveis.length
+                ? "todas as comparações são"
+                : `${porConcelho} comparações são`}{" "}
+              contra a mediana do <strong className="font-medium text-tinta-2">concelho</strong>.
+            </>
+          )}{" "}
+          Loja, garagem e arrecadação não entram: as medianas do INE são de alojamentos.
+        </p>
+      </Seccao>
 
-          <Card
-            title="Frações vs. mercado"
-            subtitle="Ordenado das mais abaixo do mercado para as mais acima"
-          >
-            {/* Desktop/tablet */}
-            <div className="hidden md:block">
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>Fração</Th>
-                    <Th>Freguesia</Th>
-                    <Th className="text-right">Renda</Th>
-                    <Th className="text-right">€/m²</Th>
-                    <Th className="text-right">Mediana €/m²</Th>
-                    <Th>Desvio</Th>
-                    <Th className="text-right">Potencial/mês</Th>
-                    <Th className="text-right">Valor estimado</Th>
-                    <Th className="text-right">Yield bruto</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(({ property, contract, mv }) => (
-                    <tr key={property.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                      <Td>
-                        <Link
-                          href={`/fracoes/${property.id}`}
-                          className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                        >
-                          {property.name}
-                        </Link>
-                      </Td>
-                      <Td>
-                        {property.parish ?? "n/d"}
-                        {mv.benchmark?.level === "concelho" && (
-                          <span className="ml-1 text-[10px] text-zinc-400 dark:text-zinc-500">(mediana concelho)</span>
-                        )}
-                      </Td>
-                      <Td className="text-right tabular-nums">{fmtEur(contract?.rent ?? null)}</Td>
-                      <Td className="text-right tabular-nums">
-                        {mv.rentPerM2 !== null ? fmtNum(mv.rentPerM2, 1) : "n/d"}
-                      </Td>
-                      <Td className="text-right tabular-nums">
-                        {mv.benchmarkRentM2 !== null ? fmtNum(mv.benchmarkRentM2, 1) : "n/d"}
-                      </Td>
-                      <Td><DeviationBadge deviation={mv.deviation} /></Td>
-                      <Td className="text-right tabular-nums text-amber-700 dark:text-amber-400">
-                        {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
-                      </Td>
-                      <Td className="text-right tabular-nums">{fmtEur(mv.estimatedValue)}</Td>
-                      <Td className="text-right tabular-nums">{fmtPct(mv.grossYield, 1)}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-
-            {/* Mobile: um cartão por fração, com todos os dados da linha. */}
-            <div className="space-y-2 md:hidden">
-              {rows.map(({ property, contract, mv }) => (
-                <div key={property.id} className="rounded-lg border border-zinc-200 bg-white p-3 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      href={`/fracoes/${property.id}`}
-                      className="font-medium text-teal-700 hover:underline dark:text-teal-400"
-                    >
-                      {property.name}
-                    </Link>
-                    <DeviationBadge deviation={mv.deviation} />
-                  </div>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {property.parish ?? "n/d"}
-                    {mv.benchmark?.level === "concelho" && " (mediana concelho)"}
+      <Seccao
+        titulo="Fração a fração"
+        valor={
+          <span className="text-xs text-tinta-3">das mais abaixo do mercado para as mais acima</span>
+        }
+      >
+        <ul className="divide-y divide-regua">
+          {linhas.map(({ property, contract, mv }) => (
+            <li key={property.id} className="py-3.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <div className="min-w-0">
+                  <Link
+                    href={`/fracoes/${property.id}`}
+                    className="text-[15px] font-medium text-tinta transition-colors duration-150 hover:text-acao"
+                  >
+                    {property.name}
+                  </Link>
+                  <p className="mt-0.5 text-xs text-tinta-3">
+                    {property.parish ?? "freguesia por preencher"}
+                    {mv.benchmark?.level === "concelho" && " · mediana do concelho"}
+                    {contract ? ` · ${fmtEur(contract.rent)}/mês` : " · sem contrato"}
                   </p>
-                  <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-                    <div>
-                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Renda</p>
-                      <p className="tabular-nums font-medium text-zinc-800 dark:text-zinc-200">{fmtEur(contract?.rent ?? null)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">€/m² (atual / mediana)</p>
-                      <p className="tabular-nums text-zinc-700 dark:text-zinc-300">
-                        {mv.rentPerM2 !== null ? fmtNum(mv.rentPerM2, 1) : "n/d"} /{" "}
-                        {mv.benchmarkRentM2 !== null ? fmtNum(mv.benchmarkRentM2, 1) : "n/d"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Potencial/mês</p>
-                      <p className="tabular-nums text-amber-700 dark:text-amber-400">
-                        {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Valor estimado</p>
-                      <p className="tabular-nums text-zinc-800 dark:text-zinc-200">{fmtEur(mv.estimatedValue)}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Yield bruto</p>
-                      <p className="tabular-nums text-zinc-800 dark:text-zinc-200">{fmtPct(mv.grossYield, 1)}</p>
-                    </div>
-                  </div>
                 </div>
-              ))}
-            </div>
-            {missingData > 0 && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                {missingData} fração(ões) arrendada(s) sem dados suficientes: preenche a área (m²)
-                e o DICOFRE na ficha de cada uma.
-              </p>
-            )}
-            <p className="mt-2 text-[11px] leading-snug text-zinc-400 dark:text-zinc-500">
-              As medianas do INE referem-se a NOVOS contratos: dizem quanto se cobraria hoje, não o
-              que é legalmente possível aumentar num contrato existente (isso segue o coeficiente
-              anual e a lei do arrendamento; ver roadmap Contratos &amp; alertas). Estimativas de
-              valor = área × mediana de venda da freguesia: ordem de grandeza, não avaliação.
-            </p>
-          </Card>
-        </>
-      )}
+
+                <div className="flex shrink-0 items-baseline gap-4">
+                  {mv.deviation !== null ? (
+                    <DeviationBadge deviation={mv.deviation} />
+                  ) : (
+                    <span className="text-xs text-tinta-3">por comparar</span>
+                  )}
+                  {mv.gapEurMonth !== null && (
+                    <Money value={mv.gapEurMonth} escala="md" tom="acao" sign />
+                  )}
+                </div>
+              </div>
+
+              {/* R3: a aritmética existe sempre, mas não gasta uma linha enquanto ninguém a
+                  pede. Quem só quer saber "estou a cobrar pouco?" já leu a badge. */}
+              {mv.benchmark !== undefined && (
+                <details className="mt-1.5 text-xs">
+                  <summary className="inline-flex cursor-pointer select-none text-tinta-3 transition-colors duration-150 hover:text-tinta-2">
+                    a conta
+                  </summary>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-tinta-2 sm:grid-cols-4">
+                    <Linha
+                      rotulo="Área"
+                      valor={property.area_m2 ? `${fmtNum(property.area_m2, 1)} m²` : "n/d"}
+                    />
+                    <Linha
+                      rotulo="Renda €/m²"
+                      valor={mv.rentPerM2 !== null ? fmtNum(mv.rentPerM2, 2) : "n/d"}
+                    />
+                    <Linha
+                      rotulo="Mediana €/m²"
+                      valor={mv.benchmarkRentM2 !== null ? fmtNum(mv.benchmarkRentM2, 2) : "n/d"}
+                    />
+                    <Linha rotulo="Valor estimado" valor={fmtEur(mv.estimatedValue)} />
+                  </dl>
+                </details>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Seccao>
+    </div>
+  );
+}
+
+function Facto({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota: string }) {
+  return (
+    <div>
+      <dt className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</dt>
+      <dd className="mt-1.5">{valor}</dd>
+      <dd className="mt-0.5 text-xs leading-snug text-tinta-3">{nota}</dd>
+    </div>
+  );
+}
+
+function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div>
+      <dt className="text-[11px] text-tinta-3">{rotulo}</dt>
+      <dd className="tabular-nums">{valor}</dd>
     </div>
   );
 }

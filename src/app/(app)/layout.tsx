@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
-import { AppNav } from "@/components/nav";
+import { Masthead } from "@/components/masthead";
 import { SetupNotice } from "@/components/setup-notice";
 import { createClient, supabaseConfigured } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
@@ -38,11 +38,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       >
         Saltar para o conteúdo
       </a>
-      <AppNav role={role} email={user.email ?? null} />
+      {/* PARA VOLTAR AO RAIL ESCURO: trocar por <AppNav role={role} email={...} /> (o
+          nav.tsx está intacto) e repor as margens de rail no <main>:
+          "mx-auto max-w-[1360px] p-4 pb-16 md:ml-60 md:px-9 md:pb-16 md:pt-8". */}
+      <Masthead role={role} email={user.email ?? null} />
       <main
         id="conteudo"
         tabIndex={-1}
-        className="mx-auto max-w-[1360px] p-4 pb-16 md:ml-60 md:px-9 md:pb-16 md:pt-8"
+        className="mx-auto max-w-[1360px] px-4 pb-20 pt-6 md:px-9 md:pb-24 md:pt-9"
       >
         {error && (
           <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">
