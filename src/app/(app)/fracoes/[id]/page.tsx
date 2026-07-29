@@ -167,8 +167,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const contractIds = contracts.map((c) => c.id);
   const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ, coefficientsQ] = await Promise.all([
     // Histórico COMPLETO (sem piso temporal) — a secção "Histórico de pagamentos" precisa
-    // de todos os anos, não só dos últimos 12 meses (PLANO.md/CLAUDE.md: PostgREST corta a
-    // 1000 linhas por defeito, daí o .limit() explícito e generoso).
+    // de todos os anos, não só dos últimos 12 meses.
+    // ATENÇÃO ao que este .limit() NÃO faz: não passa por cima do max-rows (~1000) do
+    // PostgREST — nada passa, é por isso que existe o paginateAll. Aqui é seguro por outra
+    // razão, e só por ela: são os pagamentos de UMA fração, ou seja um punhado de contratos
+    // × 12 meses/ano. Chegar a 1000 linhas exigia ~80 anos de contrato. Se um dia esta
+    // query passar a abranger mais do que uma fração, tem de ser paginada.
     contractIds.length > 0
       ? supabase.from("payments").select("*").in("contract_id", contractIds).limit(20000)
       : Promise.resolve({ data: [] as Payment[] }),

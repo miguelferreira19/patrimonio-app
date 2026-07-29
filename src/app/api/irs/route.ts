@@ -15,6 +15,7 @@ import {
   reducedRateEligibility,
 } from "@/lib/irs";
 import { todayISO } from "@/lib/format";
+import { paginateAll } from "@/lib/paginate";
 import type { Contract, Expense, Landlord, Property, PropertyOwner, Receipt } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -57,18 +58,34 @@ export async function GET(request: Request) {
     supabase.from("property_owners").select("*"),
     supabase.from("properties").select("id,name,matriz_article,typology,vpt,status"),
     supabase.from("contracts").select("*"),
-    supabase
-      .from("receipts")
-      .select("property_id,amount,withholding,issue_date")
-      .gte("issue_date", yearStart)
-      .lte("issue_date", yearEnd)
-      .limit(5000),
-    supabase
-      .from("expenses")
-      .select("property_id,landlord_id,category,amount,expense_date,origem")
-      .gte("expense_date", yearStart)
-      .lte("expense_date", yearEnd)
-      .limit(5000),
+    // PAGINADO: o .limit() nao passa por cima do max-rows (~1000) do PostgREST. Este e o
+    // ficheiro que se entrega a AT — uma linha que escape aqui e uma renda nao declarada.
+    paginateAll<Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date">>(
+      async (from, to) => {
+        const { data, error } = await supabase
+          .from("receipts")
+          .select("property_id,amount,withholding,issue_date")
+          .gte("issue_date", yearStart)
+          .lte("issue_date", yearEnd)
+          .order("id", { ascending: true })
+          .range(from, to);
+        if (error) throw error;
+        return data ?? [];
+      },
+    ),
+    paginateAll<
+      Pick<Expense, "property_id" | "landlord_id" | "category" | "amount" | "expense_date" | "origem">
+    >(async (from, to) => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("property_id,landlord_id,category,amount,expense_date,origem")
+        .gte("expense_date", yearStart)
+        .lte("expense_date", yearEnd)
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return data ?? [];
+    }),
   ]);
 
   const owners = (ownersQ.data ?? []) as PropertyOwner[];
@@ -76,10 +93,8 @@ export async function GET(request: Request) {
     Pick<Property, "id" | "name" | "matriz_article" | "typology" | "vpt" | "status">
   >;
   const contracts = (contractsQ.data ?? []) as Contract[];
-  const receipts = (receiptsQ.data ?? []) as Array<Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date">>;
-  const expenses = (expensesQ.data ?? []) as Array<
-    Pick<Expense, "property_id" | "landlord_id" | "category" | "amount" | "expense_date" | "origem">
-  >;
+  const receipts = receiptsQ;
+  const expenses = expensesQ;
 
   const propertiesById = new Map(properties.map((p) => [p.id, p]));
   const quotaByProperty = new Map<string, number>();

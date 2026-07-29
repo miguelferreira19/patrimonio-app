@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
 import { LandlordFormButton } from "@/components/forms";
 import { Card, PageHeader, Table, Td, Th } from "@/components/ui";
 import { Money } from "@/components/kit";
 import { currentProperties } from "@/lib/calc";
+import { expenseShare, quotaPctByProperty } from "@/lib/irs";
 import { getSession } from "@/lib/data";
 import { currentMonthKey, fmtEur } from "@/lib/format";
 import type {
@@ -39,12 +41,11 @@ function statusSummary(counts: Partial<Record<PropertyStatus, number>>): string 
 export default async function SenhoriosPage() {
   const { supabase, isAdmin } = await getSession();
 
+  // Admin-only com REDIRECT, nao com um cartao "area reservada": e a regra escrita no
+  // CLAUDE.md e o que /analise e /inquilinos ja faziam. Tres paginas a divergir do documento
+  // e o que faz o proximo a ler o repo confiar numa guarda que nao existe como pensa.
   if (!isAdmin) {
-    return (
-      <Card>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Área reservada ao administrador.</p>
-      </Card>
-    );
+    redirect("/");
   }
 
   const year = currentMonthKey().slice(0, 4);
@@ -92,7 +93,10 @@ export default async function SenhoriosPage() {
     activeRentByProperty.set(c.property_id, (activeRentByProperty.get(c.property_id) ?? 0) + c.rent);
   }
 
-  // Recebido/despesas YTD POR INTEIRO, por fração — usados só no total da família.
+  // Recebido/despesas YTD POR INTEIRO, por fração — usados SÓ no total da família. A linha
+  // de cada senhorio usa a PARTE dele (ver quotaPorFracao/expenseShare mais abaixo): somar
+  // o valor inteiro da fração a cada co-titular fazia o Ilídio ver o dobro da despesa que
+  // pagou, numa fração que é 50/50 com o António.
   const receivedByProperty = new Map<string, number>();
   for (const p of payments) {
     const c = contractById.get(p.contract_id);
@@ -157,12 +161,25 @@ export default async function SenhoriosPage() {
     const quotas = quotasByLandlord.get(l.id) ?? [];
     const quotaAvg = quotas.length > 0 ? quotas.reduce((a, b) => a + b, 0) / quotas.length : null;
 
+    // A PARTE deste senhorio, não o valor inteiro da fração. A renda vai pela quota; a
+    // despesa vai pela regra única do irs.ts (linha com senhorio = a parte dele, linha sem
+    // senhorio = conta da família repartida). `apenasRegistadas: false` porque aqui é
+    // análise de carteira: uma despesa espelhada de um comproprietário é a melhor
+    // estimativa que existe para quem não tem dados próprios — ao Anexo F é que não vai.
+    const quotaPorFracao = quotaPctByProperty(allOwners, l.id);
     let receivedYtd = 0;
-    let expensesYtd = expensesLandlordSemFracao.get(l.id) ?? 0;
     for (const pid of allPropsByLandlord.get(l.id) ?? []) {
-      receivedYtd += receivedByProperty.get(pid) ?? 0;
-      expensesYtd += expensesByProperty.get(pid) ?? 0;
+      const quota = (quotaPorFracao.get(pid) ?? 100) / 100;
+      receivedYtd += (receivedByProperty.get(pid) ?? 0) * quota;
     }
+    const expensesYtd = expenses.reduce(
+      (acc, e) =>
+        acc +
+        expenseShare(e, l.id, e.property_id ? quotaPorFracao.get(e.property_id) : undefined, {
+          apenasRegistadas: false,
+        }),
+      0,
+    );
 
     return {
       landlord: l,
@@ -201,7 +218,7 @@ export default async function SenhoriosPage() {
     <div className="space-y-4">
       <PageHeader
         title="Senhorios"
-        description="Valores por inteiro (ótica de família): as frações partilhadas contam uma única vez no total. As quotas de cada titular ficam registadas para o apoio ao IRS (fase futura)."
+        description="Frações e renda mensal por inteiro (ótica de família): uma fração partilhada conta uma vez no total. Recebido, despesas e líquido de cada senhorio são a PARTE dele, pela quota — para o total da família, ver a última linha."
         actions={isAdmin && <LandlordFormButton />}
       />
 
@@ -216,9 +233,9 @@ export default async function SenhoriosPage() {
                 <Th className="text-right">Frações</Th>
                 <Th>Por estado</Th>
                 <Th className="text-right">Renda mensal (por inteiro)</Th>
-                <Th className="text-right">Recebido {year}</Th>
-                <Th className="text-right">Despesas {year}</Th>
-                <Th className="text-right">Líquido {year}</Th>
+                <Th className="text-right">Recebido {year} (parte)</Th>
+                <Th className="text-right">Despesas {year} (parte)</Th>
+                <Th className="text-right">Líquido {year} (parte)</Th>
                 <Th className="text-right">Quota média</Th>
                 {isAdmin && <Th />}
               </tr>

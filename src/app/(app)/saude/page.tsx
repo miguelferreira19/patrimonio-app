@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, ListChecks, XCircle } from "lucide-react";
 import { Badge, Card, EmptyState, PageHeader, StatCard, Table, Td, Th } from "@/components/ui";
@@ -24,12 +25,11 @@ const TONE: Record<HealthSeverity, "red" | "amber" | "zinc"> = {
 export default async function SaudePage() {
   const { isAdmin } = await getSession();
 
+  // Admin-only com REDIRECT, nao com um cartao "area reservada": e a regra escrita no
+  // CLAUDE.md e o que /analise e /inquilinos ja faziam. Tres paginas a divergir do documento
+  // e o que faz o proximo a ler o repo confiar numa guarda que nao existe como pensa.
   if (!isAdmin) {
-    return (
-      <Card>
-        <p className="text-sm text-tinta-2">Area reservada ao administrador.</p>
-      </Card>
-    );
+    redirect("/");
   }
 
   // Fase 1: era o TERCEIRO sitio a correr `computeArrears` sobre o historico completo no

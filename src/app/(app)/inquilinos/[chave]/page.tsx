@@ -5,7 +5,7 @@
 // quando há NIF, `nome:...` quando não há. Sem NIF, a ficha pode estar a juntar homónimos
 // e DIZ-LO — a app não finge que o inquilino é uma entidade quando não é (V3.md).
 
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Home } from "lucide-react";
 import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
@@ -19,8 +19,12 @@ import { fmtDate, fmtEur, fmtPct } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function InquilinoPage({ params }: { params: Promise<{ chave: string }> }) {
-  const { isAdmin } = await getSession();
-  if (!isAdmin) redirect("/");
+  // Aberta a TODA a gente (decisao do utilizador, 2026-07-29): a familia ja ve nomes de
+  // inquilinos na fracao e na Carteira com a lente de risco, e o nome era clicavel para
+  // todos — com guarda de admin, um viewer que clicasse era atirado para o Agora sem
+  // explicacao. Ou se esconde o link, ou se abre a pagina; escondido, o nome do inquilino
+  // ficava a ser a unica coisa da app sem para onde ir.
+  await getSession();
 
   const { chave } = await params;
   const snap = await getSnapshot();

@@ -212,11 +212,13 @@ export function expenseTotalsByProperty(
   for (const e of expenses) {
     if (!e.property_id) continue;
     if (yearOf(e.expense_date) !== year) continue;
-    if (e.origem !== "registada") continue;
-    if (e.landlord_id !== null && e.landlord_id !== landlordId) continue;
-    const quota = quotaPctByProperty.get(e.property_id);
-    if (quota === undefined) continue; // este senhorio não é titular da fração
-    const valor = e.landlord_id === landlordId ? e.amount : e.amount * (quota / 100);
+    // Uma despesa com senhorio só conta para ELE, mas continua a precisar da quota para o
+    // caso da conta de família — por isso a titularidade é verificada dentro do share.
+    if (e.landlord_id === null && !quotaPctByProperty.has(e.property_id)) continue;
+    const valor = expenseShare(e, landlordId, quotaPctByProperty.get(e.property_id), {
+      apenasRegistadas: true,
+    });
+    if (valor === 0) continue;
 
     const cur = out.get(e.property_id) ?? { imi: 0, condominio: 0, toConfirm: 0, deductible: 0 };
     const kind = EXPENSE_DEDUCTIBILITY[e.category];
@@ -227,6 +229,33 @@ export function expenseTotalsByProperty(
     out.set(e.property_id, cur);
   }
   return out;
+}
+
+/**
+ * A parte de UM senhorio numa linha de despesa. Devolve 0 quando a linha não é dele.
+ *
+ * Vive aqui, e é usada tanto pelo Anexo F como pela página de Senhorios, porque a regra é
+ * a mesma e escrevê-la duas vezes é como as duas superfícies passam a discordar:
+ *  - `landlord_id` dele: a linha JÁ É a parte dele (foi o que declarou/pagou) — inteira;
+ *  - `landlord_id` nulo: conta da família, reparte-se pela quota;
+ *  - `landlord_id` de outro: não é dele.
+ *
+ * `apenasRegistadas` é a única diferença entre os dois consumidores, e é uma decisão do
+ * utilizador (2026-07-26): ao FISCO só vai o que está registado, porque deduzir exige
+ * fatura em nome do titular; à análise de carteira vai também o espelhado, que é a melhor
+ * estimativa que existe para um senhorio sem dados próprios.
+ */
+export function expenseShare(
+  e: IrsExpenseInput,
+  landlordId: string,
+  quotaPct: number | undefined,
+  { apenasRegistadas }: { apenasRegistadas: boolean },
+): number {
+  if (apenasRegistadas && e.origem !== "registada") return 0;
+  if (e.landlord_id === landlordId) return e.amount;
+  if (e.landlord_id !== null) return 0;
+  if (quotaPct === undefined) return 0; // não é titular desta fração
+  return e.amount * (quotaPct / 100);
 }
 
 /** Quota (%) de um senhorio em cada fração de que é titular. */

@@ -159,8 +159,8 @@ const GERADORES: GeradorConselho[] = [
         // que já mostra a projeção é ruído. Quando houver despesas registadas, a ação
         // natural é o Ano, não esta página.
         acoes: capacidade.despesasConhecidas
-          ? [{ label: "Ver despesas do ano", href: `/ano/${new Date().getFullYear()}#despesas` }]
-          : [{ label: "Registar despesas", href: `/ano/${new Date().getFullYear()}#despesas` }],
+          ? [{ label: "Ver despesas do ano", href: `/ano/${e.hoje.getFullYear()}#despesas` }]
+          : [{ label: "Registar despesas", href: `/ano/${e.hoje.getFullYear()}#despesas` }],
       },
     ];
   },

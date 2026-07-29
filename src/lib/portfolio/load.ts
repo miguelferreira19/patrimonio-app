@@ -161,19 +161,39 @@ export async function loadRaw(
     supabase.from("property_owners").select("*"),
     supabase.from("landlords").select("*").order("name"),
     comHistorico ? fetchHistorico(supabase) : Promise.resolve([] as PaymentLight[]),
+    // PAGINADO: 12 meses de pagamentos de ~50 contratos cabem hoje nas ~1000 linhas que o
+    // PostgREST devolve, mas "cabe hoje" nao e uma garantia — passar do corte perde linhas
+    // em SILENCIO, e um pagamento que desaparece vira um mes em falta na faixa.
     comHistorico
-      ? supabase.from("payments").select("*").gte("ref_month", recuar12Meses(thisMonth))
-      : Promise.resolve({ data: [] as Payment[] }),
+      ? paginateAll<Payment>(async (from, to) => {
+          const { data, error } = await supabase
+            .from("payments")
+            .select("*")
+            .gte("ref_month", recuar12Meses(thisMonth))
+            .order("id", { ascending: true })
+            .range(from, to);
+          if (error) throw error;
+          return (data ?? []) as Payment[];
+        })
+      : Promise.resolve([] as Payment[]),
     fetchAllExpenses(supabase),
     supabase.from("rent_updates").select("*"),
     supabase.from("update_coefficients").select("*"),
     supabase.from("receipts").select("contract_id,pf_contract_no").eq("ref_month", thisMonth),
     supabase.from("receipts").select("id", { count: "exact", head: true }).is("contract_id", null),
-    supabase
-      .from("receipts")
-      .select("contract_id,ref_month,amount")
-      .gte("ref_month", recuar12Meses(thisMonth))
-      .limit(5000),
+    // PAGINADO pela mesma razao: o .limit(5000) NAO passa por cima do max-rows do servidor.
+    paginateAll<{ contract_id: string | null; ref_month: string; amount: number }>(
+      async (from, to) => {
+        const { data, error } = await supabase
+          .from("receipts")
+          .select("contract_id,ref_month,amount")
+          .gte("ref_month", recuar12Meses(thisMonth))
+          .order("id", { ascending: true })
+          .range(from, to);
+        if (error) throw error;
+        return data ?? [];
+      },
+    ),
     supabase.from("insight_state").select("*"),
   ]);
 
@@ -194,14 +214,14 @@ export async function loadRaw(
     landlords: (landlordsQ.data ?? []) as Landlord[],
     benchmarks: (benchmarksQ.data ?? []) as MarketBenchmark[],
     payments,
-    paymentsRecentes: (paymentsRecentesQ.data ?? []) as Payment[],
+    paymentsRecentes: paymentsRecentesQ,
     expenses,
     rentUpdates: (rentUpdatesQ.data ?? []) as RentUpdate[],
     coefficients: (coefficientsQ.data ?? []) as UpdateCoefficient[],
     receiptsThisMonth: (receiptsMonthQ.data ?? []) as Array<
       Pick<Receipt, "contract_id" | "pf_contract_no">
     >,
-    receiptsRecentes: (receiptsRecentesQ.data ?? []) as Array<
+    receiptsRecentes: receiptsRecentesQ as Array<
       Pick<Receipt, "contract_id" | "ref_month" | "amount">
     >,
     orphanReceipts: orphanQ.count ?? 0,

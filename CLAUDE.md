@@ -53,6 +53,9 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - VPT no CSV do Portal vem em CÊNTIMOS (÷100) — já tratado em `dados/analise_senhorio.py` — **e
   vem multiplicado pela QUOTA do titular**. O VPT por inteiro está na caderneta predial, em EUROS
   (`dados/ler_cadernetas.py`); a app assume-o por inteiro e aplica a quota no `irs.ts`.
+- **A parte de um senhorio numa despesa calcula-se SÓ com `expenseShare` (irs.ts)**, usada pelo
+  Anexo F e pela página de Senhorios. `apenasRegistadas: true` ao fisco, `false` na análise de
+  carteira. Somar o valor inteiro da fração a cada co-titular fazia cada um ver o dobro.
 - **Uma despesa com `landlord_id` é a PARTE daquele senhorio** (foi o que ele declarou no Anexo F)
   e não se volta a multiplicar pela quota; sem `landlord_id` é conta da família e reparte-se. A
   regra vive só em `expenseTotalsByProperty` (irs.ts). `origem != 'registada'` nunca chega ao fisco.

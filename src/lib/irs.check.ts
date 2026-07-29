@@ -6,6 +6,7 @@ import {
   bracketsForYear,
   aimiExposure,
   anexoFRows,
+  expenseShare,
   classifyUso,
   computeLandlordFiscalYear,
   parseMatriz,
@@ -156,6 +157,33 @@ assert.equal(bracketsForYear(2020).bracketsYear, 2025, "ano anterior à tabela m
   const linhasPai = anexoFRows("PAI", 2025, owners, contratos, propertiesById, receipts, expenses, "2026-01-01");
   assert.equal(linhasPai[0].condominio, 130, "o Pai declara o que pagou, sem voltar a dividir por 2");
   assert.equal(linhasPai[0].imi, 100, "o IMI da família continua repartido pela quota");
+}
+
+// expenseShare: a MESMA regra serve o Anexo F e a página de Senhorios, e só difere no
+// filtro fiscal. Se as duas divergirem, o Ilídio vê uma despesa na carteira que o Anexo F
+// dele não conhece — ou, pior, o dobro do que pagou (era o bug de /senhorios, que somava o
+// valor inteiro da fracção à linha de cada co-titular).
+{
+  const daFamilia = { property_id: "p1", landlord_id: null, origem: "registada" as const,
+    category: "imi" as const, amount: 200, expense_date: "2025-03-01" };
+  const doPai = { ...daFamilia, landlord_id: "PAI", category: "condominio" as const, amount: 130 };
+  const espelhadaDoTio = { ...doPai, landlord_id: "TIO", origem: "espelhada" as const };
+
+  // Conta da família: reparte-se pela quota, em ambos os consumidores.
+  assert.equal(expenseShare(daFamilia, "PAI", 50, { apenasRegistadas: true }), 100);
+  assert.equal(expenseShare(daFamilia, "PAI", 50, { apenasRegistadas: false }), 100);
+  // Linha do próprio: é JÁ a parte dele, entra inteira e não se volta a dividir por 2.
+  assert.equal(expenseShare(doPai, "PAI", 50, { apenasRegistadas: true }), 130);
+  // Linha de outro senhorio: nunca é dele.
+  assert.equal(expenseShare(doPai, "TIO", 50, { apenasRegistadas: false }), 0);
+  // Espelhada: fora do fisco, dentro da análise de carteira. É a única diferença entre os
+  // dois consumidores, e é a decisão do utilizador de 2026-07-26.
+  assert.equal(expenseShare(espelhadaDoTio, "TIO", 50, { apenasRegistadas: true }), 0);
+  assert.equal(expenseShare(espelhadaDoTio, "TIO", 50, { apenasRegistadas: false }), 130);
+  // Não titular da fracção: a conta da família não lhe toca.
+  assert.equal(expenseShare(daFamilia, "ESTRANHO", undefined, { apenasRegistadas: false }), 0);
+  // Quota de 100%: a conta da família é toda dele, e o resultado não pode duplicar.
+  assert.equal(expenseShare(daFamilia, "PAI", 100, { apenasRegistadas: true }), 200);
 }
 
 // ---------- classifyUso ----------

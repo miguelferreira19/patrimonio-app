@@ -15,8 +15,10 @@ import {
   reducedRateEligibility,
   type AimiExposure,
   type AnexoFRow,
+  type IrsReceiptInput,
   type LandlordFiscalYear,
 } from "../irs";
+import { paginateAll } from "../paginate";
 import { createClient } from "../supabase/server";
 import { todayISO } from "../format";
 import type {
@@ -82,12 +84,19 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
     supabase.from("contracts").select("*"),
     // Recibos do ano por DATA DE EMISSÃO: é o critério do Anexo F (regime de caixa), e é
     // o mesmo que o /irs usava — não mudar para ref_month sem mudar a declaração.
-    supabase
-      .from("receipts")
-      .select("property_id,amount,withholding,issue_date")
-      .gte("issue_date", inicio)
-      .lte("issue_date", fim)
-      .limit(5000),
+    // PAGINADO: o .limit() nao passa por cima do max-rows (~1000) do PostgREST, e um recibo
+    // que escape faz o Anexo F declarar menos renda do que houve.
+    paginateAll<IrsReceiptInput>(async (from, to) => {
+      const { data, error } = await supabase
+        .from("receipts")
+        .select("property_id,amount,withholding,issue_date")
+        .gte("issue_date", inicio)
+        .lte("issue_date", fim)
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as IrsReceiptInput[];
+    }),
     supabase
       .from("expenses")
       .select("*")
@@ -100,9 +109,7 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
   const owners = (ownersQ.data ?? []) as PropertyOwner[];
   const propriedades = (propsQ.data ?? []) as PropriedadeDoAno[];
   const contratos = (contractsQ.data ?? []) as Contract[];
-  const recibos = (receiptsQ.data ?? []) as Array<
-    Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date">
-  >;
+  const recibos = receiptsQ;
   const despesas = (expensesQ.data ?? []) as Expense[];
   const porId = new Map(propriedades.map((p) => [p.id, p]));
   const hoje = todayISO();

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Card, PageHeader } from "@/components/ui";
 import { getSession } from "@/lib/data";
 import { isCurrentProperty, missingFichaFields } from "@/lib/calc";
@@ -22,12 +23,11 @@ interface IneBenchmarkRow {
 export default async function AdminPage() {
   const { supabase, isAdmin, user } = await getSession();
 
+  // Admin-only com REDIRECT, nao com um cartao "area reservada": e a regra escrita no
+  // CLAUDE.md e o que /analise e /inquilinos ja faziam. Tres paginas a divergir do documento
+  // e o que faz o proximo a ler o repo confiar numa guarda que nao existe como pensa.
   if (!isAdmin || !user) {
-    return (
-      <Card>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Área reservada ao administrador.</p>
-      </Card>
-    );
+    redirect("/");
   }
 
   const [
