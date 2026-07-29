@@ -57,7 +57,12 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
   e não se volta a multiplicar pela quota; sem `landlord_id` é conta da família e reparte-se. A
   regra vive só em `expenseTotalsByProperty` (irs.ts). `origem != 'registada'` nunca chega ao fisco.
 - `dados/` contém dados pessoais reais (está no .gitignore) — nunca commitar nem expor.
-- Não fazer commits/push sem pedido explícito do utilizador.
+- Não fazer commits/push sem pedido explícito do utilizador. **EXCEÇÃO (2026-07-29): um pedido
+  de deploy inclui o git.** "Faz deploy" = `npm run build` e `npm run check` verdes →
+  `npx vercel@latest deploy --prod --yes` → `git add -A`, commit e `git push`. O deploy sai da
+  máquina local por CLI, não do repo: sem isto, produção fica à frente do GitHub e a sessão
+  seguinte lê um repo que já não descreve o que está live. Gate vermelho = não deployar nem
+  commitar.
 - Alterações de schema: sempre idempotentes, acrescentadas ao fim de `supabase/schema.sql` e
   coladas à mão no SQL Editor pelo utilizador.
 
