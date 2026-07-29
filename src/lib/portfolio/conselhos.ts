@@ -133,8 +133,11 @@ const GERADORES: GeradorConselho[] = [
     const horizonteMeses = projecao.length;
     // HONESTIDADE OBRIGATÓRIA (V3.md, futuro.ts): sem despesas conhecidas, a app tem de
     // dizer às claras que o número é receita bruta, nunca disfarçar de "líquido".
+    const espelhadas = capacidade.despesasEspelhadas
+      ? " Parte da despesa é ESPELHADA de um comproprietário (não foi medida neste senhorio)."
+      : "";
     const conta = capacidade.despesasConhecidas
-      ? `Receita esperada (${fmtEur(capacidade.receita24m)}) menos despesa média mensal projetada (${fmtEur(capacidade.despesas24m!)}) ao longo de ${horizonteMeses} meses = líquido ${fmtEur(capacidade.liquido24m!)}.`
+      ? `Receita esperada (${fmtEur(capacidade.receita24m)}) menos despesa média mensal projetada (${fmtEur(capacidade.despesas24m!)}) ao longo de ${horizonteMeses} meses = líquido ${fmtEur(capacidade.liquido24m!)}.${espelhadas}`
       : `${fmtEur(capacidade.receita24m)} de receita ESPERADA nos próximos ${horizonteMeses} meses. É receita BRUTA: a tabela de despesas não tem registos suficientes (menos de 3 nos últimos 12 meses) para calcular um líquido credível.`;
 
     return [
@@ -147,7 +150,10 @@ const GERADORES: GeradorConselho[] = [
           ? `A carteira liberta ${fmtEur(capacidade.liquido24m!)} líquidos nos próximos ${horizonteMeses} meses.`
           : `A carteira espera receber ${fmtEur(capacidade.receita24m)} nos próximos ${horizonteMeses} meses; não há despesas suficientes registadas para calcular o líquido.`,
         euros,
-        confianca: capacidade.despesasConhecidas ? "estimado" : "assumido",
+        // Despesa espelhada volta a descer a confiança para "assumido": o líquido deixa
+        // de ser uma média de factos e passa a incluir a conta de outra pessoa.
+        confianca:
+          capacidade.despesasConhecidas && !capacidade.despesasEspelhadas ? "estimado" : "assumido",
         conta,
         // Sem ação: este conselho VIVE na /analise, e um botão "Ver projeção" na página
         // que já mostra a projeção é ruído. Quando houver despesas registadas, a ação

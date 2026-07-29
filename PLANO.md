@@ -272,7 +272,7 @@ minha atenção hoje, e onde?"*
 | B2 | Grelha de Pagamentos contradiz Atrasos (ver L2) | `payments-grid.tsx:66-75` |
 | B3 | `/senhorios` com `"n/d"` fixo (ver L14) | `senhorios/page.tsx` |
 | B4 | **Deriva de schema:** `properties_matriz_uq` e `contracts_pfno_uq` só existem no gerador Python. Uma BD criada do `schema.sql` não tem dedupe por matriz nem por nº de contrato | `gerar_sql_import.py:298,351` |
-| B5 | Códigos INE têm 7/9 caracteres; `properties.dicofre` está documentado como 6 dígitos e o match de concelho é `startsWith` | `ine.ts:74-124`, `calc.ts:52-69` |
+| B5 | ~~Códigos INE têm 7/9 caracteres; `properties.dicofre` está documentado como 6 dígitos e o match de concelho é `startsWith`~~ **CORRIGIDO 2026-07-29**: o `geocod` do INE é NUTS III + DICOFRE (`1941823` = `194`+`18`+`23`); `ine.ts` grava agora só o DICOFRE e o SQL converte o que já estava. Era isto que fazia o Mercado nunca casar benchmark nenhum | `ine.ts`, `calc.check.ts` |
 | B6 | `Modal` sem Esc, sem focus trap, sem scroll lock | `ui.tsx:347` |
 | B7 | 64 recibos "Anulado" (21 Pai + 43 Avô) não têm representação na BD | filtro no parse de `analise_senhorio.py` |
 

@@ -62,15 +62,15 @@ assert.equal(bracketsForYear(2020).bracketsYear, 2025, "ano anterior à tabela m
     { property_id: "p1", amount: 200, withholding: 0, issue_date: "2024-12-20" },
   ];
   const expenses = [
-    { property_id: "p1", category: "imi" as const, amount: 1200, expense_date: "2025-03-01" },
-    { property_id: "p1", category: "condominio" as const, amount: 300, expense_date: "2025-04-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "imi" as const, amount: 1200, expense_date: "2025-03-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "condominio" as const, amount: 300, expense_date: "2025-04-01" },
     // "obras" é ambígua (conservação vs valorização) -> não deduz, fica "a confirmar".
-    { property_id: "p1", category: "obras" as const, amount: 5_000, expense_date: "2025-05-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "obras" as const, amount: 5_000, expense_date: "2025-05-01" },
     // seguro/financiamento: excluídos por completo (nem deduzidos nem "a confirmar").
-    { property_id: "p1", category: "seguro" as const, amount: 400, expense_date: "2025-06-01" },
-    { property_id: "p1", category: "financiamento" as const, amount: 800, expense_date: "2025-07-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "seguro" as const, amount: 400, expense_date: "2025-06-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "financiamento" as const, amount: 800, expense_date: "2025-07-01" },
     // Ano errado -- não deve entrar no ano fiscal 2025.
-    { property_id: "p1", category: "imi" as const, amount: 1_000, expense_date: "2024-05-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "imi" as const, amount: 1_000, expense_date: "2024-05-01" },
   ];
 
   const r = computeLandlordFiscalYear("L1", 2025, owners, receipts, expenses);
@@ -117,10 +117,45 @@ assert.equal(bracketsForYear(2020).bracketsYear, 2025, "ano anterior à tabela m
   // Despesas dedutíveis > rendas -> líquido nunca fica negativo.
   const owners: PropertyOwner[] = [{ property_id: "p1", landlord_id: "L1", quota: 100 }];
   const receipts = [{ property_id: "p1", amount: 500, withholding: 0, issue_date: "2025-01-01" }];
-  const expenses = [{ property_id: "p1", category: "imi" as const, amount: 2_000, expense_date: "2025-01-01" }];
+  const expenses = [{ property_id: "p1", landlord_id: null, origem: "registada" as const, category: "imi" as const, amount: 2_000, expense_date: "2025-01-01" }];
   const r = computeLandlordFiscalYear("L1", 2025, owners, receipts, expenses);
   assert.equal(r.netIncome, 0);
   assert.equal(r.autonomousTax, 0);
+}
+
+// ---------- V3 frente B: proveniência e titularidade das despesas ----------
+// Três regras num só sítio (expenseTotalsByProperty). Se alguma se perder, o Anexo F
+// passa a deduzir despesas que ninguém tem fatura para justificar.
+{
+  const owners: PropertyOwner[] = [
+    { property_id: "p1", landlord_id: "PAI", quota: 50 },
+    { property_id: "p1", landlord_id: "TIO", quota: 50 },
+  ];
+  const receipts = [{ property_id: "p1", amount: 4_000, withholding: 0, issue_date: "2025-01-05" }];
+  const expenses = [
+    // Conta da família: reparte-se pela quota (comportamento de sempre).
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "imi" as const, amount: 200, expense_date: "2025-03-01" },
+    // Declarada pelo Pai: JÁ é a parte dele, entra por inteiro.
+    { property_id: "p1", landlord_id: "PAI", origem: "registada" as const, category: "condominio" as const, amount: 130, expense_date: "2025-04-01" },
+    // Espelhada para o Tio a partir do Pai: serve a carteira, nunca o fisco.
+    { property_id: "p1", landlord_id: "TIO", origem: "espelhada" as const, category: "condominio" as const, amount: 130, expense_date: "2025-04-01" },
+  ];
+
+  const pai = computeLandlordFiscalYear("PAI", 2025, owners, receipts, expenses);
+  assert.equal(pai.deductibleExpenses, 230, "100 (IMI 200 x 50%) + 130 (condomínio dele, por inteiro)");
+
+  const tio = computeLandlordFiscalYear("TIO", 2025, owners, receipts, expenses);
+  assert.equal(tio.deductibleExpenses, 100, "só o IMI da família x 50%: a espelhada não deduz");
+
+  const propertiesById = new Map<string, Pick<Property, "id" | "matriz_article" | "typology">>([
+    ["p1", { id: "p1", matriz_article: "182341-U-2381-K", typology: "T2" }],
+  ]);
+  const contratos = [{ id: "c1", property_id: "p1", pf_contract_no: "1", start_date: "2020-01-01", rent: 400 }];
+  const linhasTio = anexoFRows("TIO", 2025, owners, contratos, propertiesById, receipts, expenses, "2026-01-01");
+  assert.equal(linhasTio[0].condominio, 0, "a linha espelhada do Tio não chega ao Anexo F");
+  const linhasPai = anexoFRows("PAI", 2025, owners, contratos, propertiesById, receipts, expenses, "2026-01-01");
+  assert.equal(linhasPai[0].condominio, 130, "o Pai declara o que pagou, sem voltar a dividir por 2");
+  assert.equal(linhasPai[0].imi, 100, "o IMI da família continua repartido pela quota");
 }
 
 // ---------- classifyUso ----------
@@ -268,8 +303,8 @@ assert.equal(yearsBetween("2006-01-01", "2026-01-01"), 20);
   ]);
   const receipts = [{ property_id: "p1", amount: 3_000, withholding: 500, issue_date: "2025-01-05" }];
   const expenses = [
-    { property_id: "p1", category: "imi" as const, amount: 1_200, expense_date: "2025-03-01" },
-    { property_id: "p1", category: "condominio" as const, amount: 300, expense_date: "2025-04-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "imi" as const, amount: 1_200, expense_date: "2025-03-01" },
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "condominio" as const, amount: 300, expense_date: "2025-04-01" },
   ];
 
   const rows = anexoFRows("L1", 2025, owners, contracts, propertiesById, receipts, expenses, "2026-01-01");

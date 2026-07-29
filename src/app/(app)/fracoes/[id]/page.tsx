@@ -25,6 +25,7 @@ import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacan
 import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
 import { lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
+import { chaveDoInquilino } from "@/lib/portfolio/inquilinos";
 import type {
   Contract,
   Expense,
@@ -234,9 +235,15 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
     else paymentsByContract.set(p.contract_id, [p]);
   }
   // Mais recente primeiro (contracts já vem ordenado por start_date desc da query).
-  const histories: ContractHistory[] = contracts.map((c) =>
+  // SÓ CONTRATOS ATIVOS: o histórico de um contrato cessado não muda nenhuma decisão — o
+  // inquilino foi-se embora e a dívida dele não se cobra nesta página. Continua tudo na
+  // base e na página do arrendatário; aqui só ocupava o ecrã. Os cessados aparecem na
+  // secção "Histórico de contratos e atualizações de renda", logo abaixo.
+  const contratosAtivos = contracts.filter((c) => c.status === "ativo");
+  const histories: ContractHistory[] = contratosAtivos.map((c) =>
     buildContractHistory(c, paymentsByContract.get(c.id) ?? [], lastDue, currentYear),
   );
+  const cessadosOcultos = contracts.length - contratosAtivos.length;
 
   const window12Start = addMonthsKey(lastDue, -11);
   let missingOutside12 = 0;
@@ -325,7 +332,14 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Inquilino</dt>
-                <dd className="font-medium">{active.tenant_name}</dd>
+                <dd className="font-medium">
+                  <Link
+                    href={`/inquilinos/${encodeURIComponent(chaveDoInquilino(active))}`}
+                    className="text-tinta hover:text-acao"
+                  >
+                    {active.tenant_name}
+                  </Link>
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Renda mensal</dt>
@@ -434,7 +448,11 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
       {/* Histórico completo de pagamentos */}
       <Card
         title="Histórico de pagamentos"
-        subtitle="Um bloco por ano civil, desde o início de cada contrato. Marca os pagamentos na página Pagamentos."
+        subtitle={
+          cessadosOcultos > 0
+            ? `Um bloco por ano civil, desde o início do contrato ativo. ${cessadosOcultos} ${cessadosOcultos === 1 ? "contrato cessado fica" : "contratos cessados ficam"} de fora; o histórico deles está na ficha do arrendatário.`
+            : "Um bloco por ano civil, desde o início do contrato. Marca os pagamentos na página Pagamentos."
+        }
       >
         <div
           className={cn(
@@ -470,7 +488,11 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
         </div>
 
         {histories.length === 0 ? (
-          <EmptyState icon={Home}>Sem contratos nesta fração.</EmptyState>
+          <EmptyState icon={Home}>
+            {contracts.length === 0
+              ? "Sem contratos nesta fração."
+              : "Sem contrato ativo. O histórico dos contratos cessados está na ficha do arrendatário."}
+          </EmptyState>
         ) : (
           <div className="space-y-6">
             {histories.map((h) => (
@@ -643,7 +665,14 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                 <tbody>
                   {contracts.map((c) => (
                     <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                      <Td>{c.tenant_name}</Td>
+                      <Td>
+                        <Link
+                          href={`/inquilinos/${encodeURIComponent(chaveDoInquilino(c))}`}
+                          className="hover:text-acao"
+                        >
+                          {c.tenant_name}
+                        </Link>
+                      </Td>
                       <Td className="tabular-nums">{fmtDate(c.start_date)}</Td>
                       <Td className="tabular-nums">{fmtDate(c.end_date)}</Td>
                       <Td className="text-right tabular-nums">{fmtEur(c.rent, 2)}</Td>

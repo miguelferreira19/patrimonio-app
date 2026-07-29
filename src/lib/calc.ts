@@ -1,6 +1,7 @@
 // Cálculos de negócio: rendas esperadas, desvios ao mercado, yields.
 import type { Contract, Expense, MarketBenchmark, Payment, Property, RentUpdate, UpdateCoefficient } from "./types";
 import { endOfMonthISO } from "./format";
+import { classifyUso } from "./irs";
 
 /**
  * Um contrato conta para um mês se já tinha começado até ao fim do mês e
@@ -52,6 +53,13 @@ export function monthRoll(
  * Benchmark aplicável a uma fração para uma métrica (renda ou venda):
  * primeiro a freguesia (dicofre exato), na falta o concelho (prefixo do dicofre).
  * Rendas e vendas podem vir de períodos diferentes do INE, daí a procura por métrica.
+ *
+ * As medianas do INE são de ALOJAMENTOS FAMILIARES: comparar a renda de uma loja ou o
+ * valor de uma garagem com elas não é uma estimativa fraca, é uma comparação sem
+ * significado (uma garagem de 276 m² a 25 €/mês apareceria como o pior yield da
+ * carteira). Por isso o uso não habitacional — e o "a confirmar" — não tem benchmark.
+ * Fica aqui, e não em cada consumidor, para que o `/mercado`, a ficha e os conselhos
+ * `yieldBaixo`/`candidatoAVenda` fiquem todos protegidos pela mesma regra.
  */
 export function benchmarkForMetric(
   property: Property,
@@ -59,6 +67,7 @@ export function benchmarkForMetric(
   metric: "rent" | "sale",
 ): MarketBenchmark | undefined {
   if (!property.dicofre) return undefined;
+  if (classifyUso(property.typology) !== "habitacao") return undefined;
   const has = (b: MarketBenchmark) =>
     metric === "rent" ? b.rent_median_m2 !== null && b.rent_median_m2 !== undefined
                       : b.sale_median_m2 !== null && b.sale_median_m2 !== undefined;

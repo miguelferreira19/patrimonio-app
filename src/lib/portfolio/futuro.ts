@@ -168,6 +168,10 @@ export interface CapacidadeDeInvestimento {
   liquido24m: number | null;
   /** Se há despesa suficiente registada para a app falar de "líquido" com alguma confiança. */
   despesasConhecidas: boolean;
+  /** Se alguma das despesas da janela é ESPELHADA de um comproprietário (V3.md, frente B).
+   *  Entra na conta — é a melhor estimativa que há para um senhorio sem dados próprios —
+   *  mas obriga o líquido a mostrar-se como "assumido", nunca como medido. */
+  despesasEspelhadas: boolean;
 }
 
 /** Abaixo disto os últimos 12 meses de despesas contam como "não há despesas conhecidas".
@@ -204,7 +208,10 @@ export function capacidadeDeInvestimento({
 
   const despesasConhecidas = ultimos12.length >= DESPESAS_MIN_REGISTOS;
   if (!despesasConhecidas) {
-    return { receita24m, despesas24m: null, liquido24m: null, despesasConhecidas: false };
+    return {
+      receita24m, despesas24m: null, liquido24m: null,
+      despesasConhecidas: false, despesasEspelhadas: false,
+    };
   }
 
   const totalUltimos12 = ultimos12.reduce((acc, e) => acc + e.amount, 0);
@@ -215,6 +222,7 @@ export function capacidadeDeInvestimento({
     despesas24m,
     liquido24m: receita24m - despesas24m,
     despesasConhecidas: true,
+    despesasEspelhadas: ultimos12.some((e) => e.origem !== "registada"),
   };
 }
 

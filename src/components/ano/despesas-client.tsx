@@ -3,10 +3,28 @@
 import { useMemo, useState } from "react";
 import { ReceiptText } from "lucide-react";
 import { DeleteExpenseButton, ExpenseFormButton } from "@/components/forms";
+import { Confianca } from "@/components/kit/confianca";
 import { Card, EmptyState, Select, Table, Td, Th } from "@/components/ui";
 import { fmtDate, fmtEur } from "@/lib/format";
 import type { Expense, ExpenseCategory } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
+
+/** Uma despesa que não foi medida no próprio senhorio não se distingue de uma medida sem
+ *  isto — era o buraco que a coluna `origem` veio tapar (V3.md, frente B). `registada` não
+ *  leva selo nenhum: o que é facto é tinta. */
+function OrigemSelo({ expense }: { expense: Expense }) {
+  if (expense.origem === "registada") return null;
+  return (
+    <Confianca
+      nivel="assumido"
+      conta={
+        expense.origem === "espelhada"
+          ? `Copiada de um comproprietário documentado na caderneta predial. Conta para a análise da carteira e para a projeção, mas fica FORA do Anexo F. ${expense.description ?? ""}`.trim()
+          : "Valor estimado, não medido. Fica fora do Anexo F."
+      }
+    />
+  );
+}
 
 export function ExpensesClient({
   expenses,
@@ -131,7 +149,9 @@ export function ExpensesClient({
                             : "Geral"}
                       </Td>
                       <Td>{EXPENSE_CATEGORY_LABEL[e.category]}</Td>
-                      <Td className="max-w-56 truncate">{e.description ?? "n/d"}</Td>
+                      <Td className="max-w-56 truncate">
+                        {e.description ?? "n/d"} <OrigemSelo expense={e} />
+                      </Td>
                       <Td className="text-right tabular-nums">{fmtEur(e.amount, 2)}</Td>
                       {isAdmin && (
                         <Td>
@@ -166,6 +186,7 @@ export function ExpensesClient({
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <span className="tabular-nums">{fmtDate(e.expense_date)}</span>
+                    <OrigemSelo expense={e} />
                     {e.description && <span className="truncate">{e.description}</span>}
                   </div>
                   {isAdmin && (

@@ -601,3 +601,122 @@ begin
 end $$;
 
 grant select, insert, update, delete on public.insight_state to authenticated;
+
+-- ============================================================
+-- V3 · DESPESAS POR SENHORIO — proveniência (V3.md, frente B).
+-- Colar no SQL Editor.
+--
+-- Sem esta coluna, uma despesa COPIADA de um comproprietário fica indistinguível de
+-- uma despesa medida, e a app passa a mostrar "líquido" com ar de facto sobre um
+-- número inferido. `registada` = saiu de uma declaração/fatura do próprio;
+-- `espelhada` = copiada de um comproprietário documentado na caderneta predial;
+-- `estimada` = qualquer outra inferência (não usada ainda).
+--
+-- DECISÃO DO UTILIZADOR (2026-07-26): espelhadas NÃO vão ao Anexo F. Servem a análise
+-- de carteira e a projeção; deduzir ao fisco exige a fatura em nome do titular.
+-- O filtro está em `expenseTotalsByProperty` (src/lib/irs.ts), o único sítio por onde
+-- passam as duas superfícies fiscais (mapa anual e Anexo F).
+-- ============================================================
+alter table public.expenses
+  add column if not exists origem text not null default 'registada';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'expenses_origem_check'
+  ) then
+    alter table public.expenses
+      add constraint expenses_origem_check
+      check (origem in ('registada', 'espelhada', 'estimada'));
+  end if;
+end $$;
+
+create index if not exists expenses_origem on public.expenses (origem);
+
+-- Categoria nova `conservacao` (V3, frente B): as declarações de IRS trazem a coluna
+-- "Conservação e manutenção" já classificada, e essa DEDUZ no Anexo F (art.º 41.º). A
+-- categoria `obras` continua a existir e continua a NÃO deduzir, porque é ambígua
+-- (conservação ou valorização?). Sem esta separação, importar a declaração real subvaloriza
+-- a dedução do avô em ~26,6k.
+do $$
+begin
+  alter table public.expenses drop constraint if exists expenses_category_check;
+  alter table public.expenses
+    add constraint expenses_category_check
+    check (category in ('imi', 'condominio', 'conservacao', 'seguro', 'obras', 'financiamento', 'outras'));
+end $$;
+
+-- ============================================================
+-- V3 · MERCADO — bug B5: o código de território era o do INE, não o DICOFRE.
+-- Colar no SQL Editor.
+--
+-- O `geocod` do INE é NUTS III + DICOFRE (Viseu = `1941823` = `194` + `18` + `23`), e era
+-- isso que ficava em `market_benchmarks.dicofre` e no Select de território da ficha. A
+-- fração, quando vem da caderneta predial, traz o DICOFRE (`182341`). Nenhum dos dois
+-- caminhos de `benchmarkForMetric` podia casar: nem a igualdade da freguesia nem o
+-- `startsWith` do concelho. Resultado: €/m², valor estimado e yield sempre por saber, com
+-- benchmarks carregados na base.
+--
+-- `ine.ts` passa a gravar só o DICOFRE (4 dígitos concelho, 6 freguesia). Isto converte o
+-- que já lá está, em vez de apagar: a conversão é unívoca (o NUTS deriva do concelho) e
+-- não pode colidir com a chave (dicofre, period, source).
+-- ============================================================
+update public.market_benchmarks set dicofre = right(dicofre, 6)
+  where source = 'ine' and length(dicofre) = 9;
+update public.market_benchmarks set dicofre = right(dicofre, 4)
+  where source = 'ine' and length(dicofre) = 7;
+
+-- As frações cujo território foi escolhido à mão no Select guardam o mesmo código do INE.
+update public.properties set dicofre = right(dicofre, 6) where length(dicofre) = 9;
+update public.properties set dicofre = right(dicofre, 4) where length(dicofre) = 7;
+
+-- Conferência: quantas frações passam a ter benchmark, e por que nível.
+select p.matriz_article, p.dicofre, p.typology,
+       (select count(*) from public.market_benchmarks b
+         where b.level = 'freguesia' and b.dicofre = p.dicofre) as freguesia,
+       (select count(*) from public.market_benchmarks b
+         where b.level = 'concelho' and p.dicofre like b.dicofre || '%') as concelho
+from public.properties p
+where p.dicofre is not null
+order by 4, 5, 1;
+
+-- ============================================================
+-- V3 · QUOTAS — a Avó (Eva) nas frações do Avô (Miguel).
+-- Colar no SQL Editor. Pode ir antes ou depois de dados/update_cadernetas_pai.sql: a
+-- trave do `least(...)` impede o excesso em qualquer ordem, e onde a caderneta tem a
+-- quota dela escrita é o upsert da caderneta que manda.
+--
+-- Porquê: o import do Portal só cria `property_owners` para o senhorio da pasta, e a
+-- coluna "Parte" do avô é 1/2 — a outra metade é da avó, que nunca terá exports próprios.
+-- Ficavam ~22 frações a somar 50% e a acusar "quotas ≠ 100%" na Saúde dos dados. É o
+-- mesmo caso do Pai e do Tio, que a caderneta predial já resolveu com os TITULARES.
+--
+-- A trava: a avó recebe a MESMA quota do avô, mas nunca mais do que o que falta para 100%.
+-- Sem isso, uma fração partilhada com terceiros (o 6004 e o rústico 401 têm Ângela e
+-- Graça) passava dos 100% e a app começava a distribuir património que não é da família.
+-- Onde a caderneta já escreveu a quota da avó, o `not exists` deixa-a em paz.
+-- ============================================================
+insert into public.property_owners (property_id, landlord_id, quota)
+select po.property_id, eva.id,
+       least(po.quota, 100 - (select coalesce(sum(x.quota), 0)
+                                from public.property_owners x
+                               where x.property_id = po.property_id))
+from public.property_owners po
+join public.landlords m on m.id = po.landlord_id and m.name = 'Miguel'
+cross join (select id from public.landlords where name = 'Eva') eva
+where not exists (
+        select 1 from public.property_owners e
+         where e.property_id = po.property_id and e.landlord_id = eva.id
+      )
+  and (select coalesce(sum(x.quota), 0) from public.property_owners x
+        where x.property_id = po.property_id) < 100;
+
+-- Conferência: o que ainda não soma 100% depois disto (e com quem está a diferença).
+select p.matriz_article, sum(po.quota) as quota_total,
+       string_agg(l.name || ' ' || po.quota || '%', ' · ' order by l.name) as titulares
+from public.properties p
+join public.property_owners po on po.property_id = p.id
+join public.landlords l on l.id = po.landlord_id
+group by p.matriz_article
+having sum(po.quota) <> 100
+order by 2, 1;

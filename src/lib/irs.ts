@@ -98,9 +98,9 @@ export type ExpenseDeductibility = "dedutivel" | "a_confirmar" | "excluida";
 
 /**
  * Mapeamento despesas -> dedutibilidade no Anexo F, a partir das categorias existentes em
- * `expenses` (src/lib/types.ts — não há categorias próprias para "conservação/manutenção",
- * "selo" ou "taxas autárquicas"). Decisão de mapeamento:
- *  - imi / condominio: dedutíveis diretos, com coluna própria no Anexo F.
+ * `expenses` (src/lib/types.ts — continua a não haver categoria própria para "imposto do
+ * selo" nem "taxas autárquicas", que caem em `outras`). Decisão de mapeamento:
+ *  - imi / condominio / conservacao: dedutíveis diretos, com coluna própria no Anexo F.
  *  - obras: AMBÍGUA — pode ser conservação/manutenção (dedutível) ou obra de valorização
  *    (excluída pelo art.º 41.º); a app não distingue as duas -> NÃO deduz, fica "a confirmar".
  *  - outras: categoria residual, dedutibilidade desconhecida -> "a confirmar".
@@ -110,6 +110,10 @@ export type ExpenseDeductibility = "dedutivel" | "a_confirmar" | "excluida";
 export const EXPENSE_DEDUCTIBILITY: Record<ExpenseCategory, ExpenseDeductibility> = {
   imi: "dedutivel",
   condominio: "dedutivel",
+  // Art.º 41.º: conservação e manutenção deduz. Só entra aqui quando a fonte já a
+  // classificou como tal (o Anexo F tem coluna própria) — a `obras` genérica continua
+  // "a confirmar", porque pode ser valorização.
+  conservacao: "dedutivel",
   obras: "a_confirmar",
   outras: "a_confirmar",
   seguro: "excluida",
@@ -121,7 +125,10 @@ export const EXPENSE_DEDUCTIBILITY: Record<ExpenseCategory, ExpenseDeductibility
 // ---------------------------------------------------------------------------
 
 export type IrsReceiptInput = Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date">;
-export type IrsExpenseInput = Pick<Expense, "property_id" | "category" | "amount" | "expense_date">;
+export type IrsExpenseInput = Pick<
+  Expense,
+  "property_id" | "landlord_id" | "category" | "amount" | "expense_date" | "origem"
+>;
 
 function yearOf(dateISO: string | null): number | null {
   if (!dateISO) return null;
@@ -179,25 +186,56 @@ export interface PropertyExpenseTotals {
   deductible: number;
 }
 
-/** Agrega as despesas por fração para UM ano fiscal (`expense_date`). Despesas sem `property_id`
- *  (despesas gerais) não são atribuíveis a uma fração do Anexo F — ficam fora desta agregação. */
+/**
+ * Agrega as despesas por fração para UM ano fiscal (`expense_date`), na perspetiva de UM
+ * senhorio e já com a quota resolvida. Despesas sem `property_id` (gerais) não são
+ * atribuíveis a uma fração do Anexo F — ficam fora.
+ *
+ * Três regras, e é o único sítio onde vivem (o mapa anual e o Anexo F passam os dois por
+ * aqui, e não podem divergir):
+ *
+ * 1. `origem` tem de ser `registada`. DECISÃO DO UTILIZADOR (2026-07-26): uma despesa
+ *    espelhada de um comproprietário serve a análise de carteira e a projeção, nunca o que
+ *    se declara ao fisco — deduzir sem a fatura em nome do titular é outra coisa.
+ * 2. `landlord_id` do próprio senhorio: a linha JÁ É a parte dele (foi o que declarou),
+ *    entra por inteiro, sem multiplicar pela quota.
+ * 3. `landlord_id` nulo: é uma conta da família, reparte-se pela quota. De outro senhorio:
+ *    não é dedução deste, fica de fora.
+ */
 export function expenseTotalsByProperty(
   expenses: IrsExpenseInput[],
   year: number,
+  landlordId: string,
+  quotaPctByProperty: Map<string, number>,
 ): Map<string, PropertyExpenseTotals> {
   const out = new Map<string, PropertyExpenseTotals>();
   for (const e of expenses) {
     if (!e.property_id) continue;
     if (yearOf(e.expense_date) !== year) continue;
+    if (e.origem !== "registada") continue;
+    if (e.landlord_id !== null && e.landlord_id !== landlordId) continue;
+    const quota = quotaPctByProperty.get(e.property_id);
+    if (quota === undefined) continue; // este senhorio não é titular da fração
+    const valor = e.landlord_id === landlordId ? e.amount : e.amount * (quota / 100);
+
     const cur = out.get(e.property_id) ?? { imi: 0, condominio: 0, toConfirm: 0, deductible: 0 };
     const kind = EXPENSE_DEDUCTIBILITY[e.category];
-    if (e.category === "imi") cur.imi += e.amount;
-    else if (e.category === "condominio") cur.condominio += e.amount;
-    if (kind === "dedutivel") cur.deductible += e.amount;
-    else if (kind === "a_confirmar") cur.toConfirm += e.amount;
+    if (e.category === "imi") cur.imi += valor;
+    else if (e.category === "condominio") cur.condominio += valor;
+    if (kind === "dedutivel") cur.deductible += valor;
+    else if (kind === "a_confirmar") cur.toConfirm += valor;
     out.set(e.property_id, cur);
   }
   return out;
+}
+
+/** Quota (%) de um senhorio em cada fração de que é titular. */
+export function quotaPctByProperty(owners: PropertyOwner[], landlordId: string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const o of owners) {
+    if (o.landlord_id === landlordId) m.set(o.property_id, o.quota ?? 100);
+  }
+  return m;
 }
 
 // ---------------------------------------------------------------------------
@@ -233,7 +271,10 @@ export function computeLandlordFiscalYear(
   expenses: IrsExpenseInput[],
 ): LandlordFiscalYear {
   const receiptTotals = receiptTotalsByProperty(receipts, year);
-  const expenseTotals = expenseTotalsByProperty(expenses, year);
+  const quotas = quotaPctByProperty(owners, landlordId);
+  // As despesas já saem de expenseTotalsByProperty na medida deste senhorio (a quota é
+  // aplicada lá, ou não é, consoante a linha seja a parte dele ou uma conta da família).
+  const expenseTotals = expenseTotalsByProperty(expenses, year, landlordId, quotas);
 
   let grossRent = 0;
   let withholding = 0;
@@ -250,8 +291,8 @@ export function computeLandlordFiscalYear(
     }
     const et = expenseTotals.get(o.property_id);
     if (et) {
-      deductibleExpenses += et.deductible * quota;
-      toConfirmExpenses += et.toConfirm * quota;
+      deductibleExpenses += et.deductible;
+      toConfirmExpenses += et.toConfirm;
     }
   }
 
@@ -461,11 +502,8 @@ export function anexoFRows(
   todayISO: string,
 ): AnexoFRow[] {
   const receiptTotals = receiptTotalsByProperty(receipts, year);
-  const expenseTotals = expenseTotalsByProperty(expenses, year);
-  const quotaByProperty = new Map<string, number>();
-  for (const o of owners) {
-    if (o.landlord_id === landlordId) quotaByProperty.set(o.property_id, o.quota ?? 100);
-  }
+  const quotaByProperty = quotaPctByProperty(owners, landlordId);
+  const expenseTotals = expenseTotalsByProperty(expenses, year, landlordId, quotaByProperty);
 
   const rows: AnexoFRow[] = [];
   for (const c of contracts) {
@@ -485,8 +523,9 @@ export function anexoFRows(
       quotaPct,
       grossRent: round2((rt?.grossRent ?? 0) * q),
       withholding: round2((rt?.withholding ?? 0) * q),
-      condominio: round2((et?.condominio ?? 0) * q),
-      imi: round2((et?.imi ?? 0) * q),
+      // Sem `* q`: as despesas já vêm na medida deste senhorio (ver expenseTotalsByProperty).
+      condominio: round2(et?.condominio ?? 0),
+      imi: round2(et?.imi ?? 0),
       reduced: reducedRateEligibility(c, property?.typology ?? null, quotaPct, todayISO),
     });
   }

@@ -23,8 +23,8 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
 - Build (gate obrigatório antes de dar qualquer tarefa por terminada): `npm run build`
-- `npm run check` = **11 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
-  snapshot, insights, risk, import), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
+- `npm run check` = **15 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
+  snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
 - Dev: `npm run dev` (ou `start.cmd`; launch.json tem "patrimonio-dev", porta 3000)
 - Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node).
 - Supabase: projeto `iidvzcgtfbpzhjbsrqql` (UE). Schema em `supabase/schema.sql` (idempotente, pode
@@ -50,7 +50,12 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - **`receipts.amount` é o valor ILÍQUIDO** (coluna "Valor"); o líquido é `amount - withholding`.
   Quem guarda cash líquido é `payments.amount`. Foi o bug B1 (o Anexo F somava a retenção duas
   vezes) — está no `irs.check.ts` como caso de regressão, não voltar a trocar.
-- VPT no CSV do Portal vem em CÊNTIMOS (÷100) — já tratado em `dados/analise_senhorio.py`.
+- VPT no CSV do Portal vem em CÊNTIMOS (÷100) — já tratado em `dados/analise_senhorio.py` — **e
+  vem multiplicado pela QUOTA do titular**. O VPT por inteiro está na caderneta predial, em EUROS
+  (`dados/ler_cadernetas.py`); a app assume-o por inteiro e aplica a quota no `irs.ts`.
+- **Uma despesa com `landlord_id` é a PARTE daquele senhorio** (foi o que ele declarou no Anexo F)
+  e não se volta a multiplicar pela quota; sem `landlord_id` é conta da família e reparte-se. A
+  regra vive só em `expenseTotalsByProperty` (irs.ts). `origem != 'registada'` nunca chega ao fisco.
 - `dados/` contém dados pessoais reais (está no .gitignore) — nunca commitar nem expor.
 - Não fazer commits/push sem pedido explícito do utilizador.
 - Alterações de schema: sempre idempotentes, acrescentadas ao fim de `supabase/schema.sql` e
@@ -116,7 +121,9 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
     Não voltar a entrelaçá-las com `isAdmin ?` no meio da árvore.
   - `carteira` — a faixa, com lentes por `searchParams`. Para viewer a lente é **forçada a
     `risco` no servidor**; não chega esconder o seletor.
-  - `ano/[ano]` — o documento fiscal. `fracoes/[id]`, `carta/[contractId]`.
+  - `ano/[ano]` — o documento fiscal. `fracoes/[id]`, `carta/[contractId]`,
+    `inquilinos/[chave]` (ficha do arrendatário, admin-only; a chave é a MESMA de
+    `concentracao().porInquilino` — `nif:...` ou `nome:...`).
   - Admin: **`analise`** (projeção, série anual, concentração, conselhos), `mercado`, `senhorios`,
     `saude`, `admin`.
   - `pagamentos`, `atrasos`, `fracoes`, `despesas` e `irs` são só **redirects** — não voltar a pôr

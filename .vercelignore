@@ -1,0 +1,16 @@
+# O que NUNCA sai desta máquina no deploy.
+#
+# O `.gitignore` protege o repositório; este ficheiro protege o UPLOAD do CLI, que é outro
+# caminho e não tem de seguir as mesmas regras. `dados/` tem exports reais do Portal das
+# Finanças (nomes, NIFs, rendas, recibos) e nada em `src/` o importa — não há build a
+# perder por isto.
+dados/
+
+.env
+.env.local
+.env*.local
+
+node_modules/
+.next/
+.check/
+*.tsbuildinfo

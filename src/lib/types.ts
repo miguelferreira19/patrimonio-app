@@ -114,6 +114,10 @@ export interface Payment {
 export type ExpenseCategory =
   | "imi"
   | "condominio"
+  /** Conservação e manutenção declarada como tal no Anexo F. Separada de `obras` de
+   *  propósito: `obras` é ambígua (conservação ou valorização?) e por isso não deduz;
+   *  esta veio de uma declaração que já a classificou, e deduz. */
+  | "conservacao"
   | "seguro"
   | "obras"
   | "financiamento"
@@ -122,20 +126,31 @@ export type ExpenseCategory =
 export const EXPENSE_CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   imi: "IMI",
   condominio: "Condomínio",
+  conservacao: "Conservação",
   seguro: "Seguro",
   obras: "Obras",
   financiamento: "Financiamento",
   outras: "Outras",
 };
 
+/** Proveniência de uma despesa (V3, frente B do V3.md).
+ *  `registada`: saiu de uma declaração ou fatura do próprio senhorio.
+ *  `espelhada`: copiada de um comproprietário documentado (caderneta predial).
+ *  `estimada`: qualquer outra inferência.
+ *  Só `registada` chega ao Anexo F — ver `expenseTotalsByProperty` em irs.ts. */
+export type ExpenseOrigem = "registada" | "espelhada" | "estimada";
+
 export interface Expense {
   id: string;
   property_id: string | null;
+  /** Quem suportou a despesa. Null = conta da família, repartida pelas quotas. */
   landlord_id: string | null;
   expense_date: string;
   category: ExpenseCategory;
+  /** Em ótica de FAMÍLIA quando `landlord_id` é null; a parte DAQUELE senhorio quando não é. */
   amount: number;
   description: string | null;
+  origem: ExpenseOrigem;
 }
 
 export interface MarketBenchmark {

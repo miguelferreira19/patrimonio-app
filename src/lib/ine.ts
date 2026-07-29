@@ -5,6 +5,15 @@
 //   0012246 — Valor mediano das vendas de alojamentos familiares (€/m²),
 //             últimos 12 meses, trimestral, até à freguesia (dim3 = domicílio do comprador → T)
 // Códigos geográficos do INE: 7 chars = município, 9 chars = freguesia (prefixo = município).
+//
+// E são NUTS III + DICOFRE, não DICOFRE: Viseu é `1941823` = `194` (Viseu Dão Lafões) +
+// `18` (distrito) + `23` (concelho). Era o bug B5 do PLANO.md, e era o que fazia o Mercado
+// nunca encontrar benchmark nenhum: a fração guarda o DICOFRE (`182341`, o que vem na
+// caderneta predial e no artigo matricial) e o benchmark guardava `1941823`, por isso nem
+// a igualdade da freguesia nem o `startsWith` do concelho podiam casar.
+//
+// Guarda-se só o DICOFRE (4 dígitos para concelho, 6 para freguesia). O prefixo NUTS não
+// serve para casar nada; quem quiser a região tem `municipality`.
 
 const INE = "https://www.ine.pt/ine/json_indicador";
 
@@ -12,6 +21,7 @@ export const RENT_INDICATOR = "0014771";
 export const SALE_INDICATOR = "0012246";
 
 export interface IneBenchmarkRow {
+  /** DICOFRE, já sem o prefixo NUTS: 4 dígitos = concelho, 6 = freguesia. */
   code: string;
   name: string;
   level: "freguesia" | "concelho";
@@ -23,6 +33,12 @@ export interface IneFetchResult {
   period: string; // ex.: "2026T1"
   periodLabel: string; // ex.: "1.º Trimestre de 2026"
   rows: IneBenchmarkRow[];
+}
+
+/** `1941823` -> `1823` (concelho) · `194182341` -> `182341` (freguesia). O DICOFRE são
+ *  sempre os últimos dígitos; o que muda é quantos. */
+export function dicofreFromGeocod(geocod: string): string {
+  return geocod.length === 9 ? geocod.slice(-6) : geocod.slice(-4);
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -103,7 +119,7 @@ export async function fetchIneIndicator(
     if (!Number.isFinite(value)) continue; // células suprimidas/sem dados
     if (code.length === 7) {
       rows.push({
-        code,
+        code: dicofreFromGeocod(code),
         name: String(r.geodsg ?? ""),
         level: "concelho",
         municipality: String(r.geodsg ?? ""),
@@ -111,7 +127,7 @@ export async function fetchIneIndicator(
       });
     } else if (code.length === 9) {
       rows.push({
-        code,
+        code: dicofreFromGeocod(code),
         name: String(r.geodsg ?? ""),
         level: "freguesia",
         municipality: municipalityName.get(code.slice(0, 7)) ?? null,

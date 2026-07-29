@@ -49,7 +49,7 @@ export default async function MercadoPage() {
     <div className="space-y-4">
       <PageHeader
         title="Mercado"
-        description="Comparação das rendas atuais com as medianas do INE por freguesia (novos contratos de arrendamento) e estimativa de valor pelos preços medianos de venda."
+        description="Comparação das rendas atuais com as medianas do INE (novos contratos de arrendamento) e estimativa de valor pelos preços medianos de venda. O INE só publica ~330 freguesias: fora dessas, e é o caso de toda esta carteira, a mediana é a do CONCELHO. Só habitação — loja, garagem e arrecadação não se comparam a medianas de alojamentos."
       />
 
       {!benchmarksCarregados ? (

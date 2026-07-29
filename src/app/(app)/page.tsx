@@ -16,15 +16,7 @@ import Link from "next/link";
 import { CheckCircle2, Download, Plus } from "lucide-react";
 import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
 import { Retrato } from "@/components/agora/retrato";
-import {
-  AcumuladoChart,
-  CollectionRateChart,
-  FlowLegend,
-  MonthlyFlowChart,
-  type AcumuladoDatum,
-  type CollectionRateDatum,
-  type MonthlyFlowDatum,
-} from "@/components/charts";
+import { AcumuladoChart, type AcumuladoDatum } from "@/components/charts";
 import { buttonClass, EmptyState } from "@/components/ui";
 import { Cobertura, Confianca, Lede, Money, Seccao } from "@/components/kit";
 import { getSession } from "@/lib/data";
@@ -40,17 +32,6 @@ export default async function AgoraPage() {
   if (snap.ativos.length === 0) return <Vazio />;
 
   const thisMonth = snap.meses[snap.meses.length - 1];
-  const flowData: MonthlyFlowDatum[] = snap.fluxo.map((m) => ({
-    month: m.month,
-    label: monthLabel(m.month, m.month.slice(5, 7) === "01"),
-    esperado: m.esperadoContratado,
-    recebido: m.recebido,
-    liquido: m.liquido,
-  }));
-  const rateData: CollectionRateDatum[] = snap.fluxo.map((m) => ({
-    label: monthLabel(m.month, m.month.slice(5, 7) === "01"),
-    taxa: m.taxa,
-  }));
 
   return (
     <div className="space-y-6">
@@ -61,8 +42,6 @@ export default async function AgoraPage() {
       )}
 
       <Acumulado snap={snap} />
-
-      <Fluxo flowData={flowData} rateData={rateData} />
     </div>
   );
 }
@@ -212,9 +191,15 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
               titulo={GRUPO_LABEL[g.grupo]}
               valor={<Money value={g.euros} escala="sm" tom="tinta-2" />}
             >
-              <ul className="divide-y divide-regua">
+              {/* Caixas, nao uma lista: com 6-8 decisoes a lista virava uma coluna
+                  comprida a pedir scroll, e o que interessa e ver o conjunto de uma vez.
+                  Hairline e nao Card — nada disto esta elevado (R2). */}
+              <ul className="grid gap-3 sm:grid-cols-2">
                 {g.itens.map((item) => (
-                  <li key={item.kind + item.titulo} className="py-3">
+                  <li
+                    key={item.kind + item.titulo}
+                    className="rounded-xl border border-regua bg-carta p-3.5"
+                  >
                     <div className="flex items-baseline justify-between gap-4">
                       <p className="text-[15px] font-medium text-tinta">{item.titulo}</p>
                       <Money
@@ -320,30 +305,6 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
 // ============================================================
 // Peças partilhadas
 // ============================================================
-
-function Fluxo({
-  flowData,
-  rateData,
-}: {
-  flowData: MonthlyFlowDatum[];
-  rateData: CollectionRateDatum[];
-}) {
-  return (
-    <section>
-      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-3 border-b border-regua pb-1.5">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
-          Mês a mês
-        </h2>
-        <FlowLegend />
-      </header>
-      <MonthlyFlowChart data={flowData} />
-      <div className="mt-4 border-t border-regua pt-3">
-        <p className="mb-1 text-xs text-tinta-3">Do esperado, quanto entrou</p>
-        <CollectionRateChart data={rateData} />
-      </div>
-    </section>
-  );
-}
 
 function Vazio() {
   return (

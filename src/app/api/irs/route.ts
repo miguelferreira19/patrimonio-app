@@ -65,7 +65,7 @@ export async function GET(request: Request) {
       .limit(5000),
     supabase
       .from("expenses")
-      .select("property_id,category,amount,expense_date")
+      .select("property_id,landlord_id,category,amount,expense_date,origem")
       .gte("expense_date", yearStart)
       .lte("expense_date", yearEnd)
       .limit(5000),
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
   const contracts = (contractsQ.data ?? []) as Contract[];
   const receipts = (receiptsQ.data ?? []) as Array<Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date">>;
   const expenses = (expensesQ.data ?? []) as Array<
-    Pick<Expense, "property_id" | "category" | "amount" | "expense_date">
+    Pick<Expense, "property_id" | "landlord_id" | "category" | "amount" | "expense_date" | "origem">
   >;
 
   const propertiesById = new Map(properties.map((p) => [p.id, p]));
@@ -99,11 +99,12 @@ export async function GET(request: Request) {
       ),
     )
     .filter((r) => r.eligibleRate !== null);
-  const expenseTotals = expenseTotalsByProperty(expenses, year);
-  const toConfirm = Array.from(quotaByProperty.entries())
-    .map(([propertyId, quotaPct]) => ({
+  // Já na medida deste senhorio (a quota, quando se aplica, é aplicada lá dentro).
+  const expenseTotals = expenseTotalsByProperty(expenses, year, landlord.id, quotaByProperty);
+  const toConfirm = Array.from(quotaByProperty.keys())
+    .map((propertyId) => ({
       propertyId,
-      amount: Math.round((expenseTotals.get(propertyId)?.toConfirm ?? 0) * (quotaPct / 100) * 100) / 100,
+      amount: Math.round((expenseTotals.get(propertyId)?.toConfirm ?? 0) * 100) / 100,
     }))
     .filter((r) => r.amount > 0);
 

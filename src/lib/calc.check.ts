@@ -1,7 +1,8 @@
 // Self-check de calc.ts. Correr com `npm run check:calc`.
 import assert from "node:assert/strict";
-import { currentProperties, isCurrentProperty, missingFichaFields, rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
-import type { Contract, Property, RentUpdate, UpdateCoefficient } from "./types";
+import { benchmarkForMetric, currentProperties, isCurrentProperty, marketView, missingFichaFields, rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
+import { dicofreFromGeocod } from "./ine";
+import type { Contract, MarketBenchmark, Property, RentUpdate, UpdateCoefficient } from "./types";
 
 function contract(over: Partial<Contract> = {}): Contract {
   return {
@@ -143,6 +144,73 @@ function property(over: Partial<Property> = {}): Property {
   assert.deepEqual(
     missingFichaFields({ area_m2: 0, typology: "T1", dicofre: "182341", vpt: 0 }),
     ["área", "VPT"],
+  );
+}
+
+// As medianas do INE são de alojamentos familiares. Depois das cadernetas prediais
+// (2026-07-29) a carteira passou a ter área em lojas, garagens e arrecadações — sem esta
+// guarda, uma garagem de 276 m² a 25 €/mês entrava na mediana de yield da carteira e saía
+// como "candidato a venda". Uso não habitacional (e "a confirmar") não tem benchmark.
+{
+  const benchmarks: MarketBenchmark[] = [
+    {
+      id: "b1", dicofre: "182341", parish_name: null, municipality: null, period: "2025S2",
+      rent_median_m2: 6, sale_median_m2: 1500, level: "freguesia", source: "ine",
+    },
+  ];
+  const casa = property({ dicofre: "182341", typology: "T2", area_m2: 100 });
+  const loja = property({ dicofre: "182341", typology: "Comércio", area_m2: 100 });
+  const garagem = property({ dicofre: "182341", typology: "garagem", area_m2: 276.5 });
+  const porConfirmar = property({ dicofre: "182341", typology: null, area_m2: 100 });
+
+  assert.ok(benchmarkForMetric(casa, benchmarks, "rent"), "habitação compara-se ao INE");
+  assert.equal(benchmarkForMetric(loja, benchmarks, "rent"), undefined);
+  assert.equal(benchmarkForMetric(garagem, benchmarks, "sale"), undefined);
+  assert.equal(benchmarkForMetric(porConfirmar, benchmarks, "sale"), undefined);
+
+  const vistaGaragem = marketView(garagem, contract({ rent: 25 }), benchmarks);
+  assert.equal(vistaGaragem.grossYield, null, "garagem não tem yield contra o INE");
+  assert.equal(vistaGaragem.estimatedValue, null);
+  assert.equal(vistaGaragem.deviation, null);
+  assert.ok(vistaGaragem.rentPerM2 !== null, "o €/m² próprio continua a ser um facto");
+
+  const vistaCasa = marketView(casa, contract({ rent: 500 }), benchmarks);
+  assert.equal(vistaCasa.estimatedValue, 150_000);
+  assert.equal(vistaCasa.grossYield, 0.04);
+}
+
+// Bug B5: o território tem de ser o DICOFRE dos dois lados. O `geocod` do INE é
+// NUTS III + DICOFRE (`1941823` = `194` + `18` + `23`), e enquanto o benchmark guardou o
+// geocod e a fração o DICOFRE da caderneta, o Mercado nunca casou nada — com a base cheia
+// de benchmarks. `dicofreFromGeocod` (ine.ts) corta o NUTS; estes casos fixam as duas
+// pontas: a freguesia por igualdade, o concelho por prefixo de 4 dígitos.
+{
+  assert.equal(dicofreFromGeocod("1941823"), "1823", "concelho: NUTS III fora");
+  assert.equal(dicofreFromGeocod("194182341"), "182341", "freguesia: NUTS III fora");
+
+  const benchmarks: MarketBenchmark[] = [
+    {
+      id: "concelho", dicofre: "1823", parish_name: null, municipality: "Viseu",
+      period: "2026T1", rent_median_m2: 6.72, sale_median_m2: 1500,
+      level: "concelho", source: "ine",
+    },
+    {
+      id: "freguesia", dicofre: "182341", parish_name: "União das Freguesias de Viseu",
+      municipality: "Viseu", period: "2026T1", rent_median_m2: 7.5, sale_median_m2: 1800,
+      level: "freguesia", source: "ine",
+    },
+  ];
+  const daFreguesia = property({ dicofre: "182341", typology: "T2", area_m2: 100 });
+  const doConcelho = property({ dicofre: "181710", typology: "T2", area_m2: 100 });
+
+  assert.equal(benchmarkForMetric(daFreguesia, benchmarks, "rent")?.id, "freguesia",
+    "a freguesia exata ganha ao concelho");
+  assert.equal(benchmarkForMetric(doConcelho, benchmarks, "rent"), undefined,
+    "Sátão (1817) não cai no concelho de Viseu (1823) por acidente");
+  assert.equal(
+    benchmarkForMetric(property({ dicofre: "182319", typology: "T2" }), benchmarks, "rent")?.id,
+    "concelho",
+    "outra freguesia do concelho de Viseu cai no concelho por prefixo",
   );
 }
 

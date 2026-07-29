@@ -34,7 +34,7 @@ function pagamento(over: Partial<PaymentLight> = {}): PaymentLight {
 function despesa(over: Partial<Expense> = {}): Expense {
   return {
     id: "e1", property_id: null, landlord_id: null, expense_date: "2025-06-01",
-    category: "outras", amount: 100, description: null, ...over,
+    category: "outras", amount: 100, description: null, origem: "registada", ...over,
   };
 }
 
@@ -176,6 +176,29 @@ const MES_HOJE = monthKeyFromDate(HOJE);
   const mediaMensalEsperada = (200 + 300 + 100) / 12;
   assert.equal(cap.despesas24m, mediaMensalEsperada * proj.length);
   assert.equal(cap.liquido24m, cap.receita24m - cap.despesas24m!);
+  assert.equal(cap.despesasEspelhadas, false, "todas registadas");
 }
 
-console.log("futuro.check.ts: OK (A, B, C, D, E, F)");
+// G — despesa ESPELHADA de um comproprietario (V3.md, frente B): entra na conta, porque e a
+// melhor estimativa que ha para um senhorio sem dados proprios, mas marca a capacidade como
+// espelhada para o conselho descer a confianca a "assumido". Se este sinal se perder, a app
+// mostra "liquido" com ar de facto sobre um numero copiado de outra pessoa.
+{
+  const proj = projetar({
+    contracts: [contract({ id: "a", rent: 500 })],
+    payments: [],
+    hoje: HOJE,
+    meses: 24,
+  });
+  const expenses: Expense[] = [
+    despesa({ id: "e1", expense_date: "2025-03-01", amount: 200 }),
+    despesa({ id: "e2", expense_date: "2025-06-01", amount: 300 }),
+    despesa({ id: "e3", expense_date: "2025-11-01", amount: 100, origem: "espelhada" }),
+  ];
+  const cap = capacidadeDeInvestimento({ projecao: proj, expenses, hoje: HOJE });
+  assert.equal(cap.despesasConhecidas, true);
+  assert.equal(cap.despesasEspelhadas, true);
+  assert.equal(cap.despesas24m, ((200 + 300 + 100) / 12) * proj.length, "a espelhada CONTA para o numero");
+}
+
+console.log("futuro.check.ts: OK (A, B, C, D, E, F, G)");

@@ -127,9 +127,9 @@ const payments: Payment[] = [
 
 const expenses: Expense[] = [
   { id: "e1", property_id: "p1", landlord_id: null, expense_date: "2026-04-30",
-    category: "imi", amount: 213.4, description: "IMI 2026" },
+    category: "imi", amount: 213.4, description: "IMI 2026", origem: "registada" },
   { id: "e2", property_id: "p2", landlord_id: null, expense_date: "2026-06-15",
-    category: "condominio", amount: 60, description: null },
+    category: "condominio", amount: 60, description: null, origem: "registada" },
 ];
 
 const benchmarks: MarketBenchmark[] = [

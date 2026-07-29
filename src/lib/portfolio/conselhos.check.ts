@@ -85,7 +85,7 @@ function projecaoNeutra(): MesProjetado[] {
   return [{ mes: "2026-08-01", contratado: 1000, esperado: 900, p10: 800, p90: 950, contratosAtivos: 3 }];
 }
 function capacidadeNeutra(): CapacidadeDeInvestimento {
-  return { receita24m: 0, despesas24m: null, liquido24m: null, despesasConhecidas: false };
+  return { receita24m: 0, despesas24m: null, liquido24m: null, despesasConhecidas: false, despesasEspelhadas: false };
 }
 function resumoNeutro(): ResumoDaProjecao {
   return { total: 0, totalP10: 0, totalP90: 0, mediaMensal: 0, quedaContratada: 0 };
@@ -154,7 +154,7 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
 // menciona que é receita bruta; com despesas conhecidas, confianca passa a "estimado".
 {
   const capSemDespesas: CapacidadeDeInvestimento = {
-    receita24m: 50_000, despesas24m: null, liquido24m: null, despesasConhecidas: false,
+    receita24m: 50_000, despesas24m: null, liquido24m: null, despesasConhecidas: false, despesasEspelhadas: false,
   };
   const conselhos = construirConselhos(
     entradaBase({ capacidade: capSemDespesas, projecao: projecaoNeutra() }),
@@ -166,7 +166,7 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
   assert.ok(item!.conta?.includes("BRUTA"), "a conta diz explicitamente que e receita bruta");
 
   const capComDespesas: CapacidadeDeInvestimento = {
-    receita24m: 50_000, despesas24m: 10_000, liquido24m: 40_000, despesasConhecidas: true,
+    receita24m: 50_000, despesas24m: 10_000, liquido24m: 40_000, despesasConhecidas: true, despesasEspelhadas: false,
   };
   const conselhos2 = construirConselhos(entradaBase({ capacidade: capComDespesas }));
   const item2 = conselhos2.find((c) => c.kind === "capacidade_investir");
@@ -260,7 +260,7 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
     rendasParadas: [
       { contractId: "c1", tenant: "Inquilino B", rendaAtual: 400, mesesSemAtualizar: 30, rendaSugerida: 500, ganhoAnual: 1200 },
     ],
-    capacidade: { receita24m: 30_000, despesas24m: null, liquido24m: null, despesasConhecidas: false },
+    capacidade: { receita24m: 30_000, despesas24m: null, liquido24m: null, despesasConhecidas: false, despesasEspelhadas: false },
     resumo: { total: 0, totalP10: 0, totalP90: 0, mediaMensal: 0, quedaContratada: 500 },
   });
   const conselhos = construirConselhos(entrada);
