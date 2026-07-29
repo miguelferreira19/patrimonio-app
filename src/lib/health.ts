@@ -8,7 +8,7 @@
 
 import type { ArrearsRow } from "./arrears";
 import { isCurrentProperty, missingFichaFields } from "./calc";
-import { desalinhamentoDaRenda, type RendaObservada } from "./rent";
+import { DESALINHAMENTO_MIN, desalinhamentoDaRenda, type RendaObservada } from "./rent";
 import type { Contract, Property, PropertyOwner } from "./types";
 
 export type HealthSeverity = "erro" | "aviso" | "info";
@@ -31,7 +31,7 @@ export const SEVERITY_LABEL: Record<HealthSeverity, string> = {
 export const KIND_LABEL: Record<string, string> = {
   contrato_zombie: "Contratos ativos sem recibos recentes",
   contrato_expirado: "Contratos ativos com data de fim já passada",
-  renda_desalinhada: "Renda do contrato diferente da dos recibos",
+  renda_desalinhada: "Recebido abaixo da renda do contrato",
   renda_errada: "Renda registada desalinhada dos recibos",
   contratos_sobrepostos: "Contratos sobrepostos na mesma fração",
   renda_invalida: "Rendas a zero ou negativas",
@@ -114,18 +114,33 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
     });
   }
 
-  // 2) A renda do contrato não bate certo com a que os recibos mostram. Causas legítimas
-  //    (retenção na fonte de 25% em inquilinos-empresa) e ilegítimas (renda atualizada na app
-  //    sem os recibos correspondentes) — a app não consegue distinguir, por isso só assinala.
+  // 2) Entra menos dinheiro do que a renda contratada. NÃO é "a renda dos recibos": o número
+  //    comparado é o `expectedRent` dos Atrasos, que é `min(renda, MEDIANA DOS PAGAMENTOS)`
+  //    de uma janela — cash líquido, não recibos ilíquidos. Duas consequências que estavam a
+  //    tornar este aviso falso:
+  //
+  //    a) A MEDIANA ATRASA-SE POR CONSTRUÇÃO. Numa atualização de renda real, a janela ainda
+  //       tem meses ao valor antigo e a mediana fica lá até a maioria virar. Era o caso da
+  //       Tevisil: contrato e recibos a 357 EUR desde fevereiro, e este aviso a dizer que
+  //       "os recibos mostram 350" — o valor velho, e de uma fonte que não são os recibos.
+  //    b) O limiar era 1 EUR ABSOLUTO, por isso qualquer atualização anual pelo coeficiente
+  //       (~2%) disparava. É o mesmo erro que o `DESALINHAMENTO_MIN` de lib/rent.ts existe
+  //       para evitar, com a mesma justificação escrita lá: 5% deixa passar o coeficiente e
+  //       apanha os desvios a sério (a retenção na fonte é 25%).
+  //
+  //    Por isso: limiar RELATIVO (o mesmo dos 5%), mais o piso de 1 EUR para carteiras de
+  //    renda baixa. Quem responde à qualidade do DADO é o `renda_errada` (6b), que lê os
+  //    recibos ilíquidos; este aviso responde a outra pergunta — "porque entra menos?".
   for (const row of arrears) {
     if (row.semHistorico || row.stale) continue;
     const diff = row.rent - row.expectedRent;
     if (diff <= RENT_MISMATCH_EUR) continue;
+    if (row.rent <= 0 || diff / row.rent < DESALINHAMENTO_MIN) continue;
     issues.push({
       kind: "renda_desalinhada",
       severity: "aviso",
       title: name(row.propertyId),
-      detail: `Contrato diz ${row.rent.toFixed(2)} €, os recibos mostram ${row.expectedRent.toFixed(2)} €. Verificar se é retenção na fonte (empresa retém ~25%) ou renda desatualizada.`,
+      detail: `Contrato diz ${row.rent.toFixed(2)} €, mas o recebido por mês fica em ${row.expectedRent.toFixed(2)} € (mediana dos pagamentos). Verificar se é retenção na fonte (empresa retém ~25%) ou renda desatualizada.`,
       href: `/fracoes/${row.propertyId}`,
     });
   }

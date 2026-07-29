@@ -51,13 +51,35 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(issues[0].severity, "erro");
 }
 
-// C) Retenção na fonte (600 contratado, 450 recebido) aparece como AVISO, não como erro —
-// é a causa legítima mais comum e não pode ser apresentada como dado corrompido.
+// C) Retenção na fonte (600 contratado, 450 recebido = -25%) aparece como AVISO, não como
+// erro — é a causa legítima mais comum e não pode ser apresentada como dado corrompido.
 {
   const issues = run({ arrears: [arrearsRow({ rent: 600, expectedRent: 450 })] });
   assert.equal(issues.length, 1);
   assert.equal(issues[0].kind, "renda_desalinhada");
   assert.equal(issues[0].severity, "aviso");
+  assert.ok(
+    !issues[0].detail.includes("os recibos mostram"),
+    "o numero comparado vem dos PAGAMENTOS (cash liquido), nao dos recibos — dizer 'recibos' era falso",
+  );
+}
+
+// C3) REGRESSÃO (2026-07-30, caso Tevisil): uma ATUALIZAÇÃO DE RENDA real não pode disparar
+// este aviso. O `expectedRent` dos Atrasos é `min(renda, mediana dos pagamentos)` de uma
+// janela: quando a renda sobe, a janela ainda tem meses ao valor antigo e a mediana fica lá
+// meses a fio. Com o limiar antigo de 1 EUR absoluto, os 7 EUR de subida (357 vs 350, 2%)
+// davam um aviso a afirmar que "os recibos mostram 350" — quando os recibos mostravam 357.
+// O limiar passou a ser relativo, o mesmo DESALINHAMENTO_MIN de lib/rent.ts.
+{
+  const semAviso = run({ arrears: [arrearsRow({ rent: 357, expectedRent: 350 })] });
+  assert.equal(
+    semAviso.filter((i) => i.kind === "renda_desalinhada").length,
+    0,
+    "2% e a atualizacao anual a chegar aos pagamentos, nao um desalinhamento",
+  );
+  // E a retenção continua a passar: 25% está muito acima dos 5%.
+  const comAviso = run({ arrears: [arrearsRow({ rent: 357, expectedRent: 268 })] });
+  assert.equal(comAviso.filter((i) => i.kind === "renda_desalinhada").length, 1);
 }
 
 // C2) Contrato sem histórico de pagamentos não pode gerar desalinhamento (não há com que comparar).
@@ -180,8 +202,8 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(cessado.length, 0);
 }
 
-// J — renda BAIXA demais face aos recibos. Este erro era INVISÍVEL: o check
-// `renda_desalinhada` só vê rendas altas, porque a renda de referência dos Atrasos está
+// J — renda BAIXA demais face aos recibos. Este erro era INVISÍVEL: o `renda_desalinhada`
+// só vê o recebido a ficar ABAIXO do contrato, porque a renda de referência dos Atrasos está
 // limitada a min(rent, mediana). Caso real: 1825765 a 175 EUR quando 18 meses repetem 331.
 {
   const issues = computeHealth({
@@ -212,4 +234,4 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(semAlerta.filter((i) => i.kind === "renda_errada").length, 0, "2% e o coeficiente");
 }
 
-console.log("health: casos OK (A, B, C, C2, D, E, F, G, H, I, J)");
+console.log("health: casos OK (A, B, C, C2, C3, D, E, F, G, H, I, J)");

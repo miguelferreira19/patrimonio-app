@@ -15,10 +15,11 @@ import { fetchGeoOptions } from "@/lib/portfolio/load";
 import { createClient } from "@/lib/supabase/server";
 import { PropertyFormButton } from "@/components/forms";
 import { Faixa, type LinhaFaixa } from "@/components/faixa/faixa";
+import { CelulaLegenda } from "@/components/faixa/celula";
 import { BarrasDeEstagio } from "@/components/faixa/barras-de-estagio";
 import { fraseDeCalibracao } from "@/lib/portfolio/risk";
 import { buttonClass } from "@/components/ui";
-import { Lede, Money } from "@/components/kit";
+import { Figure, Lede, Money } from "@/components/kit";
 import { cn } from "@/lib/cn";
 import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 import type { Ativo } from "@/lib/portfolio";
@@ -95,11 +96,14 @@ export default async function CarteiraPage({
   const calibracao = fraseDeCalibracao(snap.risco, (v) => fmtEur(v));
   const totalDireita = linhas.reduce((acc, l) => acc + (l.valor ?? 0), 0);
 
+  const heroi = heroiDa(lente, linhas.length, totalDireita, snap.arrears.summary.totalDebt);
+  const arrendadas = universo.filter((a) => a.activeContract).length;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <Lede
-        eyebrow="Carteira"
-        title={titulo(lente, linhas.length, totalDireita, snap.arrears.summary.totalDebt)}
+        eyebrow={`Carteira · ${LENTES[lente]}`}
+        title={<Money value={heroi.valor} escala="hero" tom={heroi.tom} />}
         actions={
           isAdmin ? (
             <>
@@ -111,12 +115,34 @@ export default async function CarteiraPage({
           ) : undefined
         }
       >
-        {snap.horizon
-          ? `Cada barra é um mês, e a altura é a fração da renda que entrou. À direita da linha tracejada a app ainda não sabe: os recibos vão até ${monthLabel(snap.horizon)}.`
-          : "Sem recibos importados: a app não tem base para dizer o que está pago."}
+        {heroi.legenda}
       </Lede>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-regua py-2">
+      {/* Os números que a frase-título carregava, agora em voz baixa: confere-se aqui em
+          vez de os ler dentro de uma manchete. */}
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-regua py-3.5 sm:grid-cols-4">
+        <Facto rotulo="Frações" valor={<Figure value={String(universo.length)} escala="lg" />} />
+        <Facto
+          rotulo="Arrendadas"
+          valor={<Figure value={`${arrendadas} de ${universo.length}`} escala="lg" />}
+        />
+        <Facto
+          rotulo="Renda contratada"
+          valor={<Money value={snap.totais.rendaContratada} escala="lg" />}
+          nota="por mês, contratos ativos"
+        />
+        <Facto
+          rotulo="Recibos conhecidos até"
+          valor={
+            <span className="text-[17px] font-medium text-tinta">
+              {snap.horizon ? monthLabel(snap.horizon) : "nenhum"}
+            </span>
+          }
+          nota={snap.horizon ? "à direita disto, a app não sabe" : "sem base para dizer o que está pago"}
+        />
+      </dl>
+
+      <div className="-mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-regua pb-2.5">
         {isAdmin && (
           <>
             <Segmentado
@@ -157,6 +183,13 @@ export default async function CarteiraPage({
           <BarrasDeEstagio porEstagio={snap.risco.porEstagio} className="sm:max-w-md sm:flex-1" />
           {calibracao && <p className="max-w-[52ch] text-xs text-tinta-2">{calibracao}</p>}
         </section>
+      )}
+
+      {/* R4: a explicação do gráfico é a LEGENDA, não um parágrafo. A altura da barra é a
+          fração da renda que entrou, e a hachura diz o que a app não sabe — isso lê-se aqui,
+          ao lado do objeto, e não numa frase no topo da página. */}
+      {linhas.length > 0 && (
+        <CelulaLegenda estados={["pago", "parcial", "falta", "fora", "futuro"]} />
       )}
 
       {linhas.length === 0 ? (
@@ -280,44 +313,33 @@ function ordenarPorSenhorio(linhas: LinhaFaixa[], universo: Ativo[]): LinhaFaixa
   });
 }
 
-function titulo(lente: Lente, n: number, total: number, divida: number) {
+/** O NÚMERO HERÓI de cada lente, e a frase curta que o nomeia (R1: um número, no máximo
+ *  oito palavras à volta — nunca uma frase inteira como título).
+ *
+ *  Antes daqui saía "26 frações, 8.305 € por mês, 1.240 € por cobrar." como TÍTULO: três
+ *  números em concorrência dentro de uma frase, e nenhum deles a ler-se primeiro. Cada
+ *  lente tem uma pergunta só, e o herói é a resposta a essa pergunta; os outros números
+ *  descem para a tira de factos, que é onde se conferem sem disputar a atenção. */
+function heroiDa(
+  lente: Lente,
+  n: number,
+  total: number,
+  divida: number,
+): { valor: number; tom: "tinta" | "acao" | "perda"; legenda: string } {
   const fracoes = `${n} ${n === 1 ? "fração" : "frações"}`;
   switch (lente) {
     case "cobranca":
-      return divida > 0 ? (
-        <>
-          {fracoes}, <Money value={total} tom="tinta" /> por mês, <Money value={divida} tom="perda" />{" "}
-          por cobrar.
-        </>
-      ) : (
-        <>
-          {fracoes}, <Money value={total} tom="tinta" /> por mês, tudo cobrado.
-        </>
-      );
+      return divida > 0
+        ? { valor: divida, tom: "perda", legenda: `por cobrar, em ${fracoes}.` }
+        : { valor: total, tom: "tinta", legenda: `por mês em ${fracoes}, tudo cobrado.` };
     case "renda":
-      return (
-        <>
-          {fracoes} arrendadas por <Money value={total} tom="tinta" /> por mês.
-        </>
-      );
+      return { valor: total, tom: "tinta", legenda: `por mês, em ${fracoes} arrendadas.` };
     case "mercado":
-      return (
-        <>
-          {fracoes} com referência do INE: <Money value={total} tom="acao" /> por mês na mesa.
-        </>
-      );
+      return { valor: total, tom: "acao", legenda: `por mês na mesa, em ${fracoes}.` };
     case "risco":
-      return (
-        <>
-          {fracoes} em risco, <Money value={total} tom="perda" /> de perda esperada.
-        </>
-      );
+      return { valor: total, tom: "perda", legenda: `de perda esperada, em ${fracoes}.` };
     case "vazios":
-      return (
-        <>
-          {fracoes} com vazios, <Money value={total} tom="perda" /> de renda perdida.
-        </>
-      );
+      return { valor: total, tom: "perda", legenda: `de renda perdida, em ${fracoes}.` };
   }
 }
 
@@ -365,4 +387,25 @@ function hrefCom(
   }
   const q = p.toString();
   return q ? `/carteira?${q}` : "/carteira";
+}
+
+/** Um facto da tira: rótulo pequeno, número a peso, nota opcional. Mesmo desenho da
+ *  `/mercado` e do `Retrato` — três variações do mesmo objeto seria o começo de um
+ *  dialecto por página. */
+function Facto({
+  rotulo,
+  valor,
+  nota,
+}: {
+  rotulo: string;
+  valor: React.ReactNode;
+  nota?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</dt>
+      <dd className="mt-1">{valor}</dd>
+      {nota && <dd className="mt-0.5 text-[11px] leading-snug text-tinta-3">{nota}</dd>}
+    </div>
+  );
 }
