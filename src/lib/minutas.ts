@@ -206,6 +206,110 @@ export function isMinutaTipo(s: string): s is MinutaTipo {
 }
 
 // ----------------------------------------------------------------
+// ENQUADRAMENTO: que cartas se aplicam A ESTA fração.
+//
+// A página de Documentos oferecia as cinco a toda a gente, sempre. Metade não servia
+// para nada no contrato escolhido — uma oposição à renovação nos primeiros três anos é
+// ineficaz (artigo 1097.º n.º 3), uma atualização de renda sem elegibilidade é uma carta
+// que o arrendatário pode ignorar, e uma interpelação por rendas em atraso a quem está em
+// dia é um erro que se manda por escrito. Oferecer uma carta é afirmar que ela se aplica.
+//
+// Continua a ser PURO: quem chama traz os factos já calculados (elegibilidade de renda do
+// `calc.ts`, meses em atraso do `arrears.ts`). Este módulo não sabe ler a base de dados
+// nem quer saber — é o que o deixa testável no `minutas.check.ts`.
+
+export type MinutaChave = MinutaTipo | "renda";
+
+/** Anos de vigência antes de o senhorio se poder opor à renovação (1097.º n.º 3). */
+export const ANOS_ATE_OPOSICAO = 3;
+
+export interface FactosDaFracao {
+  /** Hoje, ISO. */
+  hoje: string;
+  temContratoAtivo: boolean;
+  /** Início do contrato ativo, ISO. */
+  inicioContrato: string | null;
+  /** `rentUpdateEligibility(...).eligible` do contrato ativo. */
+  rendaElegivel: boolean;
+  /** `rentUpdateEligibility(...).eligibleSince`, para dizer a partir de quando. */
+  rendaElegivelDesde: string | null;
+  /** false quando não há nenhum coeficiente registado: a carta ficava sem o número. */
+  temCoeficiente: boolean;
+  /** Meses seguidos por liquidar, já sem os contratos de ritmo próprio (arrears.ts). */
+  mesesEmAtraso: number;
+}
+
+export interface MinutaEnquadrada {
+  chave: MinutaChave;
+  label: string;
+  descricao: string;
+  base: string;
+  /** null quando a carta se aplica. Caso contrário, a razão, em PT-PT. */
+  bloqueio: string | null;
+}
+
+/** Mesmo dia, `anos` anos depois. O 29 de fevereiro cai em 1 de março, que é o que o
+ *  calendário faz e o que a contagem de prazos assume. */
+function somaAnos(iso: string, anos: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCFullYear(d.getUTCFullYear() + anos);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * As cinco cartas, cada uma com o seu bloqueio (ou `null` se se aplica). Devolve-as
+ * TODAS, na ordem em que se usam: quem chama decide se esconde as bloqueadas ou se
+ * também diz porquê. Filtrar aqui dentro tirava a razão a quem a quisesse mostrar.
+ */
+export function enquadrarMinutas(f: FactosDaFracao): MinutaEnquadrada[] {
+  const semContrato = f.temContratoAtivo
+    ? null
+    : "A fração não tem contrato de arrendamento ativo.";
+
+  const renda =
+    semContrato ??
+    (!f.temCoeficiente
+      ? "Ainda não há coeficiente de atualização registado (regista-se em Admin)."
+      : f.rendaElegivel
+        ? null
+        : f.rendaElegivelDesde
+          ? `A renda deste contrato só é atualizável a partir de ${fmtDate(f.rendaElegivelDesde)}.`
+          : "Falta a data de início do contrato para calcular a elegibilidade.");
+
+  const interpelacao =
+    semContrato ?? (f.mesesEmAtraso > 0 ? null : "Este contrato não tem rendas por liquidar.");
+
+  const oposicao =
+    semContrato ??
+    (!f.inicioContrato
+      ? "Falta a data de início do contrato para contar o prazo do artigo 1097.º."
+      : f.hoje < somaAnos(f.inicioContrato, ANOS_ATE_OPOSICAO)
+        ? `O senhorio só se pode opor à renovação a partir de ${fmtDate(
+            somaAnos(f.inicioContrato, ANOS_ATE_OPOSICAO),
+          )} (três anos de contrato).`
+        : null);
+
+  return [
+    {
+      chave: "renda",
+      label: MINUTA_RENDA.label,
+      descricao: MINUTA_RENDA.descricao,
+      base: MINUTA_RENDA.base,
+      bloqueio: renda,
+    },
+    { chave: "interpelacao", ...resumo("interpelacao"), bloqueio: interpelacao },
+    { chave: "oposicao", ...resumo("oposicao"), bloqueio: oposicao },
+    { chave: "revogacao", ...resumo("revogacao"), bloqueio: semContrato },
+    { chave: "cessao", ...resumo("cessao"), bloqueio: semContrato },
+  ];
+}
+
+function resumo(tipo: MinutaTipo): { label: string; descricao: string; base: string } {
+  const { label, descricao, base } = MINUTAS[tipo];
+  return { label, descricao, base };
+}
+
+// ----------------------------------------------------------------
 // A carta de ATUALIZAÇÃO DE RENDA fica fora do mapa acima porque precisa de dois números
 // que não estão no contrato: o coeficiente do ano e a data a partir da qual é elegível.
 // O TEXTO, esse, vive aqui como o das outras — a página `/carta/[contractId]` e o

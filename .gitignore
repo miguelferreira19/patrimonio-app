@@ -12,6 +12,9 @@ build/
 # Dados pessoais reais (exports do Portal das Finanças) — NUNCA commitar
 dados/
 
+# Saída do /graphify: 2 MB de grafo derivado do próprio repo (e do que ele lê)
+graphify-out/
+
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store

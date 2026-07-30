@@ -23,8 +23,8 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
 - Build (gate obrigatório antes de dar qualquer tarefa por terminada): `npm run build`
-- `npm run check` = **17 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
-  documentos, docx, snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
+- `npm run check` = **18 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
+  documentos, minutas, docx, snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
 - Dev: `npm run dev` (ou `start.cmd`; launch.json tem "patrimonio-dev", porta 3000)
 - Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node).
 - Supabase: projeto `iidvzcgtfbpzhjbsrqql` (UE). Schema em `supabase/schema.sql` (idempotente, pode
@@ -163,10 +163,16 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
     vai DIRETO do browser para o Storage (`components/documentos/carregar.tsx`): uma server action
     corta o corpo do pedido a 1 MB e um contrato digitalizado passa disso. A escrita continua
     fechada pela política `documentos_insert`, que exige `public.is_admin()`. Toda a família lê.
-    A página só mostra o que é da CARTEIRA INTEIRA (IRS, correspondência) mais os órfãos; o que é
-    de uma fração aparece na ficha dessa fração. Listar tudo eram cinquenta caixas a descer o ecrã
-    para encontrar um PDF que já tem sítio natural. A leitura do bucket é partilhada pelas duas
-    páginas: `lerArquivo` + `<ListaDocumentos>` em `components/documentos/lista.tsx`.
+    A leitura do bucket é partilhada com a ficha da fração: `lerArquivo` +
+    `<ListaDocumentos>` em `components/documentos/lista.tsx`.
+    **Reescrita a 2026-07-30**: a página é UMA FRAÇÃO de cada vez (escolhida no `?fracao=`,
+    como as lentes da Carteira) com duas secções — **Minutas** (as cartas, filtradas pelo
+    ENQUADRAMENTO) e **Documentos da fração** (o arquivo daquele artigo matricial). O
+    **Geral** (IRS, correspondência, mais os órfãos de artigos que nenhuma fração tem) passou
+    a ser **só de admin**, no fim e depois de uma fronteira: não é informação de fração e a
+    página é para a família toda. O upload dentro da fração já vem com o destino fixo
+    (`<Carregar destino={...}>`); o seletor de escopo e o palpite pelo nome do ficheiro (as 30
+    cadernetas de uma assentada) ficam na tira do Geral.
   - **`api/minuta/[tipo]/[contractId]`** — as CARTAS, em **.docx** (cessão da posição contratual,
     oposição à renovação, interpelação por rendas em atraso, revogação por acordo, e `renda` para
     a atualização anual). Descarregam-se; não há página HTML de minuta (havia, e foi apagada:
@@ -175,6 +181,12 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
     não JSX, e a página `/carta/[contractId]` renderiza os MESMOS parágrafos, senão as duas
     versões da mesma carta divergem. `tipo=renda` sem elegibilidade faz redirect para
     `/carta/[id]`, que é a página que explica porquê.
+    **`enquadrarMinutas()`** (mesmo módulo, puro, `minutas.check.ts`) decide QUAIS aparecem em
+    `/documentos`: sem contrato ativo não há nenhuma; a atualização de renda exige
+    elegibilidade e coeficiente do ano; a interpelação exige rendas por liquidar (excluindo os
+    contratos de "ritmo próprio" do arrears.ts); a oposição à renovação exige três anos de
+    contrato (artigo 1097.º n.º 3). Devolve as cinco SEMPRE, cada uma com `bloqueio` (a razão
+    em PT-PT) ou `null` — quem chama é que esconde. Oferecer uma carta é afirmar que se aplica.
   - `carta/[contractId]` — a atualização de renda em HTML (folha A4 de `components/papel-impresso.tsx`).
     Existe pelos estados de erro: contrato cessado, sem coeficiente do ano, ainda não elegível.
   - `ano/[ano]` — o documento fiscal. `fracoes/[id]`, `carta/[contractId]`,

@@ -25,7 +25,19 @@ export interface FracaoOpcao {
 
 type Estado = { nome: string; ok: boolean; onde: string; erro?: string };
 
-export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
+/**
+ * `destino` fixa o escopo e esconde o seletor: é a tira que vive DENTRO da fração já
+ * escolhida, onde perguntar outra vez "para que fração?" seria perguntar o que o
+ * utilizador acabou de responder. Sem `destino` é a tira do arquivo geral, com o seletor
+ * e o palpite pelo nome do ficheiro (as 30 cadernetas de uma assentada).
+ */
+export function Carregar({
+  fracoes,
+  destino,
+}: {
+  fracoes: FracaoOpcao[];
+  destino?: FracaoOpcao;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   // "" = deixar o nome do ficheiro decidir. É o que faz a diferença entre arquivar 30
@@ -45,16 +57,16 @@ export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
     const feitos: Estado[] = [];
 
     for (const file of Array.from(files)) {
-      const escopo = escopoFixo || escopoSugerido(file.name, matrizes) || GERAL;
-      const destino = caminho(escopo, file.name);
-      const { error } = await supabase.storage.from(BUCKET).upload(destino, file, {
+      const escopo = destino?.matriz || escopoFixo || escopoSugerido(file.name, matrizes) || GERAL;
+      const chave = caminho(escopo, file.name);
+      const { error } = await supabase.storage.from(BUCKET).upload(chave, file, {
         upsert: true,
         contentType: file.type || undefined,
       });
       feitos.push({
         nome: file.name,
         ok: !error,
-        onde: escopo === GERAL ? "Geral" : labelDe.get(escopo) ?? escopo,
+        onde: escopo === GERAL ? "Geral" : labelDe.get(escopo) ?? destino?.label ?? escopo,
         erro: error?.message,
       });
       setResultados([...feitos]);
@@ -79,19 +91,21 @@ export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
       className="space-y-2"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Select
-          value={escopoFixo}
-          onChange={(e) => setEscopoFixo(e.target.value)}
-          className="h-8 min-w-0 flex-1 text-xs"
-        >
-          <option value="">Adivinhar a fração pelo nome do ficheiro</option>
-          <option value={GERAL}>Geral (carteira toda)</option>
-          {fracoes.map((f) => (
-            <option key={f.matriz} value={f.matriz}>
-              {f.label}
-            </option>
-          ))}
-        </Select>
+        {!destino && (
+          <Select
+            value={escopoFixo}
+            onChange={(e) => setEscopoFixo(e.target.value)}
+            className="h-8 min-w-0 flex-1 text-xs"
+          >
+            <option value="">Adivinhar a fração pelo nome do ficheiro</option>
+            <option value={GERAL}>Geral (carteira toda)</option>
+            {fracoes.map((f) => (
+              <option key={f.matriz} value={f.matriz}>
+                {f.label}
+              </option>
+            ))}
+          </Select>
+        )}
 
         <label className={buttonClass({ variant: "outline", size: "sm", className: "cursor-pointer" })}>
           <FileUp size={14} strokeWidth={1.75} />
@@ -109,8 +123,9 @@ export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
 
       {resultados.length === 0 ? (
         <p className="text-[11px] text-tinta-3">
-          Também podes largar aqui os ficheiros. Um PDF chamado 182341-U-5077-A.pdf arquiva-se
-          sozinho na fração desse artigo.
+          {destino
+            ? `Também podes largar aqui os ficheiros. Ficam arquivados em ${destino.label}.`
+            : "Também podes largar aqui os ficheiros. Um PDF chamado 182341-U-5077-A.pdf arquiva-se sozinho na fração desse artigo."}
         </p>
       ) : (
         <ul className="space-y-0.5 text-[11px]">
