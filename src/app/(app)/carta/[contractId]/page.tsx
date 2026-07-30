@@ -5,7 +5,8 @@ import { Card, EmptyState } from "@/components/ui";
 import { Assinaturas, PapelImpresso } from "@/components/papel-impresso";
 import { rentUpdateEligibility } from "@/lib/calc";
 import { getSession } from "@/lib/data";
-import { fmtDate, fmtEur, fmtNum, todayISO } from "@/lib/format";
+import { fmtDate, todayISO } from "@/lib/format";
+import { minutaAtualizacaoRenda } from "@/lib/minutas";
 import type { Contract, Landlord, Property, PropertyOwner, RentUpdate, UpdateCoefficient } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -125,10 +126,30 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     [property.address, property.postal_code, property.parish, property.municipality]
       .filter(Boolean)
       .join(", ") || property.name;
-  const fracaoRef = property.address || property.name;
-  const contratoRef = contract.pf_contract_no
-    ? `, com o n.º ${contract.pf_contract_no} no Portal das Finanças,`
-    : "";
+
+  // O TEXTO da carta vive em `lib/minutas.ts`, ao lado das outras minutas, e é o mesmo que
+  // sai no .docx de `/api/minuta/renda/[id]`. Estava aqui em JSX e tinha de ser corrigido
+  // em dois sítios de cada vez que uma frase mudasse.
+  const minuta = minutaAtualizacaoRenda(
+    {
+      senhorio: landlord.name,
+      senhorioNif: landlord.nif,
+      inquilino: contract.tenant_name,
+      inquilinoNif: contract.tenant_nif,
+      morada: fracaoMorada,
+      fracaoRef: property.address || property.name,
+      contratoNo: contract.pf_contract_no,
+      inicio: contract.start_date,
+      renda: contract.rent,
+      hoje: todayISO(),
+    },
+    {
+      ano: latestCoef.year,
+      coeficiente: latestCoef.coefficient,
+      novaRenda: eligibility.suggestedRent,
+      desde: eligibility.eligibleSince,
+    },
+  );
 
   return (
     <PapelImpresso
@@ -157,30 +178,12 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
           <p className="text-zinc-600">{fracaoMorada}</p>
         </div>
 
-        <p className="mt-8 font-semibold">Assunto: Atualização da renda referente à fração {fracaoRef}</p>
+        <p className="mt-8 font-semibold">Assunto: {minuta.assunto}</p>
 
         <div className="mt-6 space-y-4 leading-relaxed">
-          <p>Ex.mo(a) Senhor(a) {contract.tenant_name},</p>
-          <p>
-            Nos termos do artigo 24.º da Lei n.º 6/2006, de 27 de fevereiro (Novo Regime do
-            Arrendamento Urbano), vimos comunicar a atualização anual da renda do contrato de
-            arrendamento da fração acima identificada
-            {contratoRef} com início em {fmtDate(contract.start_date)}.
-          </p>
-          <p>
-            A renda mensal atualmente em vigor é de <strong>{fmtEur(contract.rent, 2)}</strong>.
-          </p>
-          <p>
-            É aplicado o coeficiente de atualização de renda para o ano de {latestCoef.year}, fixado
-            em {fmtNum(latestCoef.coefficient, 4)} e publicado em Diário da República.
-          </p>
-          <p>
-            Em resultado desta atualização, a nova renda mensal passa a ser de{" "}
-            <strong>{fmtEur(eligibility.suggestedRent, 2)}</strong>, com efeitos a partir de{" "}
-            {fmtDate(eligibility.eligibleSince)}.
-          </p>
-          <p>Solicita-se a confirmação da receção da presente comunicação.</p>
-          <p>Com os melhores cumprimentos,</p>
+          {minuta.paragrafos.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
         </div>
 
         <div className="mt-12 grid grid-cols-2 gap-6">
@@ -194,12 +197,12 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
           </div>
         </div>
 
-        <Assinaturas legendas={["Assinatura do Senhorio"]} />
+        <Assinaturas legendas={minuta.assinaturas} />
 
         <p className="mt-16 text-[10px] leading-snug text-zinc-400">
-          Carta gerada automaticamente a partir dos dados do contrato; confirmar o prazo de
-          antecedência exigido e o enquadramento legal do contrato específico antes de enviar. Este
-          conteúdo não constitui aconselhamento jurídico vinculativo.
+          {minuta.nota} Carta gerada a partir dos dados do contrato; confirmar o enquadramento
+          legal do contrato específico antes de enviar. Este conteúdo não constitui aconselhamento
+          jurídico vinculativo.
         </p>
     </PapelImpresso>
   );

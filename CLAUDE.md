@@ -23,8 +23,8 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
 - Build (gate obrigatório antes de dar qualquer tarefa por terminada): `npm run build`
-- `npm run check` = **16 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
-  documentos, snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
+- `npm run check` = **17 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
+  documentos, docx, snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
 - Dev: `npm run dev` (ou `start.cmd`; launch.json tem "patrimonio-dev", porta 3000)
 - Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node).
 - Supabase: projeto `iidvzcgtfbpzhjbsrqql` (UE). Schema em `supabase/schema.sql` (idempotente, pode
@@ -147,12 +147,12 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
 (era o bug B2, que fazia o mesmo mês aparecer vermelho em Pagamentos e verde em Atrasos).
 
 ## Estrutura
-- `src/app/(app)/` páginas autenticadas. **Viewer vê 5 destinos** (Agora, Carteira, Mercado, Ano,
+- `src/app/(app)/` páginas autenticadas. **Viewer vê 5 destinos** (Início, Carteira, Mercado, IRS,
   Documentos);
   o resto é admin-only, com guarda de página (`redirect("/")`), não só filtro no menu.
   O Mercado subiu a destino de família em 2026-07-29: só era admin por não ter números
   (áreas por preencher + bug B5 do território), e as duas razões acabaram.
-  - Agora (`page.tsx`) — duas leituras SEPARADAS, `Estado` para viewer e `Decisoes` para admin.
+  - Início (`page.tsx`, rota `/`) — duas leituras SEPARADAS, `Estado` para viewer e `Decisoes` para admin.
     Não voltar a entrelaçá-las com `isAdmin ?` no meio da árvore.
   - `carteira` — a faixa, com lentes por `searchParams`. Para viewer a lente é **forçada a
     `risco` no servidor**; não chega esconder o seletor.
@@ -163,12 +163,20 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
     vai DIRETO do browser para o Storage (`components/documentos/carregar.tsx`): uma server action
     corta o corpo do pedido a 1 MB e um contrato digitalizado passa disso. A escrita continua
     fechada pela política `documentos_insert`, que exige `public.is_admin()`. Toda a família lê.
-  - `minutas/[tipo]/[contractId]` — cessão da posição contratual, oposição à renovação,
-    interpelação por rendas em atraso e revogação por acordo. O TEXTO vive em `src/lib/minutas.ts`
-    (módulo puro, com os artigos do Código Civil): é conhecimento de domínio, não JSX. A carta de
-    atualização de renda fica fora, em `carta/[contractId]`, porque depende do coeficiente do ano
-    e da elegibilidade. A folha A4 e as regras de impressão das duas são o
-    `components/papel-impresso.tsx`.
+    A página só mostra o que é da CARTEIRA INTEIRA (IRS, correspondência) mais os órfãos; o que é
+    de uma fração aparece na ficha dessa fração. Listar tudo eram cinquenta caixas a descer o ecrã
+    para encontrar um PDF que já tem sítio natural. A leitura do bucket é partilhada pelas duas
+    páginas: `lerArquivo` + `<ListaDocumentos>` em `components/documentos/lista.tsx`.
+  - **`api/minuta/[tipo]/[contractId]`** — as CARTAS, em **.docx** (cessão da posição contratual,
+    oposição à renovação, interpelação por rendas em atraso, revogação por acordo, e `renda` para
+    a atualização anual). Descarregam-se; não há página HTML de minuta (havia, e foi apagada:
+    imprimir para PDF não deixava corrigir o mês em dívida nem o IBAN). O TEXTO vive em
+    `src/lib/minutas.ts`, módulo puro com os artigos do Código Civil — é conhecimento de domínio,
+    não JSX, e a página `/carta/[contractId]` renderiza os MESMOS parágrafos, senão as duas
+    versões da mesma carta divergem. `tipo=renda` sem elegibilidade faz redirect para
+    `/carta/[id]`, que é a página que explica porquê.
+  - `carta/[contractId]` — a atualização de renda em HTML (folha A4 de `components/papel-impresso.tsx`).
+    Existe pelos estados de erro: contrato cessado, sem coeficiente do ano, ainda não elegível.
   - `ano/[ano]` — o documento fiscal. `fracoes/[id]`, `carta/[contractId]`,
     `inquilinos/[chave]` (ficha do arrendatário, admin-only; a chave é a MESMA de
     `concentracao().porInquilino` — `nif:...` ou `nome:...`).
@@ -177,7 +185,8 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
   - `pagamentos`, `atrasos`, `fracoes`, `despesas` e `irs` são só **redirects** — não voltar a pôr
     conteúdo lá.
 - `src/components/` ui.tsx, modal.tsx, kit/, faixa/, nav.tsx, charts.tsx, forms.tsx, setup-notice.tsx
-- `src/lib/` cn.ts, format.ts (fmtEur/fmtDate/monthKey/splitEur), documentos.ts, minutas.ts, calc.ts, arrears.ts (metodologia de
+- `src/lib/` cn.ts, format.ts (fmtEur/fmtDate/monthKey/splitEur), documentos.ts, minutas.ts, docx.ts
+  (escritor de .docx à mão: um ZIP "stored" mais três XML, para não haver dependência nova), calc.ts, arrears.ts (metodologia de
   atrasos — PLANO.md Apêndice A.2), monthcell.ts, health.ts, irs.ts, ine.ts, data.ts, paginate.ts,
   parse.ts, types.ts, supabase/, actions/ — cada um com o seu `*.check.ts`
 - `src/lib/portfolio/` load.ts (o ÚNICO I/O), snapshot.ts, insights.ts (a fila do Agora), risk.ts,

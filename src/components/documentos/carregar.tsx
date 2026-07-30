@@ -14,7 +14,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUp } from "lucide-react";
-import { Button, Card, Select } from "@/components/ui";
+import { Select, buttonClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { BUCKET, GERAL, caminho, escopoSugerido } from "@/lib/documentos";
 
@@ -65,13 +65,25 @@ export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
     router.refresh();
   }
 
+  // Uma TIRA, não um cartão com uma zona de largar do tamanho de meia página: arquivar é
+  // esporádico (as cadernetas entram uma vez, os contratos a conta-gotas) e não pode ser a
+  // primeira coisa que se vê numa página que serve sobretudo para ler. Continua a aceitar
+  // ficheiros largados em cima dela, que é como as 30 cadernetas entram de uma vez.
   return (
-    <Card
-      title="Arquivar documentos"
-      subtitle="contratos, cadernetas, declarações, cartas assinadas; até 25 MB por ficheiro"
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        void receber(e.dataTransfer.files);
+      }}
+      className="space-y-2"
     >
-      <div className="space-y-3">
-        <Select value={escopoFixo} onChange={(e) => setEscopoFixo(e.target.value)}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={escopoFixo}
+          onChange={(e) => setEscopoFixo(e.target.value)}
+          className="h-8 min-w-0 flex-1 text-xs"
+        >
           <option value="">Adivinhar a fração pelo nome do ficheiro</option>
           <option value={GERAL}>Geral (carteira toda)</option>
           {fracoes.map((f) => (
@@ -81,21 +93,9 @@ export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
           ))}
         </Select>
 
-        <label
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            void receber(e.dataTransfer.files);
-          }}
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-regua-forte px-4 py-8 text-center transition-colors hover:border-acao hover:bg-acao-tenue"
-        >
-          <FileUp size={20} strokeWidth={1.5} className="text-tinta-3" />
-          <span className="text-sm text-tinta-2">
-            {aEnviar ? "A carregar…" : "Larga aqui os ficheiros, ou clica para escolher"}
-          </span>
-          <span className="text-xs text-tinta-3">
-            Um PDF chamado 182341-U-5077-A.pdf arquiva-se sozinho na fração desse artigo
-          </span>
+        <label className={buttonClass({ variant: "outline", size: "sm", className: "cursor-pointer" })}>
+          <FileUp size={14} strokeWidth={1.75} />
+          {aEnviar ? "A carregar…" : "Arquivar ficheiros"}
           <input
             ref={inputRef}
             type="file"
@@ -105,24 +105,33 @@ export function Carregar({ fracoes }: { fracoes: FracaoOpcao[] }) {
             onChange={(e) => void receber(e.target.files)}
           />
         </label>
-
-        {resultados.length > 0 && (
-          <ul className="space-y-1 text-xs">
-            {resultados.map((r, i) => (
-              <li key={i} className={r.ok ? "text-tinta-2" : "text-perda"}>
-                {r.ok ? `${r.nome} · arquivado em ${r.onde}` : `${r.nome} · ${r.erro}`}
-              </li>
-            ))}
-            {!aEnviar && (
-              <li className="pt-1">
-                <Button variant="ghost" size="sm" onClick={() => setResultados([])}>
-                  Limpar
-                </Button>
-              </li>
-            )}
-          </ul>
-        )}
       </div>
-    </Card>
+
+      {resultados.length === 0 ? (
+        <p className="text-[11px] text-tinta-3">
+          Também podes largar aqui os ficheiros. Um PDF chamado 182341-U-5077-A.pdf arquiva-se
+          sozinho na fração desse artigo.
+        </p>
+      ) : (
+        <ul className="space-y-0.5 text-[11px]">
+          {resultados.map((r, i) => (
+            <li key={i} className={r.ok ? "text-tinta-3" : "text-perda"}>
+              {r.ok ? `${r.nome} · ${r.onde}` : `${r.nome} · ${r.erro}`}
+            </li>
+          ))}
+          {!aEnviar && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setResultados([])}
+                className="text-tinta-3 underline hover:text-tinta-2"
+              >
+                Limpar
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
   );
 }

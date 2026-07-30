@@ -39,7 +39,7 @@ export default async function AnoPage({
   if (dados.senhorios.length === 0) {
     return (
       <div className="space-y-4">
-        <Lede eyebrow={`Ano ${dados.ano}`} title="Ainda não há senhorios registados." />
+        <Lede eyebrow={`IRS ${dados.ano}`} title="Ainda não há senhorios registados." />
         <EmptyState>Importa os recibos do Portal das Finanças no Admin para começar.</EmptyState>
       </div>
     );
@@ -77,7 +77,7 @@ export default async function AnoPage({
   return (
     <div className="space-y-6">
       <Lede
-        eyebrow={`Ano ${dados.ano}`}
+        eyebrow={`IRS ${dados.ano}`}
         title={
           <>
             {escolhido.landlord.name} recebeu <Money value={fy.grossRent} tom="tinta" /> e fica com{" "}

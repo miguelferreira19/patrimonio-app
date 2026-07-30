@@ -31,10 +31,14 @@ import type { Role } from "@/lib/types";
  *  O Mercado entrou aqui em 2026-07-29 (pedido do utilizador): com as áreas das cadernetas
  *  preenchidas e o bug B5 do território fechado, passou a ter números para mostrar. */
 const DESTINOS = [
-  { href: "/", label: "Agora" },
+  // Os rótulos são o que a família lê primeiro, por isso dizem a COISA e não o conceito:
+  // "Agora" era vocabulário nosso (a fila de decisões do mês) e não dizia nada a quem
+  // abre isto duas vezes por ano; "Ano" descrevia o eixo do documento, quando o que lá
+  // se vai fazer é o IRS. As rotas nao mudaram (`/` e `/ano/[ano]`).
+  { href: "/", label: "Início" },
   { href: "/carteira", label: "Carteira" },
   { href: "/mercado", label: "Mercado" },
-  { href: `/ano/${new Date().getFullYear()}`, label: "Ano" },
+  { href: `/ano/${new Date().getFullYear()}`, label: "IRS" },
   // O arquivo (2026-07-30): a família LÊ os contratos e as cadernetas, só o admin arquiva.
   { href: "/documentos", label: "Documentos" },
 ];

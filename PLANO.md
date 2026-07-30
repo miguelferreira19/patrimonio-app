@@ -1099,6 +1099,7 @@ Bloqueiam **valor**, não código. Por ordem de impacto:
 10. **Criar o arquivo de documentos (2026-07-30):** colar o bloco "V3 · DOCUMENTOS" do fim de
    `supabase/schema.sql` (cria o bucket privado `documentos` e as políticas). Depois, em
    `/documentos`, largar de uma vez os PDFs das cadernetas de `dados/Pai/caderneta/` — cada um
-   arquiva-se sozinho na fração certa, porque o nome do ficheiro é o artigo matricial — e as
-   declarações de IRS (`dados/Pai/IRS_PAI.pdf`, `dados/Avo_Miguel/IRS_Miguel.pdf`) em "Geral". Os
+   arquiva-se sozinho na fração certa, porque o nome do ficheiro é o artigo matricial, e passa a
+   aparecer na FICHA dessa fração, não nesta página — e as declarações de IRS
+   (`dados/Pai/IRS_PAI.pdf`, `dados/Avo_Miguel/IRS_Miguel.pdf`) com o seletor em "Geral". Os
    contratos de arrendamento entram à medida que forem chegando.

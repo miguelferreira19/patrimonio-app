@@ -26,6 +26,8 @@ import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
 import { lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import { chaveDoInquilino } from "@/lib/portfolio/inquilinos";
+import { ListaDocumentos, lerArquivo } from "@/components/documentos/lista";
+import { escopoSeguro } from "@/lib/documentos";
 import type {
   Contract,
   Expense,
@@ -165,7 +167,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const horizonCap = lastDueMonthKey(new Date());
 
   const contractIds = contracts.map((c) => c.id);
-  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ, coefficientsQ] = await Promise.all([
+  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ, coefficientsQ, arquivo] = await Promise.all([
     // Histórico COMPLETO (sem piso temporal) — a secção "Histórico de pagamentos" precisa
     // de todos os anos, não só dos últimos 12 meses.
     // ATENÇÃO ao que este .limit() NÃO faz: não passa por cima do max-rows (~1000) do
@@ -202,7 +204,14 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
       .order("ref_month", { ascending: false })
       .limit(1),
     supabase.from("update_coefficients").select("*"),
+    // O arquivo inteiro numa chamada (os caminhos são planos, ver lib/documentos.ts) e
+    // filtra-se em memória. Enquanto o bucket não existir devolve vazio sem rebentar.
+    lerArquivo(supabase),
   ]);
+
+  const docsDaFracao = property.matriz_article
+    ? arquivo.docs.filter((d) => d.escopo === escopoSeguro(property.matriz_article))
+    : [];
 
   const payments = (paymentsQ.data ?? []) as Payment[];
   const receipts = (receiptsQ.data ?? []) as Receipt[];
@@ -279,30 +288,18 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             "Sem morada"
           }
           actions={
-            <div className="flex flex-wrap gap-2">
-              {/* Sem I/O extra nesta página: o arquivo agrupa por artigo matricial e o
-                  link salta direto para o bloco desta fração. */}
-              {property.matriz_article && (
-                <Link
-                  href={`/documentos#${encodeURIComponent(property.matriz_article)}`}
-                  className={buttonClass({ variant: "outline", size: "sm" })}
-                >
-                  Documentos
-                </Link>
-              )}
-              {isAdmin && (
-                <>
-                  <PropertyFormButton
-                    landlords={landlords}
-                    geoOptions={geoOptions}
-                    property={property}
-                    owners={owners}
-                    small
-                  />
-                  <DeletePropertyButton id={property.id} />
-                </>
-              )}
-            </div>
+            isAdmin && (
+              <div className="flex flex-wrap gap-2">
+                <PropertyFormButton
+                  landlords={landlords}
+                  geoOptions={geoOptions}
+                  property={property}
+                  owners={owners}
+                  small
+                />
+                <DeletePropertyButton id={property.id} />
+              </div>
+            )
           }
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -367,12 +364,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                       {rentEligibility.suggestedRent && ` · sugestão ${fmtEur(rentEligibility.suggestedRent, 2)}`}
                     </Badge>
                     <a
-                      href={`/carta/${active.id}`}
+                      href={`/api/minuta/renda/${active.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-2 text-xs font-medium text-teal-700 hover:underline dark:text-teal-400"
                     >
-                      Gerar carta
+                      Carta em Word
                     </a>
                   </>
                 )}
@@ -460,6 +457,22 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
           </p>
         </Card>
       </div>
+
+      {/* Documentos desta fração. Ficam aqui, e não numa lista central: é aqui que se vem
+          procurar a caderneta predial ou o contrato de arrendamento desta casa. */}
+      <Card
+        title="Documentos"
+        subtitle="caderneta predial, contrato de arrendamento e o que mais estiver arquivado nesta fração"
+      >
+        {docsDaFracao.length === 0 ? (
+          <EmptyState icon={FileText}>
+            Nada arquivado nesta fração.
+            {isAdmin && " Arquiva a caderneta predial e o contrato na página Documentos."}
+          </EmptyState>
+        ) : (
+          <ListaDocumentos docs={docsDaFracao} isAdmin={isAdmin} />
+        )}
+      </Card>
 
       {/* Histórico completo de pagamentos */}
       <Card

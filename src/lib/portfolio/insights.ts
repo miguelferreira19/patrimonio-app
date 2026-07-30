@@ -393,7 +393,10 @@ export function construirFila(s: Snapshot): Fila {
 }
 
 export function agrupar(itens: Insight[]): Array<{ grupo: Grupo; itens: Insight[]; euros: number }> {
-  const ordem: Grupo[] = ["poupar", "fazer", "risco", "saber"];
+  // O RISCO primeiro (pedido do utilizador, 2026-07-30). Perder uma renda que já está
+  // contratada custa mais do que ganhar uma poupança que ainda não existe, e era o risco
+  // que estava em terceiro lugar, a seguir a duas secções de oportunidades.
+  const ordem: Grupo[] = ["risco", "poupar", "fazer", "saber"];
   return ordem
     .map((grupo) => {
       const doGrupo = itens.filter((i) => i.grupo === grupo);

@@ -204,3 +204,48 @@ export const MINUTA_TIPOS = Object.keys(MINUTAS) as MinutaTipo[];
 export function isMinutaTipo(s: string): s is MinutaTipo {
   return Object.prototype.hasOwnProperty.call(MINUTAS, s);
 }
+
+// ----------------------------------------------------------------
+// A carta de ATUALIZAÇÃO DE RENDA fica fora do mapa acima porque precisa de dois números
+// que não estão no contrato: o coeficiente do ano e a data a partir da qual é elegível.
+// O TEXTO, esse, vive aqui como o das outras — a página `/carta/[contractId]` e o
+// download em .docx renderizam os mesmos parágrafos, senão as duas versões da mesma carta
+// começam a divergir na primeira correção que alguém fizer a uma delas.
+
+export interface AtualizacaoRenda {
+  ano: number;
+  coeficiente: number;
+  novaRenda: number;
+  /** ISO. A partir de quando a nova renda produz efeitos. */
+  desde: string;
+}
+
+export const MINUTA_RENDA = {
+  label: "Atualização de renda",
+  descricao: "Comunicação da subida anual pelo coeficiente publicado em Diário da República.",
+  base: "Artigo 24.º da Lei n.º 6/2006 (Novo Regime do Arrendamento Urbano)",
+};
+
+export function minutaAtualizacaoRenda(d: MinutaDados, a: AtualizacaoRenda): Minuta {
+  return {
+    assunto: `Atualização da renda referente à fração ${d.fracaoRef}`,
+    paragrafos: [
+      `Ex.mo(a) Senhor(a) ${d.inquilino},`,
+      `Nos termos do artigo 24.º da Lei n.º 6/2006, de 27 de fevereiro (Novo Regime do ` +
+        `Arrendamento Urbano), vimos comunicar a atualização anual da renda do contrato de ` +
+        `arrendamento da fração acima identificada${refContrato(d)} com início em ` +
+        `${fmtDate(d.inicio)}.`,
+      `A renda mensal atualmente em vigor é de ${fmtEur(d.renda, 2)}.`,
+      `É aplicado o coeficiente de atualização de renda para o ano de ${a.ano}, fixado em ` +
+        `${a.coeficiente.toFixed(4).replace(".", ",")} e publicado em Diário da República.`,
+      `Em resultado desta atualização, a nova renda mensal passa a ser de ` +
+        `${fmtEur(a.novaRenda, 2)}, com efeitos a partir de ${fmtDate(a.desde)}.`,
+      `Solicita-se a confirmação da receção da presente comunicação.`,
+      `Com os melhores cumprimentos,`,
+    ],
+    assinaturas: ["Assinatura do Senhorio"],
+    nota:
+      "Confirmar o prazo de antecedência exigido face à data de vencimento da renda antes de " +
+      "enviar. Enviar por carta registada com aviso de receção.",
+  };
+}

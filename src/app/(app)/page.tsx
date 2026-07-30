@@ -14,9 +14,12 @@
 //      respondem à mesma pergunta ("como vai isto?") e separados obrigavam a atravessar a
 //      página inteira para cruzar os dois. A curva era o ÚLTIMO bloco; é o objeto mais
 //      legível que aqui existe e estava escondido no fim.
-//   2. O CORPO — as decisões (admin) ou quem está em atraso (viewer).
-//   3. O CONTEXTO — o retrato dos seis números, agora em voz baixa: é referência, não
-//      manchete.
+//   2. O CONTEXTO — o retrato dos seis números, colado por baixo da curva (pedido do
+//      utilizador, 2026-07-30). Estava no fim da página, a três écrans de distância do
+//      gráfico que explica: quem lê "acumulado do ano" quer logo a seguir saber quanto
+//      está contratado e quanto está em atraso. Continua em voz baixa — é referência,
+//      não manchete.
+//   3. O CORPO — as decisões (admin) ou quem está em atraso (viewer).
 //   4. O RODAPÉ DE HONESTIDADE — a cobertura. Continua a dizer tudo o que a app não sabe,
 //      mas deixa de disputar a atenção com o dinheiro logo no topo: informação sobre o
 //      CONHECIMENTO não é manchete (PLANO.md §7.5).
@@ -49,10 +52,8 @@ export default async function AgoraPage() {
     <div className="space-y-12">
       {isAdmin ? <Decisoes snap={snap} thisMonth={thisMonth} /> : <Estado snap={snap} />}
 
-      {/* Contexto e honestidade, por esta ordem e no fim: nenhum dos dois é a razão por
-          que se abre esta página, e os dois são precisos quando se quer conferir. */}
-      <Retrato snap={snap} />
-
+      {/* Honestidade no fim: informação sobre o CONHECIMENTO não é manchete. O retrato dos
+          seis números subiu daqui para logo abaixo do gráfico, dentro da Abertura. */}
       <Cobertura factos={snap.cobertura} />
     </div>
   );
@@ -78,7 +79,14 @@ function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNod
   const delta = ultimo ? ultimo.esteAno! - ultimo.anoAnterior : 0;
   const variacao = ultimo && ultimo.anoAnterior > 0 ? delta / ultimo.anoAnterior : null;
 
-  if (dados.length === 0) return <section>{children}</section>;
+  if (dados.length === 0) {
+    return (
+      <section className="space-y-8">
+        {children}
+        <Retrato snap={snap} />
+      </section>
+    );
+  }
 
   return (
     <section className="grid gap-8 lg:grid-cols-12 lg:gap-10">
@@ -108,6 +116,9 @@ function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNod
           <AcumuladoChart data={dados} />
         </div>
       </div>
+
+      {/* Os seis números atravessam as duas colunas, encostados por baixo do gráfico. */}
+      <Retrato snap={snap} className="lg:col-span-12" />
     </section>
   );
 }
