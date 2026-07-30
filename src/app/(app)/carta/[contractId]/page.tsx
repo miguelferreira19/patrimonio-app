@@ -2,29 +2,16 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui";
+import { Assinaturas, PapelImpresso } from "@/components/papel-impresso";
 import { rentUpdateEligibility } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { fmtDate, fmtEur, fmtNum, todayISO } from "@/lib/format";
 import type { Contract, Landlord, Property, PropertyOwner, RentUpdate, UpdateCoefficient } from "@/lib/types";
-import { PrintButton } from "../print-button";
 
 export const dynamic = "force-dynamic";
 
-// Esconde a navegação da app na impressão. `aside` (rail desktop) e o `header` do
-// topbar mobile vivem em nav.tsx/layout.tsx (fora do âmbito desta tarefa) — em vez de
-// lhes mexer, um <style> global aqui (página comum, sem "use client") reseta o essencial:
-// `body > div > header` isola o topbar (filho direto do wrapper do layout) dos <header>
-// internos dos Card (esses ficam bem dentro de <main>, nunca filhos diretos de body>div).
-function PrintStyles() {
-  return (
-    <style>{`
-      @media print {
-        aside, body > div > header { display: none !important; }
-        main { margin: 0 !important; max-width: none !important; padding: 0 !important; }
-      }
-    `}</style>
-  );
-}
+// A folha A4 e as regras de impressão mudaram-se para `components/papel-impresso.tsx`
+// quando as minutas passaram a precisar exatamente das mesmas (2026-07-30).
 
 // Casos de fronteira (contrato inexistente/cessado, sem senhorio, sem coeficiente,
 // ainda não elegível): Card com explicação em vez de crashar.
@@ -144,24 +131,21 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     : "";
 
   return (
-    <div className="space-y-4">
-      <PrintStyles />
-      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <p className="text-xs text-zinc-500">
-          <Link href="/carteira?lente=renda" className="hover:text-teal-700 hover:underline">
+    <PapelImpresso
+      migalhas={
+        <>
+          <Link href="/carteira?lente=renda" className="hover:text-acao hover:underline">
             Frações
           </Link>
-          <span className="mx-1.5 text-zinc-300">/</span>
-          <Link href={`/fracoes/${property.id}`} className="hover:text-teal-700 hover:underline">
+          <span className="mx-1.5">/</span>
+          <Link href={`/fracoes/${property.id}`} className="hover:text-acao hover:underline">
             {property.name}
           </Link>
-          <span className="mx-1.5 text-zinc-300">/</span>
+          <span className="mx-1.5">/</span>
           Carta de atualização de renda
-        </p>
-        <PrintButton />
-      </div>
-
-      <div className="mx-auto max-w-[210mm] rounded-lg border border-zinc-200 bg-white p-10 text-sm text-zinc-800 shadow-xs print:max-w-none print:rounded-none print:border-none print:p-0 print:shadow-none">
+        </>
+      }
+    >
         <div>
           <p className="font-semibold">{landlord.name}</p>
           <p className="text-zinc-600">NIF {landlord.nif ?? "n/d"}</p>
@@ -210,17 +194,13 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
           </div>
         </div>
 
-        <div className="mt-16">
-          <div className="h-px w-64 bg-zinc-400" />
-          <p className="mt-1.5 text-xs text-zinc-500">Assinatura do Senhorio</p>
-        </div>
+        <Assinaturas legendas={["Assinatura do Senhorio"]} />
 
         <p className="mt-16 text-[10px] leading-snug text-zinc-400">
           Carta gerada automaticamente a partir dos dados do contrato; confirmar o prazo de
           antecedência exigido e o enquadramento legal do contrato específico antes de enviar. Este
           conteúdo não constitui aconselhamento jurídico vinculativo.
         </p>
-      </div>
-    </div>
+    </PapelImpresso>
   );
 }

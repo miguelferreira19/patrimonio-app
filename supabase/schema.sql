@@ -720,3 +720,46 @@ join public.landlords l on l.id = po.landlord_id
 group by p.matriz_article
 having sum(po.quota) <> 100
 order by 2, 1;
+
+-- ============================================================
+-- V3 · DOCUMENTOS — o arquivo da carteira (2026-07-30).
+-- Colar no SQL Editor. Idempotente.
+--
+-- Porquê Storage e não uma tabela: os ficheiros são o dado. Uma tabela `documents` seria
+-- um índice a duplicar o que o próprio bucket já sabe (nome, tamanho, data) e uma segunda
+-- coisa para manter em sincronia. O caminho de cada objeto CARREGA a informação:
+--
+--     <escopo>__<nome do ficheiro>
+--
+-- `escopo` é o artigo matricial da fração (ex. `182341-U-5077-A__contrato.pdf`) ou a
+-- palavra `geral` para o que é da carteira toda (IRS, cartas, minutas assinadas). Tudo
+-- fica na RAIZ do bucket de propósito: com pastas a sério, listar a carteira eram ~50
+-- pedidos ao Supabase; assim é UM `list()`. A regra vive em `src/lib/documentos.ts`.
+--
+-- Permissões: quem tem sessão LÊ (a família toda vê o arquivo, é o ponto), só o admin
+-- escreve e apaga. Mesma assimetria das tabelas.
+-- ============================================================
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('documentos', 'documentos', false, 26214400)   -- 25 MB por ficheiro
+on conflict (id) do update set file_size_limit = excluded.file_size_limit;
+
+drop policy if exists documentos_read on storage.objects;
+create policy documentos_read on storage.objects
+  for select to authenticated
+  using (bucket_id = 'documentos');
+
+drop policy if exists documentos_insert on storage.objects;
+create policy documentos_insert on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'documentos' and public.is_admin());
+
+drop policy if exists documentos_update on storage.objects;
+create policy documentos_update on storage.objects
+  for update to authenticated
+  using (bucket_id = 'documentos' and public.is_admin())
+  with check (bucket_id = 'documentos' and public.is_admin());
+
+drop policy if exists documentos_delete on storage.objects;
+create policy documentos_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'documentos' and public.is_admin());

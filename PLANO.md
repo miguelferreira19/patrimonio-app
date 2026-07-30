@@ -1090,3 +1090,15 @@ Bloqueiam **valor**, não código. Por ordem de impacto:
    mas não no CSV de património predial.
 8. **Tio Ilídio:** se um dia aparecerem os exports, a receita de A.1 aplica-se tal e qual
    (`FOLDER_TO_LANDLORD` já mapeia `"Tio": "Ilidio"`).
+9. **Quotas do Tio (2026-07-30):** colar `dados/update_cadernetas_pai.sql` no SQL Editor. O bloco
+   final desse ficheiro insere os TITULARES da caderneta predial em `property_owners`, incluindo os
+   50% do Ilídio em quase tudo o que é do Pai. Sem isto, essas frações somam 50% e a Saúde dos dados
+   lista-as em "Quotas de propriedade por fechar". Não afeta a ótica de família, só o IRS de cada um.
+   Depois disto, o que sobrar abaixo de 100% é compropriedade fora da família e é legítimo (a garagem
+   `182321-U-1217-A` tem 15 titulares; a família detém 6,7%).
+10. **Criar o arquivo de documentos (2026-07-30):** colar o bloco "V3 · DOCUMENTOS" do fim de
+   `supabase/schema.sql` (cria o bucket privado `documentos` e as políticas). Depois, em
+   `/documentos`, largar de uma vez os PDFs das cadernetas de `dados/Pai/caderneta/` — cada um
+   arquiva-se sozinho na fração certa, porque o nome do ficheiro é o artigo matricial — e as
+   declarações de IRS (`dados/Pai/IRS_PAI.pdf`, `dados/Avo_Miguel/IRS_Miguel.pdf`) em "Geral". Os
+   contratos de arrendamento entram à medida que forem chegando.

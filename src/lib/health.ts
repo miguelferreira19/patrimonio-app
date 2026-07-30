@@ -8,7 +8,7 @@
 
 import type { ArrearsRow } from "./arrears";
 import { isCurrentProperty, missingFichaFields } from "./calc";
-import { DESALINHAMENTO_MIN, desalinhamentoDaRenda, type RendaObservada } from "./rent";
+import { DESALINHAMENTO_MIN, REPETICOES_MIN, desalinhamentoDaRenda, type RendaObservada } from "./rent";
 import type { Contract, Property, PropertyOwner } from "./types";
 
 export type HealthSeverity = "erro" | "aviso" | "info";
@@ -22,6 +22,11 @@ export interface HealthIssue {
   href?: string;
 }
 
+/** Nem toda a linha de um `kind` tem a mesma gravidade: as quotas são erro quando passam
+ *  dos 100% e "a completar" quando ainda não chegaram lá. A página agrupa por kind e lê a
+ *  severidade da PRIMEIRA linha, por isso o grupo tem de sair ordenado por gravidade. */
+const PESO: Record<HealthSeverity, number> = { erro: 0, aviso: 1, info: 2 };
+
 export const SEVERITY_LABEL: Record<HealthSeverity, string> = {
   erro: "Erro",
   aviso: "Aviso",
@@ -33,9 +38,9 @@ export const KIND_LABEL: Record<string, string> = {
   contrato_expirado: "Contratos ativos com data de fim já passada",
   renda_desalinhada: "Recebido abaixo da renda do contrato",
   renda_errada: "Renda registada desalinhada dos recibos",
-  contratos_sobrepostos: "Contratos sobrepostos na mesma fração",
+  contratos_sobrepostos: "Dois contratos ativos na mesma fração",
   renda_invalida: "Rendas a zero ou negativas",
-  quotas: "Quotas de propriedade que não somam 100%",
+  quotas: "Quotas de propriedade por fechar",
   recibos_orfaos: "Recibos sem contrato associado",
   ficha_incompleta: "Fichas de fração por completar",
 };
@@ -131,41 +136,71 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
   //    Por isso: limiar RELATIVO (o mesmo dos 5%), mais o piso de 1 EUR para carteiras de
   //    renda baixa. Quem responde à qualidade do DADO é o `renda_errada` (6b), que lê os
   //    recibos ilíquidos; este aviso responde a outra pergunta — "porque entra menos?".
+  //
+  //    c) RETENÇÃO NA FONTE (2026-07-30). Sobravam quatro linhas e as quatro eram
+  //       inquilinos-empresa a reter 25% na fonte: Lote 2D (600 -> 450), Loja Av.Nova e
+  //       Loja de S.Pedro (250 -> 187,50), Garagem (50 -> 37,50). Não há aqui nada para
+  //       corrigir: a retenção é imposto entregue ao Estado por conta do senhorio, e
+  //       aparece como crédito no IRS. Pior: `payments.amount` É a "Importância recebida"
+  //       do recibo, por isso o cash SÓ PODE ficar abaixo do ilíquido por retenção ou por
+  //       um mês parcial — este aviso não conseguia apanhar mais nada.
+  //       A prova de que é retenção está no dado: os RECIBOS (ilíquidos, `rendaObservada`)
+  //       confirmam a renda do contrato. Quando confirmam, o buraco está explicado e não é
+  //       anomalia. Quando NÃO confirmam, o aviso mantém-se — aí o dinheiro faturado também
+  //       ficou abaixo do contrato, e isso é uma pergunta por responder.
   for (const row of arrears) {
     if (row.semHistorico || row.stale) continue;
     const diff = row.rent - row.expectedRent;
     if (diff <= RENT_MISMATCH_EUR) continue;
     if (row.rent <= 0 || diff / row.rent < DESALINHAMENTO_MIN) continue;
+    const obs = input.rendaObservada?.[row.contractId];
+    const recibosConfirmam =
+      !!obs && obs.vezes >= REPETICOES_MIN && desalinhamentoDaRenda(row.rent, obs) === null;
+    if (recibosConfirmam) continue;
     issues.push({
       kind: "renda_desalinhada",
       severity: "aviso",
       title: name(row.propertyId),
-      detail: `Contrato diz ${row.rent.toFixed(2)} €, mas o recebido por mês fica em ${row.expectedRent.toFixed(2)} € (mediana dos pagamentos). Verificar se é retenção na fonte (empresa retém ~25%) ou renda desatualizada.`,
+      detail: `Contrato diz ${row.rent.toFixed(2)} €, mas o recebido por mês fica em ${row.expectedRent.toFixed(2)} € (mediana dos pagamentos) e os recibos não confirmam a renda do contrato. Verificar se a renda está desatualizada ou se há meses faturados a menos.`,
       href: `/fracoes/${row.propertyId}`,
     });
   }
 
-  // 3) Contratos sobrepostos na mesma fração: a mesma casa não pode estar arrendada duas vezes.
+  // 3) Contratos sobrepostos na mesma fração: a mesma casa não pode estar arrendada duas
+  //    vezes AO MESMO TEMPO — e "ao mesmo tempo" quer dizer AGORA, não em 2015.
+  //
+  //    Antes bastava que os intervalos se cruzassem, e isso dava duas linhas falsas na
+  //    carteira real, ambas entre contratos JÁ CESSADOS: uma loja e um andar do mesmo
+  //    artigo matricial a conviverem em 2015, e o mesmo inquilino com casa e garagem
+  //    registadas na mesma fração. Nenhuma das duas é acionável: o passado não se
+  //    "fecha com data de fim", já está fechado, e um andar mais uma garagem no mesmo
+  //    artigo é a realidade, não um erro.
+  //
+  //    O que continua a ser erro é a mesma fração ter DOIS CONTRATOS ATIVOS. Aí o
+  //    esperado, os atrasos e a faixa passam a contar duas rendas para uma casa. Nota:
+  //    o resto da app já resolve o empate sozinho — o snapshot ordena os contratos por
+  //    `start_date` descendente e usa o primeiro ativo, ou seja, O MAIS RECENTE. Este
+  //    aviso existe para dizer que a app está a escolher, não para a app parar.
   const byProperty = new Map<string, Contract[]>();
   for (const c of contracts) {
+    if (c.status !== "ativo") continue;
     const list = byProperty.get(c.property_id) ?? [];
     list.push(c);
     byProperty.set(c.property_id, list);
   }
   for (const [propertyId, list] of byProperty) {
-    for (let i = 0; i < list.length; i++) {
-      for (let j = i + 1; j < list.length; j++) {
-        const a = list[i];
-        const b = list[j];
-        // Um contrato cessado sem data de fim não tem intervalo utilizável — ignorado.
-        const aEnd = a.end_date ?? (a.status === "ativo" ? null : a.start_date);
-        const bEnd = b.end_date ?? (b.status === "ativo" ? null : b.start_date);
-        if (!overlaps(a.start_date, aEnd, b.start_date, bEnd)) continue;
+    // Mais recente primeiro: é o que a app usa, e é o que a mensagem tem de nomear.
+    const ordenados = list.slice().sort((a, b) => (b.start_date ?? "").localeCompare(a.start_date ?? ""));
+    for (let i = 0; i < ordenados.length; i++) {
+      for (let j = i + 1; j < ordenados.length; j++) {
+        const a = ordenados[i];
+        const b = ordenados[j];
+        if (!overlaps(a.start_date, a.end_date, b.start_date, b.end_date)) continue;
         issues.push({
           kind: "contratos_sobrepostos",
           severity: "erro",
           title: name(propertyId),
-          detail: `${a.tenant_name} (${a.start_date ?? "?"}) e ${b.tenant_name} (${b.start_date ?? "?"}) coincidem no tempo. Fechar o antigo com data de fim.`,
+          detail: `Dois contratos ativos: ${a.tenant_name} (desde ${a.start_date ?? "?"}) e ${b.tenant_name} (desde ${b.start_date ?? "?"}). A app usa o mais recente (${a.tenant_name}); dar baixa do outro para as contas deixarem de contar duas rendas.`,
           href: `/fracoes/${propertyId}`,
         });
       }
@@ -190,13 +225,29 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
   for (const o of owners) {
     quotaByProperty.set(o.property_id, (quotaByProperty.get(o.property_id) ?? 0) + Number(o.quota));
   }
+  //
+  //    Somar MENOS de 100% não é erro (2026-07-30). O import do Portal só cria uma linha
+  //    de `property_owners` por senhorio importado, e a família tem exports de dois (Pai e
+  //    Avô): o comproprietário sem export — o tio Ilídio, metade de quase tudo o que é do
+  //    Pai — simplesmente não existe na base ainda. Além disso há frações onde a família
+  //    é MESMO minoritária e o resto é de terceiros (a garagem 182321-U-1217-A tem 15
+  //    titulares; a família detém 6,7%). Nos dois casos a app não tem nada de errado a
+  //    apontar: tem conhecimento incompleto, que é o que "a completar" quer dizer.
+  //    O upsert dos titulares da caderneta predial está pronto em
+  //    `dados/update_cadernetas_pai.sql` e falta colá-lo no SQL Editor.
+  //
+  //    Passar dos 100% continua a ser ERRO: aí a app está a distribuir património que não
+  //    existe, e o Anexo F de alguém fica sobre-declarado.
   for (const [propertyId, total] of quotaByProperty) {
     if (Math.abs(total - 100) <= QUOTA_TOLERANCE) continue;
+    const excesso = total > 100;
     issues.push({
       kind: "quotas",
-      severity: "erro",
+      severity: excesso ? "erro" : "info",
       title: name(propertyId),
-      detail: `As quotas somam ${total.toFixed(1)}% (deviam somar 100%). Afeta o IRS, não a ótica de família.`,
+      detail: excesso
+        ? `As quotas registadas somam ${total.toFixed(1)}%, mais do que a fração inteira. Alguém está a declarar parte a mais no Anexo F.`
+        : `Estão registados ${total.toFixed(1)}% de titulares; faltam ${(100 - total).toFixed(1)}%. Ou é compropriedade fora da família (legítimo), ou falta o comproprietário na base. Não afeta a ótica de família, só o IRS de cada um.`,
       href: `/fracoes/${propertyId}`,
     });
   }
@@ -262,9 +313,14 @@ export function countBySeverity(issues: HealthIssue[]): Record<HealthSeverity, n
   return out;
 }
 
-/** Agrupa por kind, pela ordem de KIND_ORDER (mais grave primeiro). */
+/** Agrupa por kind, pela ordem de KIND_ORDER (mais grave primeiro). Dentro de cada grupo
+ *  a linha mais grave vem à frente: a página lê `list[0].severity` para o badge do cartão,
+ *  e um grupo misto (quotas) mostrava a etiqueta da primeira linha que calhasse. */
 export function groupByKind(issues: HealthIssue[]): Array<[string, HealthIssue[]]> {
   const map = new Map<string, HealthIssue[]>();
   for (const i of issues) map.set(i.kind, [...(map.get(i.kind) ?? []), i]);
-  return KIND_ORDER.filter((k) => map.has(k)).map((k) => [k, map.get(k)!]);
+  return KIND_ORDER.filter((k) => map.has(k)).map((k) => [
+    k,
+    map.get(k)!.slice().sort((a, b) => PESO[a.severity] - PESO[b.severity]),
+  ]);
 }

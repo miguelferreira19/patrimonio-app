@@ -82,14 +82,46 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(comAviso.filter((i) => i.kind === "renda_desalinhada").length, 1);
 }
 
+// C4) REGRESSÃO (2026-07-30, retenção na fonte): quando os RECIBOS confirmam a renda do
+// contrato, a diferença entre o contrato e o cash é retenção (imposto entregue por conta do
+// senhorio) ou um mês parcial — não é anomalia nenhuma. Eram as 4 linhas que sobravam na
+// carteira real, todas de inquilinos-empresa (Lote 2D 600->450, Garagem 50->37,50).
+{
+  const comRecibos = run({
+    arrears: [arrearsRow({ rent: 600, expectedRent: 450 })],
+    rendaObservada: { c1: { valor: 600, vezes: 12 } },
+  });
+  assert.equal(
+    comRecibos.filter((i) => i.kind === "renda_desalinhada").length,
+    0,
+    "recibos a 600 confirmam o contrato: os 450 de cash sao retencao, nao desalinhamento",
+  );
+
+  // Mas se os recibos TAMBÉM ficam abaixo, o aviso mantém-se: aí faturou-se a menos.
+  const recibosTambemAbaixo = run({
+    arrears: [arrearsRow({ rent: 600, expectedRent: 450 })],
+    rendaObservada: { c1: { valor: 450, vezes: 12 } },
+  });
+  assert.equal(recibosTambemAbaixo.filter((i) => i.kind === "renda_desalinhada").length, 1);
+
+  // Um único mês de recibos não prova nada (REPETICOES_MIN): o aviso não pode ser calado
+  // por uma amostra de um.
+  const provaFraca = run({
+    arrears: [arrearsRow({ rent: 600, expectedRent: 450 })],
+    rendaObservada: { c1: { valor: 600, vezes: 1 } },
+  });
+  assert.equal(provaFraca.filter((i) => i.kind === "renda_desalinhada").length, 1);
+}
+
 // C2) Contrato sem histórico de pagamentos não pode gerar desalinhamento (não há com que comparar).
 {
   const issues = run({ arrears: [arrearsRow({ rent: 600, expectedRent: 600, semHistorico: true })] });
   assert.equal(issues.length, 0);
 }
 
-// D) Sobreposição: contrato antigo fechado com data de fim não colide com o novo;
-// sem data de fim (o erro real) colide.
+// D) Sobreposição: só conta entre contratos ATIVOS. O passado não se "fecha com data de
+// fim" — já está fechado — e a carteira real tinha duas linhas falsas, ambas entre
+// cessados (2026-07-30).
 {
   assert.equal(overlaps("2020-01-01", "2023-12-31", "2024-01-01", null), false);
   assert.equal(overlaps("2020-01-01", null, "2024-01-01", null), true);
@@ -101,20 +133,44 @@ function run(over: Partial<HealthInput> = {}) {
   });
   assert.equal(ok.length, 0, "sucessão normal de inquilinos não é anomalia");
 
+  const doisCessados = run({
+    contracts: [
+      contract("a", { start_date: "2015-01-01", end_date: "2018-09-30", status: "cessado" }),
+      contract("b", { start_date: "2015-01-01", end_date: "2015-12-31", status: "cessado" }),
+    ],
+  });
+  assert.equal(doisCessados.length, 0, "dois contratos ja cessados que coincidiram no passado nao sao acionaveis");
+
   const bad = run({
     contracts: [contract("a"), contract("b", { start_date: "2024-01-01" })],
   });
   assert.equal(bad.length, 1);
   assert.equal(bad[0].kind, "contratos_sobrepostos");
+  assert.ok(
+    bad[0].detail.includes("Inquilino b"),
+    "a mensagem tem de nomear o mais recente, que e o que a app usa",
+  );
 }
 
 // E) Quotas: só as frações COM quotas registadas são avaliadas (as sem quotas ainda não
 // foram preenchidas — isso é ficha incompleta, não um erro de compropriedade).
+// Falta de quota é "a completar" (o comproprietário pode ser de fora da família, e o
+// tio ainda não está na base); EXCESSO é que é erro — aí distribui-se o que não existe.
 {
   const half: PropertyOwner[] = [{ property_id: "p1", landlord_id: "l1", quota: 50 }];
   const issues = run({ owners: half });
   assert.equal(issues.length, 1);
   assert.equal(issues[0].kind, "quotas");
+  assert.equal(issues[0].severity, "info", "metade registada e conhecimento incompleto, nao erro");
+
+  const excesso = run({
+    owners: [
+      { property_id: "p1", landlord_id: "l1", quota: 50 },
+      { property_id: "p1", landlord_id: "l2", quota: 70 },
+    ],
+  });
+  assert.equal(excesso.length, 1);
+  assert.equal(excesso[0].severity, "erro", "120% distribui patrimonio que nao existe");
 
   const full: PropertyOwner[] = [
     { property_id: "p1", landlord_id: "l1", quota: 50 },
@@ -234,4 +290,4 @@ function run(over: Partial<HealthInput> = {}) {
   assert.equal(semAlerta.filter((i) => i.kind === "renda_errada").length, 0, "2% e o coeficiente");
 }
 
-console.log("health: casos OK (A, B, C, C2, C3, D, E, F, G, H, I, J)");
+console.log("health: casos OK (A, B, C, C2, C3, C4, D, E, F, G, H, I, J)");

@@ -35,6 +35,8 @@ const DESTINOS = [
   { href: "/carteira", label: "Carteira" },
   { href: "/mercado", label: "Mercado" },
   { href: `/ano/${new Date().getFullYear()}`, label: "Ano" },
+  // O arquivo (2026-07-30): a família LÊ os contratos e as cadernetas, só o admin arquiva.
+  { href: "/documentos", label: "Documentos" },
 ];
 
 const ADMIN: Array<{ href: string; label: string; icon: LucideIcon }> = [

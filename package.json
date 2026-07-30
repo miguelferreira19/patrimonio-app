@@ -13,6 +13,7 @@
     "check:irs": "tsc src/lib/irs.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/irs.check.js",
     "check:monthcell": "tsc src/lib/monthcell.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/monthcell.check.js",
     "check:rent": "tsc src/lib/rent.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/rent.check.js",
+    "check:documentos": "tsc src/lib/documentos.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/documentos.check.js",
     "check:snapshot": "tsc src/lib/portfolio/snapshot.check.ts --outDir .check --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/snapshot.check.js",
     "check:risk": "tsc src/lib/portfolio/risk.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/risk.check.js",
     "check:import": "tsc src/lib/import/plano.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/import/plano.check.js",
@@ -21,7 +22,7 @@
     "check:futuro": "tsc src/lib/portfolio/futuro.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/futuro.check.js",
     "check:conselhos": "tsc src/lib/portfolio/conselhos.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/conselhos.check.js",
     "check:inquilinos": "tsc src/lib/portfolio/inquilinos.check.ts --outDir .check --rootDir src/lib --module commonjs --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck && node .check/portfolio/inquilinos.check.js",
-    "check": "npm run check:arrears && npm run check:health && npm run check:calc && npm run check:parse && npm run check:irs && npm run check:monthcell && npm run check:rent && npm run check:snapshot && npm run check:insights && npm run check:risk && npm run check:import && npm run check:renda && npm run check:futuro && npm run check:conselhos && npm run check:inquilinos"
+    "check": "npm run check:arrears && npm run check:health && npm run check:calc && npm run check:parse && npm run check:irs && npm run check:monthcell && npm run check:rent && npm run check:documentos && npm run check:snapshot && npm run check:insights && npm run check:risk && npm run check:import && npm run check:renda && npm run check:futuro && npm run check:conselhos && npm run check:inquilinos"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

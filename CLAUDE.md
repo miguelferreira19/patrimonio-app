@@ -23,8 +23,8 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
 - Build (gate obrigatório antes de dar qualquer tarefa por terminada): `npm run build`
-- `npm run check` = **15 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
-  snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
+- `npm run check` = **16 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
+  documentos, snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
 - Dev: `npm run dev` (ou `start.cmd`; launch.json tem "patrimonio-dev", porta 3000)
 - Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node).
 - Supabase: projeto `iidvzcgtfbpzhjbsrqql` (UE). Schema em `supabase/schema.sql` (idempotente, pode
@@ -122,6 +122,24 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
 - CTAs que navegam (`<Link>`, `<a href="/api/...">`) usam `buttonClass(...)`, nunca strings de
   classes copiadas.
 
+## Saúde dos dados: o que NÃO é anomalia (2026-07-30)
+Três checks estavam a acusar factos normais da carteira. As três regras novas vivem em
+`src/lib/health.ts` e têm caso de regressão no `health.check.ts` (C4, D, E):
+- **`renda_desalinhada`** compara a renda do contrato com a MEDIANA DOS PAGAMENTOS, que é cash
+  LÍQUIDO. `payments.amount` é a "Importância recebida" do recibo, por isso só pode ficar abaixo do
+  ilíquido por **retenção na fonte** ou por um mês parcial. Quando `rendaObservada` (os recibos)
+  confirma a renda do contrato, o buraco está explicado e não se assinala. Eram as 4 linhas da
+  carteira real, todas inquilinos-empresa a reter 25%.
+- **`contratos_sobrepostos`** só conta entre contratos **ATIVOS**. Dois cessados que coincidiram em
+  2015 não se "fecham com data de fim" — já estão fechados — e um andar mais a garagem no mesmo
+  artigo matricial é a realidade. Quando há mesmo dois ativos, o snapshot já usa **o mais recente**
+  (ordena por `start_date` desc e apanha o primeiro ativo); o aviso diz que a app está a escolher.
+- **`quotas`**: somar MENOS de 100% é `info`, não erro. O import do Portal só cria a linha do
+  senhorio importado, e o tio Ilídio (metade de quase tudo o que é do Pai) nunca terá exports; há
+  ainda frações onde a família é mesmo minoritária (a garagem `182321-U-1217-A` tem 15 titulares).
+  Passar dos 100% é que continua a ser erro. O upsert dos titulares está pronto em
+  `dados/update_cadernetas_pai.sql` e falta colá-lo.
+
 ## Estado de um mês: uma só verdade
 `src/lib/monthcell.ts` define o vocabulário único (`pago | parcial | falta | fora | futuro`) e
 `monthCellStatus()`. A tolerância de 90% continua a viver em `isMonthSettled` (arrears.ts) — não
@@ -129,7 +147,8 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
 (era o bug B2, que fazia o mesmo mês aparecer vermelho em Pagamentos e verde em Atrasos).
 
 ## Estrutura
-- `src/app/(app)/` páginas autenticadas. **Viewer vê 4 destinos** (Agora, Carteira, Mercado, Ano);
+- `src/app/(app)/` páginas autenticadas. **Viewer vê 5 destinos** (Agora, Carteira, Mercado, Ano,
+  Documentos);
   o resto é admin-only, com guarda de página (`redirect("/")`), não só filtro no menu.
   O Mercado subiu a destino de família em 2026-07-29: só era admin por não ter números
   (áreas por preencher + bug B5 do território), e as duas razões acabaram.
@@ -137,6 +156,19 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
     Não voltar a entrelaçá-las com `isAdmin ?` no meio da árvore.
   - `carteira` — a faixa, com lentes por `searchParams`. Para viewer a lente é **forçada a
     `risco` no servidor**; não chega esconder o seletor.
+  - `documentos` — o ARQUIVO (2026-07-30). Bucket privado do Supabase Storage `documentos`,
+    **sem tabela a indexá-lo**: o caminho de cada objeto é `<artigo matricial>__<ficheiro>`
+    (ou `geral__…`), e a convenção vive em `src/lib/documentos.ts`. Tudo na RAIZ do bucket de
+    propósito — com pastas a sério, desenhar a página eram ~50 `list()`, um por fração. O upload
+    vai DIRETO do browser para o Storage (`components/documentos/carregar.tsx`): uma server action
+    corta o corpo do pedido a 1 MB e um contrato digitalizado passa disso. A escrita continua
+    fechada pela política `documentos_insert`, que exige `public.is_admin()`. Toda a família lê.
+  - `minutas/[tipo]/[contractId]` — cessão da posição contratual, oposição à renovação,
+    interpelação por rendas em atraso e revogação por acordo. O TEXTO vive em `src/lib/minutas.ts`
+    (módulo puro, com os artigos do Código Civil): é conhecimento de domínio, não JSX. A carta de
+    atualização de renda fica fora, em `carta/[contractId]`, porque depende do coeficiente do ano
+    e da elegibilidade. A folha A4 e as regras de impressão das duas são o
+    `components/papel-impresso.tsx`.
   - `ano/[ano]` — o documento fiscal. `fracoes/[id]`, `carta/[contractId]`,
     `inquilinos/[chave]` (ficha do arrendatário, admin-only; a chave é a MESMA de
     `concentracao().porInquilino` — `nif:...` ou `nome:...`).
@@ -145,7 +177,7 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
   - `pagamentos`, `atrasos`, `fracoes`, `despesas` e `irs` são só **redirects** — não voltar a pôr
     conteúdo lá.
 - `src/components/` ui.tsx, modal.tsx, kit/, faixa/, nav.tsx, charts.tsx, forms.tsx, setup-notice.tsx
-- `src/lib/` cn.ts, format.ts (fmtEur/fmtDate/monthKey/splitEur), calc.ts, arrears.ts (metodologia de
+- `src/lib/` cn.ts, format.ts (fmtEur/fmtDate/monthKey/splitEur), documentos.ts, minutas.ts, calc.ts, arrears.ts (metodologia de
   atrasos — PLANO.md Apêndice A.2), monthcell.ts, health.ts, irs.ts, ine.ts, data.ts, paginate.ts,
   parse.ts, types.ts, supabase/, actions/ — cada um com o seu `*.check.ts`
 - `src/lib/portfolio/` load.ts (o ÚNICO I/O), snapshot.ts, insights.ts (a fila do Agora), risk.ts,

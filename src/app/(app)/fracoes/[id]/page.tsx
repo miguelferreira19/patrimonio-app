@@ -17,7 +17,7 @@ import {
   PropertyFormButton,
   RentUpdateButton,
 } from "@/components/forms";
-import { Badge, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Badge, buttonClass, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { Celula, CelulaLegenda } from "@/components/faixa/celula";
 import { Money } from "@/components/kit";
 import { monthCellStatus, type MonthCellData } from "@/lib/monthcell";
@@ -279,18 +279,30 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             "Sem morada"
           }
           actions={
-            isAdmin && (
-              <div className="flex flex-wrap gap-2">
-                <PropertyFormButton
-                  landlords={landlords}
-                  geoOptions={geoOptions}
-                  property={property}
-                  owners={owners}
-                  small
-                />
-                <DeletePropertyButton id={property.id} />
-              </div>
-            )
+            <div className="flex flex-wrap gap-2">
+              {/* Sem I/O extra nesta página: o arquivo agrupa por artigo matricial e o
+                  link salta direto para o bloco desta fração. */}
+              {property.matriz_article && (
+                <Link
+                  href={`/documentos#${encodeURIComponent(property.matriz_article)}`}
+                  className={buttonClass({ variant: "outline", size: "sm" })}
+                >
+                  Documentos
+                </Link>
+              )}
+              {isAdmin && (
+                <>
+                  <PropertyFormButton
+                    landlords={landlords}
+                    geoOptions={geoOptions}
+                    property={property}
+                    owners={owners}
+                    small
+                  />
+                  <DeletePropertyButton id={property.id} />
+                </>
+              )}
+            </div>
           }
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
