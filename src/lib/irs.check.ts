@@ -5,6 +5,7 @@ import {
   IRS_BRACKETS_BY_YEAR,
   bracketsForYear,
   aimiExposure,
+  aimiTax,
   anexoFRows,
   expenseShare,
   classifyUso,
@@ -270,30 +271,34 @@ assert.equal(yearsBetween("2006-01-01", "2026-01-01"), 20);
 }
 
 // ---------- aimiExposure (P3-5) ----------
-{
-  const propertiesById = new Map<string, Pick<Property, "id" | "vpt" | "status">>([
-    ["p1", { id: "p1", vpt: 500_000, status: "arrendado" }],
-    ["p2", { id: "p2", vpt: 300_000, status: "terreno" }], // excluído (presume-se rústico)
-    ["p3", { id: "p3", vpt: 200_000, status: "vendido" }], // excluído (já não é da família)
-    ["p5", { id: "p5", vpt: 200_000, status: "arrendado" }],
-  ]);
-  const owners: PropertyOwner[] = [
-    { property_id: "p1", landlord_id: "L1", quota: 100 },
-    { property_id: "p2", landlord_id: "L1", quota: 100 },
-    { property_id: "p3", landlord_id: "L1", quota: 100 },
-    { property_id: "p5", landlord_id: "L1", quota: 100 },
+type PropAimi = Pick<Property, "id" | "vpt" | "status" | "typology" | "matriz_article">;
+function prop(id: string, vpt: number, extra: Partial<PropAimi> = {}): [string, PropAimi] {
+  return [
+    id,
+    { id, vpt, status: "arrendado", typology: "T2", matriz_article: `182341-U-${id}`, ...extra },
   ];
+}
+{
+  const propertiesById = new Map<string, PropAimi>([
+    prop("p1", 500_000),
+    prop("p2", 300_000, { status: "terreno" }), // excluído (rústico)
+    prop("p3", 200_000, { status: "vendido" }), // nem entra: já não é da família
+    prop("p5", 200_000),
+  ]);
+  const owners: PropertyOwner[] = ["p1", "p2", "p3", "p5"].map((property_id) => ({
+    property_id,
+    landlord_id: "L1",
+    quota: 100,
+  }));
   const r = aimiExposure("L1", owners, propertiesById);
   assert.equal(r.totalVpt, 700_000, "500k + 200k -- terreno e vendido ficam fora");
   assert.equal(r.overSingle, true);
   assert.equal(r.overCouple, false);
+  assert.equal(r.excludedCount, 1, "o vendido nao e exclusao legal, o terreno e");
 }
 {
   // Quota aplicada corretamente e limite de casal ultrapassado.
-  const propertiesById = new Map<string, Pick<Property, "id" | "vpt" | "status">>([
-    ["p1", { id: "p1", vpt: 700_000, status: "arrendado" }],
-    ["p6", { id: "p6", vpt: 1_000_000, status: "arrendado" }],
-  ]);
+  const propertiesById = new Map<string, PropAimi>([prop("p1", 700_000), prop("p6", 1_000_000)]);
   const owners: PropertyOwner[] = [
     { property_id: "p1", landlord_id: "L1", quota: 100 },
     { property_id: "p6", landlord_id: "L1", quota: 60 },
@@ -301,6 +306,35 @@ assert.equal(yearsBetween("2006-01-01", "2026-01-01"), 20);
   const r = aimiExposure("L1", owners, propertiesById);
   assert.equal(r.totalVpt, 1_300_000, "700k + 60% de 1.000.000");
   assert.equal(r.overCouple, true);
+}
+{
+  // As duas exclusões do art. 135.º-B que faltavam, e que valiam >1.500 EUR/ano ao avô:
+  // rústico reconhecido pelo ARTIGO (status "vago", como o Portal os importa) e urbano
+  // afeto a serviços. Sem tipologia na ficha, a fração continua a contar.
+  const propertiesById = new Map<string, PropAimi>([
+    prop("p1", 700_000),
+    prop("r1", 50_000, { status: "vago", matriz_article: "182301-R-401" }),
+    prop("s1", 310_000, { typology: "Serviços" }),
+    prop("c1", 67_000, { typology: "Comércio" }),
+    prop("x1", 40_000, { typology: null }),
+  ]);
+  const owners: PropertyOwner[] = ["p1", "r1", "s1", "c1", "x1"].map((property_id) => ({
+    property_id,
+    landlord_id: "L1",
+    quota: 100,
+  }));
+  const r = aimiExposure("L1", owners, propertiesById);
+  assert.equal(r.totalVpt, 740_000, "700k + os 40k sem tipologia; rustico e comercio fora");
+  assert.equal(r.excludedCount, 3);
+  assert.equal(r.excludedVpt, 427_000);
+}
+{
+  // Taxas marginais do art. 135.º-F, medidas no VPT e não no que sobra da dedução.
+  assert.equal(aimiTax(600_000), 0, "no limite ainda nao ha imposto");
+  assert.equal(aimiTax(756_899.63), 1_098.3, "o caso real do avo: 0,7% sobre 156.899,63");
+  assert.equal(aimiTax(1_000_000), 2_800, "400.000 x 0,7%");
+  assert.equal(aimiTax(2_000_000), 12_800, "2.800 + 1.000.000 x 1%");
+  assert.equal(aimiTax(2_500_000), 20_300, "12.800 + 500.000 x 1,5%");
 }
 
 // ---------- parseMatriz ----------

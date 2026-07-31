@@ -183,13 +183,17 @@ export default async function AnoPage({
                   ? "Confirmar o AIMI e deduzi-lo no quadro 9"
                   : "Sem exposição a AIMI"
               }
-              euros={0}
-              porque={`VPT imputado ${fmtEur(aimi.totalVpt)}. Limite individual ${fmtEur(AIMI_THRESHOLD_SINGLE)}${
+              euros={aimi.tax}
+              porque={`VPT tributável ${fmtEur(aimi.totalVpt)}${
+                aimi.excludedCount > 0
+                  ? `, já sem ${aimi.excludedCount} ${aimi.excludedCount === 1 ? "fração isenta" : "frações isentas"} (${fmtEur(aimi.excludedVpt)})`
+                  : ""
+              }. Limite individual ${fmtEur(AIMI_THRESHOLD_SINGLE)}${
                 aimi.overSingle ? ", ultrapassado" : ", não atingido"
               }; limite de casal ${fmtEur(AIMI_THRESHOLD_COUPLE)}${
                 aimi.overCouple ? ", ultrapassado" : ", não atingido"
               }.`}
-              conta="A app não calcula o AIMI em euros de propósito: a taxa e o limite dependem de se opta pela tributação conjunta, e isso ela não sabe. Diz o VPT e que limites são cruzados; o valor confirma-se na nota da AT. É dedutível no quadro 9 do Anexo F."
+              conta="Taxas marginais do art. 135.º-F: 0,7% acima de 600.000 €, 1% acima de 1.000.000 €, 1,5% acima de 2.000.000 €. Ficam de fora, por lei, os rústicos e os urbanos de comércio, indústria ou serviços (art. 135.º-B n.º 2). O valor assume tributação separada; com tributação conjunta a dedução é do casal. Confirmar na nota da AT — é dedutível no quadro 9 do Anexo F."
             />
           </ol>
         </Seccao>

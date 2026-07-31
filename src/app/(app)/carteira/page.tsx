@@ -27,9 +27,11 @@ import type { Ativo } from "@/lib/portfolio";
 export const dynamic = "force-dynamic";
 
 const LENTES = {
+  // Três lentes, e não cinco (2026-07-31, a pedido do utilizador). "Renda" e "Mercado"
+  // saíram: a renda do contrato já é o número da Cobrança, e o €/m² contra a mediana do
+  // INE tem uma superfície inteira só para ele desde que o Mercado subiu a destino. Cinco
+  // chips não cabiam no telemóvel e as duas que sobravam não mudavam nenhuma decisão.
   cobranca: "Cobrança",
-  renda: "Renda",
-  mercado: "Mercado",
   risco: "Risco",
   vazios: "Vazios",
 } as const;
@@ -86,7 +88,6 @@ export default async function CarteiraPage({
   }
   if (soAtraso) universo = universo.filter((a) => (a.arrears?.streak ?? 0) > 0);
   if (lente === "vazios") universo = universo.filter((a) => !a.activeContract || a.vazios.length > 0);
-  if (lente === "mercado") universo = universo.filter((a) => a.mercado.deviation !== null);
 
   const linhas = universo
     .map((a) => linhaDe(a, lente, janela))
@@ -228,35 +229,24 @@ function linhaDe(a: Ativo, lente: Lente, janela: number): LinhaFaixa {
   };
 
   switch (lente) {
-    case "cobranca":
+    case "cobranca": {
+      // QUANTOS meses, e não só quantos euros: "1.950 € em falta" não diz se são três
+      // rendas seguidas ou um ano de mensalidades curtas, e era o que faltava para
+      // perceber a linha sem contar as células vermelhas uma a uma.
+      const meses = arr?.streak ?? 0;
       return {
         ...base,
         sub: c ? c.tenant_name : "sem contrato",
         valor: arr?.expectedRent ?? c?.rent ?? null,
-        nota: arr && arr.debt > 0 ? `${fmtEur(arr.debt)} em falta` : c ? "em dia" : "vago",
+        nota:
+          arr && arr.debt > 0
+            ? `${meses} ${meses === 1 ? "mês" : "meses"} · ${fmtEur(arr.debt)} em falta`
+            : c
+              ? "em dia"
+              : "vago",
         notaTom: arr && arr.debt > 0 ? "perda" : "tinta-2",
       };
-    case "renda":
-      return {
-        ...base,
-        sub: [c?.tenant_name, a.property.typology, a.property.area_m2 && `${a.property.area_m2} m²`]
-          .filter(Boolean)
-          .join(" · "),
-        valor: c?.rent ?? null,
-        nota: a.mercado.rentPerM2 ? `${a.mercado.rentPerM2.toFixed(2)} €/m²` : "área por preencher",
-        notaTom: a.mercado.rentPerM2 ? "tinta-2" : "futuro",
-      };
-    case "mercado":
-      return {
-        ...base,
-        sub: `${c?.tenant_name ?? "vago"} · mediana ${a.mercado.benchmarkRentM2?.toFixed(2) ?? "?"} €/m²`,
-        valor: a.mercado.gapEurMonth ?? 0,
-        nota:
-          a.mercado.deviation === null
-            ? "sem referência"
-            : `${fmtPct(Math.abs(a.mercado.deviation), 0)} ${a.mercado.deviation < 0 ? "abaixo" : "acima"}`,
-        notaTom: (a.mercado.deviation ?? 0) < 0 ? "atencao" : "tinta-2",
-      };
+    }
     case "risco": {
       // O valor é a PERDA ESPERADA, não `streak × renda`: essa contava como perdido
       // dinheiro que historicamente entra no import seguinte (Fase 4, risk.ts).
@@ -296,9 +286,8 @@ function linhaDe(a: Ativo, lente: Lente, janela: number): LinhaFaixa {
 }
 
 function ordemDa(lente: Lente): (a: LinhaFaixa, b: LinhaFaixa) => number {
-  // Em todas as lentes de dinheiro-em-risco o maior valor vem primeiro; nas descritivas
-  // manda o nome, que é o que se procura com os olhos.
-  if (lente === "renda") return (a, b) => a.nome.localeCompare(b.nome, "pt");
+  // Maior valor primeiro em todas: as três lentes que sobraram são de dinheiro em risco.
+  void lente;
   return (a, b) => (b.valor ?? 0) - (a.valor ?? 0) || a.nome.localeCompare(b.nome, "pt");
 }
 
@@ -332,10 +321,6 @@ function heroiDa(
       return divida > 0
         ? { valor: divida, tom: "perda", legenda: `por cobrar, em ${fracoes}.` }
         : { valor: total, tom: "tinta", legenda: `por mês em ${fracoes}, tudo cobrado.` };
-    case "renda":
-      return { valor: total, tom: "tinta", legenda: `por mês, em ${fracoes} arrendadas.` };
-    case "mercado":
-      return { valor: total, tom: "acao", legenda: `por mês na mesa, em ${fracoes}.` };
     case "risco":
       return { valor: total, tom: "perda", legenda: `de perda esperada, em ${fracoes}.` };
     case "vazios":

@@ -238,9 +238,15 @@ export async function GET(request: Request) {
   notas.push(["Alerta apenas, exige comunicação à AT (Portaria n.º 110/2019, de 12/04). Comércio/garagens não beneficiam."]);
   notas.push([]);
   notas.push(["Monitor de AIMI"]);
-  notas.push(["VPT total (quota do senhorio, exclui vendidas e terrenos)", aimi.totalVpt]);
+  notas.push(["VPT tributável (quota do senhorio)", aimi.totalVpt]);
+  notas.push([
+    "Fora da base: rústicos e urbanos de comércio/indústria/serviços (art. 135.º-B n.º 2), mais as vendidas",
+    aimi.excludedVpt,
+    `${aimi.excludedCount} frações`,
+  ]);
   notas.push(["Limite pessoa singular", AIMI_THRESHOLD_SINGLE, aimi.overSingle ? "Excedido" : "Dentro do limite"]);
   notas.push(["Limite casal (tributação conjunta)", AIMI_THRESHOLD_COUPLE, aimi.overCouple ? "Excedido" : "Dentro do limite"]);
+  notas.push(["AIMI estimado (art. 135.º-F, tributação separada)", aimi.tax]);
   notas.push(["Sinalização apenas, distribuir propriedade por herdeiros é planeamento sucessório, remeter para contabilista."]);
 
   const ws2 = XLSX.utils.aoa_to_sheet(notas);

@@ -56,6 +56,13 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - **A parte de um senhorio numa despesa calcula-se SÓ com `expenseShare` (irs.ts)**, usada pelo
   Anexo F e pela página de Senhorios. `apenasRegistadas: true` ao fisco, `false` na análise de
   carteira. Somar o valor inteiro da fração a cada co-titular fazia cada um ver o dobro.
+- **AIMI (`aimiExposure`/`aimiTax` no irs.ts)**: a base NÃO é a soma dos VPT. Ficam de fora,
+  por lei (art. 135.º-B n.º 2 do CIMI), os **rústicos** — teste é o `-R-` do artigo matricial,
+  não o `status`, que nos rústicos importados do Portal diz "vago" — e os urbanos de
+  **comércio, indústria ou serviços**, reconhecidos pelo mesmo `classifyUso` do art. 72.º.
+  Sem tipologia na ficha a fração CONTA (não se abate imposto por um campo vazio). Uma só
+  fração de serviços (`182341-U-2198-A`, VPT 310.492 €) inflacionava o AIMI do avô em mais de
+  1.500 €/ano. As taxas do art. 135.º-F medem-se no VPT, não no que sobra da dedução.
 - **Uma despesa com `landlord_id` é a PARTE daquele senhorio** (foi o que ele declarou no Anexo F)
   e não se volta a multiplicar pela quota; sem `landlord_id` é conta da família e reparte-se. A
   regra vive só em `expenseTotalsByProperty` (irs.ts). `origem != 'registada'` nunca chega ao fisco.
@@ -155,7 +162,12 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
   - Início (`page.tsx`, rota `/`) — duas leituras SEPARADAS, `Estado` para viewer e `Decisoes` para admin.
     Não voltar a entrelaçá-las com `isAdmin ?` no meio da árvore.
   - `carteira` — a faixa, com lentes por `searchParams`. Para viewer a lente é **forçada a
-    `risco` no servidor**; não chega esconder o seletor.
+    `risco` no servidor**; não chega esconder o seletor. **São TRÊS lentes desde 2026-07-31**
+    (Cobrança, Risco, Vazios): "Renda" e "Mercado" saíram a pedido do utilizador — a renda do
+    contrato já é o número da Cobrança e o €/m² tem a superfície `/mercado` só para ele. Um
+    `?lente=renda` antigo cai em Cobrança sozinho. O eixo da faixa marca o ano no PRIMEIRO
+    mês e em cada janeiro: só nos janeiros, uma janela que começa em agosto tinha uma única
+    etiqueta para dois anos diferentes.
   - `documentos` — o ARQUIVO (2026-07-30). Bucket privado do Supabase Storage `documentos`,
     **sem tabela a indexá-lo**: o caminho de cada objeto é `<artigo matricial>__<ficheiro>`
     (ou `geral__…`), e a convenção vive em `src/lib/documentos.ts`. Tudo na RAIZ do bucket de

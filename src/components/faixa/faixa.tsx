@@ -98,17 +98,22 @@ export function Faixa({
     <div className="space-y-3">
       <div className="overflow-x-auto">
         <div className="min-w-[720px]">
-          {/* Eixo: só os meses de janeiro levam o ano, senão são 24 rótulos a competir
-              com as barras pela atenção. */}
+          {/* Eixo: o ano no PRIMEIRO mês e depois só em cada janeiro. Marcar só os
+              janeiros deixava uma janela que começa em agosto com uma única etiqueta,
+              "2026", em cima de doze meses que em metade são de 2025 — quem lia a faixa
+              não tinha como saber onde acabava um ano e começava o outro. */}
           <div className="flex items-end gap-3 pb-1">
             <div className="w-[240px] shrink-0" />
             <div className="relative grid flex-1 gap-[2px]" style={grelha}>
-              {meses.map((m) => (
+              {meses.map((m, i) => (
                 <span
                   key={m}
-                  className="text-center font-mono text-[9px] leading-none text-tinta-3"
+                  className={cn(
+                    "text-center font-mono text-[9px] leading-none",
+                    i === 0 || m.slice(5, 7) === "01" ? "font-medium text-tinta-2" : "text-tinta-3",
+                  )}
                 >
-                  {m.slice(5, 7) === "01" ? m.slice(0, 4) : ""}
+                  {i === 0 || m.slice(5, 7) === "01" ? m.slice(0, 4) : ""}
                 </span>
               ))}
               <Fronteira i={iFronteira} n={meses.length} rotulo />

@@ -446,26 +446,71 @@ export interface AimiExposure {
   totalVpt: number;
   overSingle: boolean;
   overCouple: boolean;
+  /** Imposto do ano, em euros, pelas taxas marginais do art. 135.º-F (pessoa singular). */
+  tax: number;
+  /** Frações deixadas de fora POR LEI (rústicos, comércio/serviços). Sem isto o total é
+   *  um número que ninguém consegue reconciliar com a lista de frações. */
+  excludedCount: number;
+  excludedVpt: number;
+}
+
+/** AIMI de uma pessoa singular: dedução de 600.000 €, e depois taxas MARGINAIS sobre o
+ *  valor tributável — 0,7% até 1.000.000, 1% entre 1 e 2 milhões, 1,5% acima disso
+ *  (art. 135.º-F do CIMI). Os escalões medem-se no VPT total, não no que sobra da dedução. */
+export function aimiTax(totalVpt: number): number {
+  if (totalVpt <= AIMI_THRESHOLD_SINGLE) return 0;
+  const ate1M = Math.min(totalVpt, 1_000_000) - AIMI_THRESHOLD_SINGLE;
+  const ate2M = Math.max(0, Math.min(totalVpt, 2_000_000) - 1_000_000);
+  const acima = Math.max(0, totalVpt - 2_000_000);
+  return round2(ate1M * 0.007 + ate2M * 0.01 + acima * 0.015);
+}
+
+/** Prédio rústico. O artigo matricial é o teste fiável — `status` diz "vago" na maior parte
+ *  dos rústicos da carteira, e só `terreno` era cego a todos eles. */
+function isRustico(matriz: string | null | undefined): boolean {
+  return !!matriz && matriz.includes("-R-");
 }
 
 /**
- * Soma o VPT por quota (`property_owners`), excluindo frações "vendido" (já não são da
- * família — P0-2c) e "terreno" (presume-se prédio rústico, isento de AIMI; se algum terreno
- * for para construção urbana fica de fora por omissão — confirmar caso a caso). Só SINALIZA
- * exposição: nunca recomenda redistribuir propriedade (é planeamento sucessório, remeter para
- * contabilista).
+ * Soma o VPT por quota (`property_owners`) e devolve o imposto.
+ *
+ * O que NÃO entra, e porquê:
+ *  - `vendido`: já não é da família (P0-2c). Não é exclusão legal, por isso não conta como
+ *    excluída — simplesmente não é património dela.
+ *  - RÚSTICOS (`-R-` no artigo, ou `status = 'terreno'`): o AIMI incide sobre prédios
+ *    urbanos. Antes só se olhava ao `status`, e os cinco rústicos do avô estão como "vago"
+ *    porque foi assim que o Portal os importou: entravam todos na base.
+ *  - urbanos de COMÉRCIO, INDÚSTRIA ou SERVIÇOS (art. 135.º-B n.º 2), reconhecidos pelo
+ *    mesmo `classifyUso` do art. 72.º. Foi o erro grande: uma só fração de serviços
+ *    (182341-U-2198-A, VPT 310.492 €) inflacionava o AIMI do avô em mais de 1.500 €/ano.
+ *    Sem tipologia na ficha (`a_confirmar`) a fração CONTA — não se abate imposto por
+ *    causa de um campo vazio.
+ *
+ * Continua a não recomendar redistribuir propriedade: isso é planeamento sucessório.
  */
 export function aimiExposure(
   landlordId: string,
   owners: PropertyOwner[],
-  propertiesById: Map<string, Pick<Property, "id" | "vpt" | "status">>,
+  propertiesById: Map<string, Pick<Property, "id" | "vpt" | "status" | "typology" | "matriz_article">>,
 ): AimiExposure {
   let total = 0;
+  let excludedCount = 0;
+  let excludedVpt = 0;
   for (const o of owners) {
     if (o.landlord_id !== landlordId) continue;
     const p = propertiesById.get(o.property_id);
-    if (!p || p.status === "vendido" || p.status === "terreno" || !p.vpt) continue;
-    total += p.vpt * ((o.quota ?? 100) / 100);
+    if (!p || !p.vpt || p.status === "vendido") continue;
+    const parte = p.vpt * ((o.quota ?? 100) / 100);
+    if (
+      p.status === "terreno" ||
+      isRustico(p.matriz_article) ||
+      classifyUso(p.typology) === "comercial"
+    ) {
+      excludedCount += 1;
+      excludedVpt += parte;
+      continue;
+    }
+    total += parte;
   }
   total = round2(total);
   return {
@@ -473,6 +518,9 @@ export function aimiExposure(
     totalVpt: total,
     overSingle: total > AIMI_THRESHOLD_SINGLE,
     overCouple: total > AIMI_THRESHOLD_COUPLE,
+    tax: aimiTax(total),
+    excludedCount,
+    excludedVpt: round2(excludedVpt),
   };
 }
 
