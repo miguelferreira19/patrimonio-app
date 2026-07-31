@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
+import { RegistarServiceWorker } from "@/components/pwa";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} min-h-screen font-sans`}
       >
         {children}
+        <RegistarServiceWorker />
       </body>
     </html>
   );

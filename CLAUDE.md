@@ -207,7 +207,10 @@ reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não im
   risk.ts) e **conselhos.ts**. Os conselhos são uma lista SEPARADA da fila do Agora: reusam o tipo
   `Insight` mas não entram no `GERADORES` do insights.ts, senão o ritual mensal enchia-se de
   estratégia de longo prazo.
-- `dados/` scripts Python de análise/import + exports reais por senhorio (Pai, Avo_Miguel, …)
+- `dados/` scripts Python de análise/import + exports reais por senhorio (Pai, Avo_Miguel, …).
+  **Ler `dados/README.md` antes de mexer**: na raiz só os 6 `.py` são fonte, tudo o resto é output
+  regenerável e os scripts escrevem sempre para a raiz (`BASE = Path(__file__).parent`). Também lá:
+  `sucessao/` (dossiê do falecimento do avô, 27/07/2026) e `_arquivo/`.
 - `supabase/schema.sql` — fonte de verdade do modelo de dados
 
 ## Pendente do utilizador (bloqueia valor, não código)

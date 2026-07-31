@@ -1,11 +1,18 @@
 {
+  "id": "/",
   "name": "Património · Gestão de arrendamentos",
   "short_name": "Património",
   "description": "Gestão do património familiar: rendas, pagamentos, despesas e mercado.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#fafafa",
-  "theme_color": "#09090b",
+  "background_color": "#fbfaf8",
+  "theme_color": "#fbfaf8",
   "lang": "pt-PT",
-  "icons": [{ "src": "/icon.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }]
+  "dir": "ltr",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
