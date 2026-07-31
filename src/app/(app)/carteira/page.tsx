@@ -206,8 +206,6 @@ export default async function CarteiraPage({
           meses={meses}
           horizon={snap.horizon}
           carteira={snap.carteira.slice(-janela)}
-          isAdmin={isAdmin}
-          pagamentos={snap.pagamentosRecentes}
         />
       )}
     </div>
@@ -224,7 +222,6 @@ function linhaDe(a: Ativo, lente: Lente, janela: number): LinhaFaixa {
     nome: a.property.name,
     href: `/fracoes/${a.property.id}`,
     celulas: a.faixa.slice(-janela),
-    contract: c,
     estado: (!c ? "vago" : (arr?.streak ?? 0) > 0 ? "atencao" : "arrendado") as LinhaFaixa["estado"],
   };
 

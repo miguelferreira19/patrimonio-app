@@ -28,10 +28,10 @@
 // vê a fila, quem só confirma vê o estado.
 
 import Link from "next/link";
-import { CheckCircle2, Download, Plus } from "lucide-react";
+import { CheckCircle2, Download } from "lucide-react";
 import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
 import { Retrato } from "@/components/agora/retrato";
-import { AcumuladoChart, type AcumuladoDatum } from "@/components/charts";
+import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
 import { buttonClass, EmptyState } from "@/components/ui";
 import { Cobertura, Confianca, Lede, Money, Seccao } from "@/components/kit";
 import { getSession } from "@/lib/data";
@@ -66,18 +66,28 @@ export default async function AgoraPage() {
 /** Duas colunas assimétricas (5/7): o número precisa de ar à volta, a curva precisa de
  *  largura. No telemóvel empilham, e o número vem primeiro — é o que se lê num relance. */
 function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNode }) {
-  const dados: AcumuladoDatum[] = snap.acumulado.map((p) => ({
-    label: monthLabel(p.mes, false),
-    esteAno: p.esteAno,
-    anoAnterior: p.anoAnterior,
-  }));
+  // MÊS A MÊS, não acumulado (2026-07-31, pedido do utilizador). A curva do acumulado só
+  // sabia dizer "o ano vai melhor ou pior do que o anterior": subia sempre, e um mês mau
+  // era uma inflexão que ninguém via. O que se quer saber é quanto entrou em cada mês e se
+  // ficou aquém do esperado — e isso é uma barra por mês.
+  //
+  // Corta-se na FRONTEIRA dos dados: um mês ainda não importado tem recebido zero, e
+  // desenhá-lo era um penhasco que diz "ninguém pagou" quando o que se passa é que a app
+  // ainda não sabe (é o bug B2, na versão gráfico).
+  const dados: MonthlyFlowDatum[] = snap.fluxo
+    .filter((m) => !snap.horizon || m.month <= snap.horizon)
+    .map((m) => ({
+      month: m.month,
+      label: monthLabel(m.month, false),
+      esperado: m.esperadoReferencia,
+      recebido: m.recebido,
+    }));
 
-  // O último ponto com valor é onde o ano vai. A comparação é contra o MESMO ponto do ano
-  // anterior, nunca contra o ano anterior inteiro, senão em janeiro a carteira parece
-  // estar a perder 90%.
-  const ultimo = [...snap.acumulado].reverse().find((p) => p.esteAno !== null);
-  const delta = ultimo ? ultimo.esteAno! - ultimo.anoAnterior : 0;
-  const variacao = ultimo && ultimo.anoAnterior > 0 ? delta / ultimo.anoAnterior : null;
+  const ultimo = dados[dados.length - 1];
+  const anterior = dados[dados.length - 2];
+  const delta = ultimo && anterior ? ultimo.recebido - anterior.recebido : 0;
+  const variacao = ultimo && anterior && anterior.recebido > 0 ? delta / anterior.recebido : null;
+  const falhados = dados.filter((m) => m.recebido + 0.5 < m.esperado).length;
 
   if (dados.length === 0) {
     return (
@@ -95,26 +105,32 @@ function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNod
       <div className="lg:col-span-7">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-regua pb-1.5">
           <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
-            Acumulado do ano
+            Entrou por mês
           </h2>
           {ultimo && (
             <p className="text-xs text-tinta-2">
-              <Money value={ultimo.esteAno!} escala="sm" />
-              {" até "}
-              {monthLabel(ultimo.mes, false)}
+              <Money value={ultimo.recebido} escala="sm" />
+              {" em "}
+              {ultimo.label}
               {variacao !== null && (
                 <span className={delta < 0 ? "text-perda" : "text-tinta-2"}>
                   {" · "}
                   {delta >= 0 ? "+" : ""}
-                  {fmtPct(variacao, 0)} face ao ano passado
+                  {fmtPct(variacao, 0)} face ao mês anterior
                 </span>
               )}
             </p>
           )}
         </div>
         <div className="mt-3">
-          <AcumuladoChart data={dados} />
+          <FluxoMensalChart data={dados} />
         </div>
+        <p className="mt-2 text-[11px] text-tinta-3">
+          A linha tracejada é a renda esperada.{" "}
+          {falhados === 0
+            ? `Nenhum dos ${dados.length} meses ficou abaixo dela.`
+            : `${falhados} ${falhados === 1 ? "mês ficou" : "meses ficaram"} abaixo dela, a âmbar.`}
+        </p>
       </div>
 
       {/* Os seis números atravessam as duas colunas, encostados por baixo do gráfico. */}
@@ -201,16 +217,10 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
         <Lede
           title={n === 0 ? "Nada a decidir." : <Money value={fila.total} escala="hero" tom="acao" />}
           actions={
-            <>
-              <a href="/api/export" className={buttonClass({ variant: "outline" })}>
-                <Download size={15} strokeWidth={1.75} />
-                Exportar
-              </a>
-              <Link href="/carteira?lente=cobranca" className={buttonClass()}>
-                <Plus size={15} strokeWidth={2} />
-                Registar pagamento
-              </Link>
-            </>
+            <a href="/api/export" className={buttonClass({ variant: "outline" })}>
+              <Download size={15} strokeWidth={1.75} />
+              Exportar
+            </a>
           }
         >
           {n === 0

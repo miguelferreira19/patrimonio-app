@@ -113,8 +113,13 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
   Sem hooks, logo sem `"use client"` (mesma regra do ui.tsx).
 - `src/components/faixa/` — a FAIXA, o objeto central da V2. `celula.tsx` é o mês (a **altura da
   barra é a fração da renda recebida**); `faixa.tsx` é a linha por fração com eixo, fronteira
-  desenhada e coluna da direita por lente; `pagamento-modal.tsx` é o formulário de marcar pagamento.
+  desenhada e coluna da direita por lente.
   É a ÚNICA implementação da grelha mensal — as três da V1 foram apagadas na Fase 3.
+  **Marcar pagamentos à mão acabou (2026-07-31)**: o dinheiro entra todo pelo import do Portal
+  das Finanças, por isso as células deixaram de ser clicáveis e foram apagados o
+  `pagamento-modal.tsx`, o CTA "Registar pagamento" do Início e as actions `markPayment`/
+  `removePayment` do `crud.ts`. Uma correção pontual faz-se por SQL. Não voltar a acrescentar
+  escrita manual de pagamentos sem o utilizador pedir.
 - **`src/components/masthead.tsx`** — a navegação desde 2026-07-29: cabeçalho em papel com o nome
   em Newsreader e os destinos como separadores (colam ao topo no scroll), admin num menu à direita.
   Substituiu o rail escuro por o rail ser vocabulário de dashboard SaaS colado a um sistema de
@@ -124,7 +129,11 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
 - `src/components/{nav,forms,charts,setup-notice}.tsx` — V1. O `charts.tsx` chegou a ser apagado na
   Fase 7 e **voltou** a pedido do utilizador (2026-07-25): a faixa responde "que mês falhou em que
   fração", o gráfico responde "quanto entrou contra o esperado, mês a mês", e é essa a leitura que a
-  família quer. O custo de ~50 kB do `recharts` está assumido. `forms.tsx` (706 linhas de formulários
+  família quer. Desde 2026-07-31 a abertura do Início usa o `FluxoMensalChart` (barras do
+  recebido, âmbar no mês que fica aquém, linha tracejada da renda de REFERÊNCIA) em vez da curva
+  do acumulado — o acumulado subia sempre e escondia o mês mau. **Nunca pôr o líquido mês a mês**:
+  as despesas do Anexo F ficam todas a 31-12 e o gráfico desenhava um penhasco em dezembro que é
+  artefacto da data (V3.md, achado 7 da auditoria de 2026-07-29). O custo de ~50 kB do `recharts` está assumido. `forms.tsx` (706 linhas de formulários
   modais) vai ser dissolvido em edição inline e no comando ⌘K; ver PLANO.md §10.7.
 - CTAs que navegam (`<Link>`, `<a href="/api/...">`) usam `buttonClass(...)`, nunca strings de
   classes copiadas.

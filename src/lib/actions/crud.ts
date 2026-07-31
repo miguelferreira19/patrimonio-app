@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import type {
   ContractStatus,
   ExpenseCategory,
-  PaymentMethod,
   PropertyStatus,
   Role,
 } from "@/lib/types";
@@ -268,50 +267,6 @@ export async function applyRentUpdate(input: {
   }
 }
 
-// ---------- Pagamentos ----------
-export async function markPayment(input: {
-  contract_id: string;
-  ref_month: string; // YYYY-MM-01
-  amount: number;
-  received_date: string;
-  method: PaymentMethod;
-  notes?: string | null;
-}): Promise<ActionResult> {
-  try {
-    const { supabase } = await requireAdmin();
-    const { error } = await supabase.from("payments").upsert(
-      {
-        contract_id: input.contract_id,
-        ref_month: input.ref_month,
-        amount: input.amount,
-        received_date: input.received_date,
-        method: input.method,
-        source: "manual",
-        notes: input.notes || null,
-      },
-      { onConflict: "contract_id,ref_month" },
-    );
-    if (error) throw new Error(error.message);
-    refresh();
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function removePayment(id: string): Promise<ActionResult> {
-  try {
-    const { supabase } = await requireAdmin();
-    const { error } = await supabase.from("payments").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-    refresh();
-    return { ok: true };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-// ---------- Despesas ----------
 export async function saveExpense(input: {
   id?: string;
   property_id?: string | null;

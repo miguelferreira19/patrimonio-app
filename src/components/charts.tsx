@@ -53,12 +53,6 @@ export interface MonthlyFlowDatum {
   label: string;
   esperado: number;
   recebido: number;
-  liquido: number;
-}
-
-export interface CollectionRateDatum {
-  label: string;
-  taxa: number;
 }
 
 // Chave em linha (nunca uma caixa) para identificar a série no tooltip: mais leve à
@@ -190,6 +184,59 @@ export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
           activeDot={false}
         />
         <Tooltip content={<AcumuladoTooltip />} cursor={{ stroke: REGUA }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+/**
+ * O dinheiro que ENTROU, mês a mês. Barras, não linha: cada mês é uma medição fechada, e
+ * uma linha entre dois meses sugere uma continuidade que não existe.
+ *
+ * A barra fica ÂMBAR no mês em que entrou menos do que o esperado — é a única leitura que
+ * interessa aqui, e evita uma segunda série a competir com a primeira. O esperado é a
+ * renda de REFERÊNCIA (o que o contrato costuma receber, líquido de retenção), nunca a
+ * contratada: com a contratada, os inquilinos-empresa que retêm 25% abriam um buraco
+ * permanente que não é falha de cobrança nenhuma.
+ *
+ * NÃO leva o líquido. As despesas do Anexo F ficam todas a 31-12 (a declaração só diz o
+ * ano), e um líquido mensal desenhava um penhasco em dezembro que é artefacto da data,
+ * não do negócio — ver V3.md, achado 7 da auditoria de 2026-07-29.
+ */
+export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+        <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
+        <YAxis
+          tickFormatter={(v: number) => fmtEur(v)}
+          tick={EIXO}
+          axisLine={false}
+          tickLine={false}
+          width={72}
+        />
+        <ReferenceLine y={0} stroke={REGUA} />
+        <Bar dataKey="recebido" name="Recebido" radius={[3, 3, 0, 0]} maxBarSize={38}>
+          {data.map((d) => (
+            <Cell
+              key={d.month}
+              fill={d.recebido + 0.5 < d.esperado ? ATENCAO : TINTA}
+              fillOpacity={d.recebido + 0.5 < d.esperado ? 0.85 : 1}
+            />
+          ))}
+        </Bar>
+        <Line
+          dataKey="esperado"
+          name="Esperado"
+          type="monotone"
+          stroke={TINTA_3}
+          strokeWidth={1.5}
+          strokeDasharray="4 3"
+          strokeLinecap="round"
+          dot={false}
+          activeDot={false}
+        />
+        <Tooltip content={<FlowTooltip />} cursor={{ fill: REGUA, fillOpacity: 0.35 }} />
       </ComposedChart>
     </ResponsiveContainer>
   );

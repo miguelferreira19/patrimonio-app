@@ -9,19 +9,21 @@
 // coluna da direita que muda com a lente, e a linha final com a carteira inteira.
 // Em troca, morreram três vistas: a grelha de Pagamentos, a de Atrasos e a da ficha.
 //
-// Client só por causa do modal de pagamento e do estado de célula selecionada. Tudo o
-// que é cálculo já vem feito do snapshot — este ficheiro não decide o estado de nenhum
-// mês, só o desenha (a verdade única vive em `lib/monthcell.ts`).
+// Client só pelo `useMemo` da legenda. Tudo o que é cálculo já vem feito do snapshot —
+// este ficheiro não decide o estado de nenhum mês, só o desenha (a verdade única vive em
+// `lib/monthcell.ts`).
+//
+// As células DEIXARAM de ser clicáveis (2026-07-31): marcar um pagamento à mão não faz
+// sentido numa app onde o dinheiro entra todo pelo import do Portal das Finanças. O modal
+// e as suas server actions foram apagados; uma correção pontual faz-se por SQL.
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Celula, CelulaLegenda } from "./celula";
-import { PagamentoModal } from "./pagamento-modal";
 import { Money } from "@/components/kit";
 import { cn } from "@/lib/cn";
 import { monthLabel } from "@/lib/format";
 import type { MonthCellData } from "@/lib/monthcell";
-import type { Contract, Payment } from "@/lib/types";
 
 /** Uma linha da faixa. A página é que a constrói a partir do snapshot — a lente decide
  *  o que vai na coluna da direita, nunca este componente. */
@@ -38,8 +40,6 @@ export interface LinhaFaixa {
   valor: number | null;
   nota: string;
   notaTom?: "tinta-2" | "perda" | "atencao" | "futuro";
-  /** Contrato ativo, quando existe: é o que permite marcar um pagamento na célula. */
-  contract: Contract | null;
 }
 
 const PONTO: Record<LinhaFaixa["estado"], string> = {
@@ -60,8 +60,6 @@ export function Faixa({
   meses,
   horizon,
   carteira,
-  isAdmin,
-  pagamentos,
 }: {
   linhas: LinhaFaixa[];
   meses: string[];
@@ -69,17 +67,7 @@ export function Faixa({
   horizon: string | null;
   /** A faixa da carteira inteira: a última linha, e o que substitui o gráfico de fluxo. */
   carteira: MonthCellData[];
-  isAdmin: boolean;
-  /** Pagamentos da janela, para o modal saber se a célula já tem linha. */
-  pagamentos: Payment[];
 }) {
-  const [celula, setCelula] = useState<{ linha: LinhaFaixa; mes: string } | null>(null);
-
-  const pagamentoPorChave = useMemo(
-    () => new Map(pagamentos.map((p) => [`${p.contract_id}:${p.ref_month.slice(0, 7)}`, p])),
-    [pagamentos],
-  );
-
   // Índice do primeiro mês ALÉM da fronteira: é onde se desenha a linha vertical. -1
   // quando tudo o que está no ecrã já é conhecido.
   const iFronteira = horizon ? meses.findIndex((m) => m > horizon) : 0;
@@ -142,16 +130,7 @@ export function Faixa({
 
                 <div className="relative grid flex-1 gap-[2px]" style={grelha}>
                   {l.celulas.map((c) => (
-                    <Celula
-                      key={c.month}
-                      cell={c}
-                      className="h-7"
-                      onClick={
-                        isAdmin && l.contract && c.status !== "fora"
-                          ? () => setCelula({ linha: l, mes: c.month })
-                          : undefined
-                      }
-                    />
+                    <Celula key={c.month} cell={c} className="h-7" />
                   ))}
                   <Fronteira i={iFronteira} n={meses.length} />
                 </div>
@@ -191,17 +170,6 @@ export function Faixa({
         </p>
       </div>
 
-      {celula?.linha.contract && (
-        <PagamentoModal
-          contract={celula.linha.contract}
-          nome={celula.linha.nome}
-          month={celula.mes}
-          payment={pagamentoPorChave.get(
-            `${celula.linha.contract.id}:${celula.mes.slice(0, 7)}`,
-          )}
-          onClose={() => setCelula(null)}
-        />
-      )}
     </div>
   );
 }
