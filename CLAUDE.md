@@ -45,6 +45,12 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
   depois de confirmado (`lib/import/plano.ts` + `actions/importar.ts`). O wizard de 5 passos da V1 foi
   removido na Fase 6. **O caminho (b) nunca faz update nem delete, e NÃO cria frações nem contratos** —
   se mudares isso, a app volta a poder inventar entidades a partir de uma matriz mal lida.
+  Desde 2026-08-17 o caminho (a) corre **sozinho, dias 15 e último de cada mês**
+  (`dados/recolher_recibos.py`, Agendador de Tarefas do Windows): Playwright faz login no Portal,
+  exporta o histórico inteiro de recibos, corre o `gerar_sql_import.py` e aplica o SQL por ligação
+  direta ao Postgres. Segredos em `dados/.env`, log em `dados/recolha.log`, cópia datada de cada
+  recolha em `dados/_recolhas/`. Corre na máquina local com sessão iniciada — não na Vercel: as
+  credenciais teriam de viver no servidor e o Portal barra IPs de datacenter.
 - Recibos: dedupe GLOBAL por `receipt_number` = "contrato/recibo(#parte)" — nunca relaxar
   (compropriedade: o mesmo recibo aparece no export de dois senhorios).
 - **`receipts.amount` é o valor ILÍQUIDO** (coluna "Valor"); o líquido é `amount - withholding`.
