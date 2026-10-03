@@ -10,7 +10,8 @@
 
 import { cache } from "react";
 import { createClient } from "../supabase/server";
-import { monthKeyFromDate } from "../format";
+import { monthKeyFromDate, todayISO } from "../format";
+import { aimiPorSenhorio, construirAgenda, rendasDosAtivos } from "./agenda";
 import { loadRaw } from "./load";
 import { buildSnapshot, type Snapshot } from "./snapshot";
 
@@ -50,3 +51,18 @@ export { buildSnapshot } from "./snapshot";
 export type { Ativo, MesAgregado, Snapshot, SnapshotOptions } from "./snapshot";
 export type { RawData } from "./load";
 export { loadRaw } from "./load";
+
+/** A agenda dos próximos `dias` (Início e /api/agenda). Lê pelo `getSnapshotComRaw`, por
+ *  isso numa página que já o chamou não custa leitura nenhuma. */
+export async function getAgenda(dias: number) {
+  const { raw, snap } = await getSnapshotComRaw();
+  const hoje = todayISO();
+  const prazos = construirAgenda({
+    hoje,
+    dias,
+    rendas: rendasDosAtivos(snap.correntes),
+    aimi: aimiPorSenhorio(raw.landlords, raw.owners, raw.properties),
+  });
+  const contratosSemFim = raw.contracts.filter((c) => c.status === "ativo" && !c.end_date).length;
+  return { prazos, hoje, contratosSemFim };
+}

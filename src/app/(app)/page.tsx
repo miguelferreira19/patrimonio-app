@@ -36,14 +36,24 @@ import { mesAbaixo } from "@/lib/monthcell";
 import { buttonClass, EmptyState } from "@/components/ui";
 import { Cobertura, Confianca, Lede, Money, Seccao } from "@/components/kit";
 import { getSession } from "@/lib/data";
-import { getSnapshot, type Snapshot } from "@/lib/portfolio";
+import { Agenda } from "@/components/agora/agenda";
+import { getAgenda, getSnapshotComRaw, type Snapshot } from "@/lib/portfolio";
 import { GRUPO_LABEL, agrupar, construirFila } from "@/lib/portfolio/insights";
 import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+/** Três meses: o que cabe numa leitura. O calendário exportado leva o ano inteiro. */
+const DIAS_DA_AGENDA = 92;
+
 export default async function AgoraPage() {
-  const [{ isAdmin }, snap] = await Promise.all([getSession(), getSnapshot()]);
+  // `getSnapshotComRaw` e não `getSnapshot`: a agenda precisa das quotas e dos titulares
+  // (o AIMI por senhorio), e as duas funções em cache partilham assim UMA leitura.
+  const [{ isAdmin }, { snap }, agenda] = await Promise.all([
+    getSession(),
+    getSnapshotComRaw(),
+    getAgenda(DIAS_DA_AGENDA),
+  ]);
 
   if (snap.ativos.length === 0) return <Vazio />;
 
@@ -52,6 +62,9 @@ export default async function AgoraPage() {
   return (
     <div className="space-y-12">
       {isAdmin ? <Decisoes snap={snap} thisMonth={thisMonth} /> : <Estado snap={snap} />}
+
+      {/* Os prazos dos próximos meses: depois do que se decide hoje, antes da cobertura. */}
+      <Agenda {...agenda} />
 
       {/* Honestidade no fim: informação sobre o CONHECIMENTO não é manchete. O retrato dos
           seis números subiu daqui para logo abaixo do gráfico, dentro da Abertura. */}
