@@ -8,6 +8,7 @@ import { getSession } from "@/lib/data";
 import { fmtDate, todayISO } from "@/lib/format";
 import { minutaAtualizacaoRenda } from "@/lib/minutas";
 import type { Contract, Landlord, Property, PropertyOwner, RentUpdate, UpdateCoefficient } from "@/lib/types";
+import { linha, linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
 
@@ -76,13 +77,13 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     supabase.from("update_coefficients").select("*"),
   ]);
 
-  const property = propQ.data as Property | null;
+  const property = linha<Property>(propQ, "properties");
   if (!property) {
     return <NaoDisponivel>Não foi possível encontrar a fração associada a este contrato.</NaoDisponivel>;
   }
 
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
-  const landlords = (landlordsQ.data ?? []) as Landlord[];
+  const owners = linhas<PropertyOwner>(ownersQ, "property_owners");
+  const landlords = linhas<Landlord>(landlordsQ, "landlords");
   const landlordById = new Map(landlords.map((l) => [l.id, l]));
   // Vários proprietários na mesma fração: usa o de maior quota (decisão reportada
   // no relatório final da tarefa — não há regra de desempate além da quota).
@@ -98,7 +99,7 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     );
   }
 
-  const coefficients = (coefficientsQ.data ?? []) as UpdateCoefficient[];
+  const coefficients = linhas<UpdateCoefficient>(coefficientsQ, "update_coefficients");
   if (coefficients.length === 0) {
     return (
       <NaoDisponivel propertyId={property.id}>
@@ -109,7 +110,7 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
   }
   const latestCoef = coefficients.slice().sort((a, b) => b.year - a.year)[0];
 
-  const rentUpdates = (updatesQ.data ?? []) as RentUpdate[];
+  const rentUpdates = linhas<RentUpdate>(updatesQ, "rent_updates");
   const eligibility = rentUpdateEligibility(contract, rentUpdates, coefficients, todayISO());
 
   if (!eligibility.eligible || eligibility.suggestedRent === null || !eligibility.eligibleSince) {

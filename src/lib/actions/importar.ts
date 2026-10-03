@@ -27,6 +27,7 @@ import {
   type LinhaRecibo,
   type PlanoDeImportacao,
 } from "../import/plano";
+import { linhas } from "../supabase/dados";
 
 /** Lê o estado necessário para comparar. `receipts` tem >5000 linhas: pagina-se sempre
  *  (a armadilha das 1000 linhas do PostgREST está no CLAUDE.md). */
@@ -54,12 +55,12 @@ async function lerEstado(
   return {
     recibos: mapa,
     matrizes: new Set(
-      ((props.data ?? []) as Array<{ matriz_article: string | null }>)
+      (linhas<{ matriz_article: string | null }>(props, "properties"))
         .map((p) => p.matriz_article?.trim())
         .filter((m): m is string => !!m),
     ),
     contratos: new Set(
-      ((contratos.data ?? []) as Array<{ pf_contract_no: string | null }>)
+      (linhas<{ pf_contract_no: string | null }>(contratos, "contracts"))
         .map((c) => c.pf_contract_no?.trim())
         .filter((c): c is string => !!c),
     ),
@@ -107,11 +108,11 @@ export async function aplicarImport(input: {
       supabase.from("contracts").select("id,pf_contract_no"),
     ]);
     const fracaoPorMatriz = new Map<string, string>();
-    for (const p of (propsQ.data ?? []) as Array<{ id: string; matriz_article: string | null }>) {
+    for (const p of linhas<{ id: string; matriz_article: string | null }>(propsQ, "properties")) {
       if (p.matriz_article?.trim()) fracaoPorMatriz.set(p.matriz_article.trim(), p.id);
     }
     const contratoPorPfno = new Map<string, string>();
-    for (const c of (contratosQ.data ?? []) as Array<{ id: string; pf_contract_no: string | null }>) {
+    for (const c of linhas<{ id: string; pf_contract_no: string | null }>(contratosQ, "contracts")) {
       if (c.pf_contract_no?.trim()) contratoPorPfno.set(c.pf_contract_no.trim(), c.id);
     }
 

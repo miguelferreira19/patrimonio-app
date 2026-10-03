@@ -34,6 +34,7 @@ import type {
   RentUpdate,
   UpdateCoefficient,
 } from "@/lib/types";
+import { linha, linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
 
@@ -91,13 +92,13 @@ export async function GET(
     supabase.from("landlords").select("*"),
   ]);
 
-  const property = propQ.data as Property | null;
+  const property = linha<Property>(propQ, "properties");
   if (!property) return new Response("Fração não encontrada.", { status: 404 });
 
   // Mesma regra da página da carta: com vários titulares assina o de maior quota. Não há
   // outro critério de desempate, e inventar um seria pior do que assumir este.
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
-  const landlordById = new Map(((landlordsQ.data ?? []) as Landlord[]).map((l) => [l.id, l]));
+  const owners = linhas<PropertyOwner>(ownersQ, "property_owners");
+  const landlordById = new Map((linhas<Landlord>(landlordsQ, "landlords")).map((l) => [l.id, l]));
   const titular = owners.slice().sort((a, b) => b.quota - a.quota)[0];
   const landlord = titular ? landlordById.get(titular.landlord_id) : undefined;
   if (!landlord) {
@@ -132,10 +133,10 @@ export async function GET(
       supabase.from("rent_updates").select("*").eq("contract_id", contract.id),
       supabase.from("update_coefficients").select("*"),
     ]);
-    const coeficientes = (coefQ.data ?? []) as UpdateCoefficient[];
+    const coeficientes = linhas<UpdateCoefficient>(coefQ, "update_coefficients");
     const elegibilidade = rentUpdateEligibility(
       contract,
-      (updatesQ.data ?? []) as RentUpdate[],
+      linhas<RentUpdate>(updatesQ, "rent_updates"),
       coeficientes,
       todayISO(),
     );

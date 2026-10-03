@@ -9,6 +9,7 @@ import { IneCard } from "./ine-card";
 import { LargarFicheiro } from "@/components/importar/largar-ficheiro";
 import { SyncRentsCard } from "./sync-rents-card";
 import { UsersCard } from "./users-card";
+import { linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
 
@@ -55,15 +56,15 @@ export default async function AdminPage() {
       .order("name"),
   ]);
 
-  const landlords = (landlordsQ.data ?? []) as Landlord[];
-  const profiles = (profilesQ.data ?? []) as Profile[];
-  const manualBenchmarks = (manualBenchQ.data ?? []) as MarketBenchmark[];
-  const ineRows = (ineBenchQ.data ?? []) as IneBenchmarkRow[];
-  const coefficients = (coefficientsQ.data ?? []) as UpdateCoefficient[];
+  const landlords = linhas<Landlord>(landlordsQ, "landlords");
+  const profiles = linhas<Profile>(profilesQ, "profiles");
+  const manualBenchmarks = linhas<MarketBenchmark>(manualBenchQ, "market_benchmarks (manuais)");
+  const ineRows = linhas<IneBenchmarkRow>(ineBenchQ, "market_benchmarks (INE)");
+  const coefficients = linhas<UpdateCoefficient>(coefficientsQ, "update_coefficients");
 
   // Só as frações CORRENTES: um terreno sem área e um imóvel vendido não bloqueiam análise
   // nenhuma, e enchiam a lista de linhas que nunca se vão preencher (P0-2c).
-  const fichas: FichaPorPreencher[] = ((propertiesQ.data ?? []) as Property[])
+  const fichas: FichaPorPreencher[] = (linhas<Property>(propertiesQ, "properties"))
     .filter(isCurrentProperty)
     .map((p) => ({
       id: p.id,

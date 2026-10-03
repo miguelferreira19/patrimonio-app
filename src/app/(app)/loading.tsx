@@ -1,28 +1,25 @@
-// Skeleton genérico enquanto uma página de (app) carrega: imita o ritmo
-// PageHeader + grelha de StatCards + cartão grande que a maioria das páginas segue.
+// Esqueleto genérico enquanto uma página de (app) carrega: o ritmo cabeçalho, linha de
+// números e corpo que as superfícies da V2 seguem.
+//
+// ESTÁTICO de propósito: o design system não tem nada em loop (CLAUDE.md, "Movimento"), e
+// o `animate-pulse` que aqui estava era a única animação infinita da app. Blocos em vellum
+// sobre papel já dizem "a carregar" sem piscar.
 export default function Loading() {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <div className="h-7 w-44 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
-          <div className="h-4 w-64 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
-        </div>
-        <div className="h-9 w-28 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
+    <div className="space-y-10" aria-busy="true" aria-label="A carregar">
+      <div className="space-y-3">
+        <div className="h-10 w-56 rounded-lg bg-vellum" />
+        <div className="h-4 w-80 max-w-full rounded-lg bg-vellum" />
       </div>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/60" />
+      <div className="grid grid-cols-2 gap-6 border-y border-regua py-5 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="h-3 w-20 rounded bg-vellum" />
+            <div className="h-6 w-24 rounded bg-vellum" />
+          </div>
         ))}
       </div>
-
-      <div className="h-72 animate-pulse rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/60" />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="h-48 animate-pulse rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/60" />
-        <div className="h-48 animate-pulse rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/60" />
-      </div>
+      <div className="h-72 rounded-xl border border-regua bg-carta" />
     </div>
   );
 }

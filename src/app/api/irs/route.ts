@@ -17,6 +17,7 @@ import {
 import { todayISO } from "@/lib/format";
 import { paginateAll } from "@/lib/paginate";
 import type { Contract, Expense, Landlord, Property, PropertyOwner, Receipt } from "@/lib/types";
+import { linha, linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +48,8 @@ export async function GET(request: Request) {
   const yearParam = parseInt(url.searchParams.get("year") ?? "", 10);
   const year = Number.isFinite(yearParam) ? yearParam : new Date().getFullYear();
 
-  const landlordQ = await supabase.from("landlords").select("id,name,nif").eq("id", landlordId).single();
-  const landlord = landlordQ.data as Pick<Landlord, "id" | "name" | "nif"> | null;
+  const landlordQ = await supabase.from("landlords").select("id,name,nif").eq("id", landlordId).maybeSingle();
+  const landlord = linha<Pick<Landlord, "id" | "name" | "nif">>(landlordQ, "landlords");
   if (!landlord) return new Response("Senhorio não encontrado.", { status: 404 });
 
   const yearStart = `${year}-01-01`;
@@ -88,11 +89,11 @@ export async function GET(request: Request) {
     }),
   ]);
 
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
-  const properties = (propsQ.data ?? []) as Array<
+  const owners = linhas<PropertyOwner>(ownersQ, "property_owners");
+  const properties = linhas<
     Pick<Property, "id" | "name" | "matriz_article" | "typology" | "vpt" | "status">
-  >;
-  const contracts = (contractsQ.data ?? []) as Contract[];
+  >(propsQ, "properties");
+  const contracts = linhas<Contract>(contractsQ, "contracts");
   const receipts = receiptsQ;
   const expenses = expensesQ;
 

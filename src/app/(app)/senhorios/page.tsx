@@ -15,6 +15,7 @@ import type {
   PropertyOwner,
   PropertyStatus,
 } from "@/lib/types";
+import { linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
 
@@ -60,12 +61,12 @@ export default async function SenhoriosPage() {
     supabase.from("expenses").select("*").gte("expense_date", yearStart),
   ]);
 
-  const landlords = (landlordsQ.data ?? []) as Landlord[];
-  const allOwners = (ownersQ.data ?? []) as PropertyOwner[];
-  const properties = (propsQ.data ?? []) as Array<Pick<Property, "id" | "name" | "status">>;
-  const contracts = (contractsQ.data ?? []) as Contract[];
-  const payments = (paymentsQ.data ?? []) as Payment[];
-  const expenses = (expensesQ.data ?? []) as Expense[];
+  const landlords = linhas<Landlord>(landlordsQ, "landlords");
+  const allOwners = linhas<PropertyOwner>(ownersQ, "property_owners");
+  const properties = linhas<Pick<Property, "id" | "name" | "status">>(propsQ, "properties");
+  const contracts = linhas<Contract>(contractsQ, "contracts");
+  const payments = linhas<Payment>(paymentsQ, "payments");
+  const expenses = linhas<Expense>(expensesQ, "expenses");
 
   // P0-2c: terrenos e imóveis vendidos ficam fora do que é retrato de hoje (frações por
   // senhorio, estado, renda ativa, quota média). O que receberam/gastaram este ano é

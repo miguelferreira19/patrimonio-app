@@ -43,6 +43,7 @@ import type {
 } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
 import { DeviationBadge } from "@/components/kit/badges";
+import { linha, linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
 
@@ -153,13 +154,13 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
     supabase.from("market_benchmarks").select("*"),
   ]);
 
-  const property = propQ.data as Property | null;
+  const property = linha<Property>(propQ, "properties");
   if (!property) notFound();
 
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
-  const landlords = (landlordsQ.data ?? []) as Landlord[];
-  const contracts = (contractsQ.data ?? []) as Contract[];
-  const benchmarks = (benchQ.data ?? []) as MarketBenchmark[];
+  const owners = linhas<PropertyOwner>(ownersQ, "property_owners");
+  const landlords = linhas<Landlord>(landlordsQ, "landlords");
+  const contracts = linhas<Contract>(contractsQ, "contracts");
+  const benchmarks = linhas<MarketBenchmark>(benchQ, "market_benchmarks");
   const geoOptions = geoOptionsFromBenchmarks(benchmarks);
 
   // Horizonte de dados da CARTEIRA (não só desta fração): último mês devido não pode passar
@@ -214,12 +215,12 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
     ? arquivo.docs.filter((d) => d.escopo === escopoSeguro(property.matriz_article))
     : [];
 
-  const payments = (paymentsQ.data ?? []) as Payment[];
-  const receipts = (receiptsQ.data ?? []) as Receipt[];
-  const expenses = (expensesQ.data ?? []) as Expense[];
-  const rentUpdates = (updatesQ.data ?? []) as RentUpdate[];
-  const coefficients = (coefficientsQ.data ?? []) as UpdateCoefficient[];
-  const portfolioHorizon = (horizonQ.data as { ref_month: string }[] | null)?.[0]?.ref_month ?? null;
+  const payments = linhas<Payment>(paymentsQ, "payments");
+  const receipts = linhas<Receipt>(receiptsQ, "receipts");
+  const expenses = linhas<Expense>(expensesQ, "expenses");
+  const rentUpdates = linhas<RentUpdate>(updatesQ, "rent_updates");
+  const coefficients = linhas<UpdateCoefficient>(coefficientsQ, "update_coefficients");
+  const portfolioHorizon = linhas<{ ref_month: string }>(horizonQ, "payments (fronteira)")[0]?.ref_month ?? null;
 
   const active = contracts.find((c) => c.status === "ativo");
   // Quem emite os recibos desta fração: o senhorio do recibo mais recente.
@@ -258,7 +259,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
         .order("issue_date", { ascending: false })
         .limit(1)
     : { data: null };
-  const ultimaEmissao = (fonteQ.data as { issue_date: string }[] | null)?.[0]?.issue_date;
+  const ultimaEmissao = linhas<{ issue_date: string }>(fonteQ, "receipts (fonte)")[0]?.issue_date;
   const horizonteFonte = ultimaEmissao ? horizonteDaFonte(ultimaEmissao, today) : null;
   const lastDue =
     horizonteFonte && horizonteFonte < lastDueCarteira ? horizonteFonte : lastDueCarteira;

@@ -25,6 +25,7 @@ import type {
   RentUpdate,
   UpdateCoefficient,
 } from "../types";
+import { linhas } from "../supabase/dados";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -201,7 +202,7 @@ export async function loadRaw(
     supabase.from("insight_state").select("*"),
   ]);
 
-  const properties = (propertiesQ.data ?? []) as Property[];
+  const properties = linhas<Property>(propertiesQ, "properties");
 
   // Segunda vaga: os benchmarks dependem dos dicofres das frações. Custa uma latência a
   // mais e poupa milhares de linhas. Sem nenhuma fração com dicofre, nem se pergunta.
@@ -213,21 +214,21 @@ export async function loadRaw(
 
   return {
     properties,
-    contracts: (contractsQ.data ?? []) as Contract[],
-    owners: (ownersQ.data ?? []) as PropertyOwner[],
-    landlords: (landlordsQ.data ?? []) as Landlord[],
-    benchmarks: (benchmarksQ.data ?? []) as MarketBenchmark[],
+    contracts: linhas<Contract>(contractsQ, "contracts"),
+    owners: linhas<PropertyOwner>(ownersQ, "property_owners"),
+    landlords: linhas<Landlord>(landlordsQ, "landlords"),
+    benchmarks: linhas<MarketBenchmark>(benchmarksQ, "market_benchmarks"),
     payments,
     paymentsRecentes: paymentsRecentesQ,
     expenses,
-    rentUpdates: (rentUpdatesQ.data ?? []) as RentUpdate[],
-    coefficients: (coefficientsQ.data ?? []) as UpdateCoefficient[],
-    receiptsThisMonth: (receiptsMonthQ.data ?? []) as Array<
+    rentUpdates: linhas<RentUpdate>(rentUpdatesQ, "rent_updates"),
+    coefficients: linhas<UpdateCoefficient>(coefficientsQ, "update_coefficients"),
+    receiptsThisMonth: linhas<
       Pick<Receipt, "contract_id" | "pf_contract_no">
-    >,
+    >(receiptsMonthQ, "receiptsMonth"),
     receiptsRecentes: receiptsRecentesQ,
     orphanReceipts: orphanQ.count ?? 0,
-    insightState: (insightStateQ.data ?? []) as InsightState[],
+    insightState: linhas<InsightState>(insightStateQ, "insight_state"),
     historicoCarregado: comHistorico,
   };
 }

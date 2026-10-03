@@ -29,6 +29,7 @@ import type {
   PropertyOwner,
   Receipt,
 } from "../types";
+import { linhas } from "../supabase/dados";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -105,12 +106,12 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
       .order("expense_date", { ascending: false }),
   ]);
 
-  const senhorios = (landlordsQ.data ?? []) as Array<Pick<Landlord, "id" | "name">>;
-  const owners = (ownersQ.data ?? []) as PropertyOwner[];
-  const propriedades = (propsQ.data ?? []) as PropriedadeDoAno[];
-  const contratos = (contractsQ.data ?? []) as Contract[];
+  const senhorios = linhas<Pick<Landlord, "id" | "name">>(landlordsQ, "landlords");
+  const owners = linhas<PropertyOwner>(ownersQ, "property_owners");
+  const propriedades = linhas<PropriedadeDoAno>(propsQ, "properties");
+  const contratos = linhas<Contract>(contractsQ, "contracts");
   const recibos = receiptsQ;
-  const despesas = (expensesQ.data ?? []) as Expense[];
+  const despesas = linhas<Expense>(expensesQ, "expenses");
   const porId = new Map(propriedades.map((p) => [p.id, p]));
   const hoje = todayISO();
 
