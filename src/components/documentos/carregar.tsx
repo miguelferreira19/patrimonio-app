@@ -16,7 +16,14 @@ import { useRouter } from "next/navigation";
 import { FileUp } from "lucide-react";
 import { Select, buttonClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { BUCKET, GERAL, caminho, escopoSugerido } from "@/lib/documentos";
+import { BUCKET, GERAL, caminho, comSufixo, escopoSugerido, partirCaminho } from "@/lib/documentos";
+
+/** O Storage responde 409 / "already exists" quando o caminho já está ocupado. */
+function jaExiste(error: { message: string }): boolean {
+  const status = (error as { statusCode?: string; status?: number }).statusCode ??
+    String((error as { status?: number }).status ?? "");
+  return status === "409" || /already exists|duplicate/i.test(error.message);
+}
 
 export interface FracaoOpcao {
   matriz: string;
@@ -58,13 +65,21 @@ export function Carregar({
 
     for (const file of Array.from(files)) {
       const escopo = destino?.matriz || escopoFixo || escopoSugerido(file.name, matrizes) || GERAL;
-      const chave = caminho(escopo, file.name);
-      const { error } = await supabase.storage.from(BUCKET).upload(chave, file, {
-        upsert: true,
+      // NUNCA `upsert: true`: o arquivo não tem versões, e um segundo "contrato.pdf" na
+      // mesma fração apagava o primeiro sem aviso. Um nome repetido ganha um sufixo.
+      const base = caminho(escopo, file.name);
+      let chave = base;
+      let { error } = await supabase.storage.from(BUCKET).upload(chave, file, {
         contentType: file.type || undefined,
       });
+      for (let n = 2; error && jaExiste(error) && n <= 20; n++) {
+        chave = comSufixo(base, n);
+        ({ error } = await supabase.storage.from(BUCKET).upload(chave, file, {
+          contentType: file.type || undefined,
+        }));
+      }
       feitos.push({
-        nome: file.name,
+        nome: chave === base ? file.name : `${file.name} (guardado como ${partirCaminho(chave).nome})`,
         ok: !error,
         onde: escopo === GERAL ? "Geral" : labelDe.get(escopo) ?? destino?.label ?? escopo,
         erro: error?.message,

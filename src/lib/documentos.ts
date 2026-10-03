@@ -49,6 +49,15 @@ export function caminho(escopo: string | null | undefined, nome: string): string
   return `${escopoSeguro(escopo)}${SEP}${nomeSeguro(nome)}`;
 }
 
+/** O mesmo caminho com um sufixo antes da extensão: `x__contrato.pdf` → `x__contrato-2.pdf`.
+ *  É o que o upload tenta quando o nome já existe, em vez de escrever por cima: um
+ *  segundo "contrato.pdf" na mesma fração apagava o primeiro sem aviso (2026-10-03). */
+export function comSufixo(path: string, n: number): string {
+  const ponto = path.lastIndexOf(".");
+  const temExtensao = ponto > path.indexOf(SEP) + SEP.length;
+  return temExtensao ? `${path.slice(0, ponto)}-${n}${path.slice(ponto)}` : `${path}-${n}`;
+}
+
 /** Inverso de `caminho`. Um objeto sem separador (carregado à mão pelo Supabase Studio,
  *  por exemplo) cai em `geral` em vez de desaparecer da listagem. */
 export function partirCaminho(path: string): { escopo: string; nome: string } {

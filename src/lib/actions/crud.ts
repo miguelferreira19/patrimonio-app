@@ -8,6 +8,15 @@ import type {
   Role,
 } from "@/lib/types";
 import { fail, requireAdmin, type ActionResult } from "./util";
+import {
+  eData,
+  exigir,
+  validarAtualizacaoRenda,
+  validarContrato,
+  validarDespesa,
+  validarPositivoOpcional,
+  validarTitulares,
+} from "../validar";
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -22,7 +31,8 @@ export async function saveLandlord(input: {
 }): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
-    const row = { name: input.name.trim(), nif: input.nif || null, notes: input.notes || null };
+    exigir(input.name?.trim(), "Falta o nome do senhorio.");
+    const row = { name: input.name.trim(), nif: input.nif?.trim() || null, notes: input.notes || null };
     if (input.id) {
       const { error } = await supabase.from("landlords").update(row).eq("id", input.id);
       if (error) throw new Error(error.message);
@@ -59,6 +69,10 @@ export interface PropertyInput {
 export async function saveProperty(input: PropertyInput): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
+    exigir(input.name?.trim(), "Falta o nome da fração.");
+    validarPositivoOpcional(input.area_m2, "A área");
+    validarPositivoOpcional(input.vpt, "O VPT");
+    validarTitulares(input.owners);
     const row = {
       name: input.name.trim(),
       address: input.address || null,
@@ -89,22 +103,28 @@ export async function saveProperty(input: PropertyInput): Promise<ActionResult> 
       propertyId = data.id as string;
     }
 
-    // substitui os proprietários
-    const { error: delErr } = await supabase
-      .from("property_owners")
-      .delete()
-      .eq("property_id", propertyId);
-    if (delErr) throw new Error(delErr.message);
+    // Substitui os proprietários: PRIMEIRO grava os novos, DEPOIS poda os que saíram.
+    // Era ao contrário (apagar tudo e inserir), e um insert que falhasse deixava a fração
+    // sem titulares nenhuns: as quotas alimentam o IRS e o AIMI de cada senhorio. Assim, o
+    // pior que uma falha a meio deixa é um titular a mais, que a Saúde dos dados assinala.
     if (input.owners.length > 0) {
-      const { error: ownErr } = await supabase.from("property_owners").insert(
+      const { error: ownErr } = await supabase.from("property_owners").upsert(
         input.owners.map((o) => ({
           property_id: propertyId,
           landlord_id: o.landlord_id,
           quota: o.quota,
         })),
+        { onConflict: "property_id,landlord_id" },
       );
       if (ownErr) throw new Error(ownErr.message);
     }
+    let poda = supabase.from("property_owners").delete().eq("property_id", propertyId);
+    if (input.owners.length > 0) {
+      // Os ids são uuids do próprio Supabase, por isso a lista do `in` não precisa de aspas.
+      poda = poda.not("landlord_id", "in", `(${input.owners.map((o) => o.landlord_id).join(",")})`);
+    }
+    const { error: delErr } = await poda;
+    if (delErr) throw new Error(delErr.message);
 
     refresh();
     return { ok: true, id: propertyId };
@@ -129,6 +149,8 @@ export async function preencherFichas(
     const { supabase } = await requireAdmin();
     let n = 0;
     for (const f of fichas) {
+      validarPositivoOpcional(f.area_m2, "A área");
+      validarPositivoOpcional(f.vpt, "O VPT");
       const row: Record<string, number | string> = {};
       if (f.area_m2 != null && f.area_m2 > 0) row.area_m2 = f.area_m2;
       if (f.typology) row.typology = f.typology.trim();
@@ -175,6 +197,7 @@ export interface ContractInput {
 export async function saveContract(input: ContractInput): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
+    validarContrato(input);
     const row = {
       property_id: input.property_id,
       tenant_name: input.tenant_name.trim(),
@@ -205,6 +228,7 @@ export async function saveContract(input: ContractInput): Promise<ActionResult> 
 export async function endContract(input: { id: string; end_date: string }): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
+    exigir(eData(input.end_date), "A data de fim não é uma data válida.");
     const { error } = await supabase
       .from("contracts")
       .update({ status: "cessado", end_date: input.end_date })
@@ -238,6 +262,7 @@ export async function applyRentUpdate(input: {
 }): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
+    validarAtualizacaoRenda(input);
     const { data: contract, error: cErr } = await supabase
       .from("contracts")
       .select("rent")
@@ -245,20 +270,31 @@ export async function applyRentUpdate(input: {
       .single();
     if (cErr) throw new Error(cErr.message);
 
-    const { error: uErr } = await supabase.from("rent_updates").insert({
-      contract_id: input.contract_id,
-      effective_date: input.effective_date,
-      old_rent: contract.rent,
-      new_rent: input.new_rent,
-      reason: input.reason,
-    });
+    // Duas escritas sem transação (o PostgREST não as dá sem uma função SQL, e uma
+    // migração não se reverte com git). A compensação faz o papel dela: o histórico grava-se
+    // primeiro e, se a renda do contrato não mudar, apaga-se outra vez. Sem isto o histórico
+    // podia afirmar uma renda que o contrato não tinha.
+    const { data: historico, error: uErr } = await supabase
+      .from("rent_updates")
+      .insert({
+        contract_id: input.contract_id,
+        effective_date: input.effective_date,
+        old_rent: contract.rent,
+        new_rent: input.new_rent,
+        reason: input.reason,
+      })
+      .select("id")
+      .single();
     if (uErr) throw new Error(uErr.message);
 
     const { error: upErr } = await supabase
       .from("contracts")
       .update({ rent: input.new_rent })
       .eq("id", input.contract_id);
-    if (upErr) throw new Error(upErr.message);
+    if (upErr) {
+      await supabase.from("rent_updates").delete().eq("id", historico.id);
+      throw new Error(upErr.message);
+    }
 
     refresh();
     return { ok: true };
@@ -278,6 +314,7 @@ export async function saveExpense(input: {
 }): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
+    validarDespesa(input);
     const row = {
       property_id: input.property_id || null,
       landlord_id: input.landlord_id || null,
@@ -319,6 +356,13 @@ export async function saveUpdateCoefficient(input: {
 }): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
+    exigir(Number.isInteger(input.year) && input.year >= 2000, "O ano do coeficiente não é válido.");
+    // O coeficiente anual anda à volta de 1 (1,0216 em 2025). Fora de [0,9; 1,2] é quase de
+    // certeza uma vírgula no sítio errado, e multiplicava todas as rendas sugeridas.
+    exigir(
+      Number.isFinite(input.coefficient) && input.coefficient >= 0.9 && input.coefficient <= 1.2,
+      "O coeficiente tem de estar entre 0,9 e 1,2 (por exemplo 1,0216).",
+    );
     const { error } = await supabase
       .from("update_coefficients")
       .upsert({ year: input.year, coefficient: input.coefficient });

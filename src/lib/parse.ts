@@ -6,10 +6,16 @@ export function parseAmount(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   let s = String(v).trim();
   if (!s) return null;
-  s = s.replace(/[€\s ]/g, "");
+  s = s.replace(/[€%\s ]/g, "");
   // formato PT: 1.234,56 → remove separador de milhares e troca vírgula
   if (/,\d{1,2}$/.test(s)) {
     s = s.replace(/\./g, "").replace(",", ".");
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+    // "1.200" em PT-PT são mil e duzentos, não 1,2 (2026-10-03: uma renda escrita assim
+    // ficava gravada mil vezes abaixo). Só pontos de milhar perfeitos: "1.5" e "1.0216"
+    // (um coeficiente) continuam decimais. Um coeficiente "1.021" leria-se 1021, e é
+    // por isso que o cartão dos coeficientes tem o seu próprio parse decimal.
+    s = s.replace(/\./g, "");
   } else {
     s = s.replace(/,/g, "");
   }

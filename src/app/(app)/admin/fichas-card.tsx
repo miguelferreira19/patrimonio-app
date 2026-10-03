@@ -14,6 +14,7 @@
 import { useState } from "react";
 import { preencherFichas } from "@/lib/actions/crud";
 import { useAction } from "@/components/forms";
+import { parseAmount } from "@/lib/parse";
 import { Button, Card, Input, Table, Td, Th } from "@/components/ui";
 
 export interface FichaPorPreencher {
@@ -29,7 +30,7 @@ type Rascunho = Record<string, { area?: string; typology?: string; vpt?: string 
 
 export function FichasCard({ fichas }: { fichas: FichaPorPreencher[] }) {
   const [rascunho, setRascunho] = useState<Rascunho>({});
-  const { pending, error, run } = useAction();
+  const { pending, error, run, setError } = useAction();
 
   if (fichas.length === 0) return null;
 
@@ -42,14 +43,24 @@ export function FichasCard({ fichas }: { fichas: FichaPorPreencher[] }) {
   ).length;
 
   function guardar() {
+    // `parseAmount` e não `Number(s.replace(",", "."))`: o VPT copia-se da caderneta como
+    // "45.230,50" ou "45.230", e a versão antiga lia o primeiro como nada (a linha sumia
+    // em silêncio) e o segundo como 45,23 €.
+    const ilegiveis: string[] = [];
     const payload = Object.entries(rascunho)
-      .map(([id, r]) => ({
-        id,
-        area_m2: r.area ? Number(r.area.replace(",", ".")) : null,
-        typology: r.typology?.trim() || null,
-        vpt: r.vpt ? Number(r.vpt.replace(",", ".")) : null,
-      }))
+      .map(([id, r]) => {
+        const area_m2 = r.area?.trim() ? parseAmount(r.area) : null;
+        const vpt = r.vpt?.trim() ? parseAmount(r.vpt) : null;
+        if ((r.area?.trim() && area_m2 === null) || (r.vpt?.trim() && vpt === null)) {
+          ilegiveis.push(fichas.find((f) => f.id === id)?.name ?? id);
+        }
+        return { id, area_m2, typology: r.typology?.trim() || null, vpt };
+      })
       .filter((f) => f.area_m2 || f.typology || f.vpt);
+    if (ilegiveis.length > 0) {
+      setError(`Valores ilegíveis em: ${ilegiveis.join(", ")}. Escreve, por exemplo, 85 ou 45.230,50.`);
+      return;
+    }
     run(preencherFichas(payload), () => setRascunho({}));
   }
 

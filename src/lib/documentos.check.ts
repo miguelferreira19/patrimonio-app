@@ -2,7 +2,7 @@
 // O que está aqui é a convenção de nomes do bucket: se se partir, os documentos deixam de
 // aparecer na fração certa (ou pior, um upload rebenta com 400 e ninguém sabe porquê).
 import assert from "node:assert/strict";
-import { GERAL, caminho, escopoSugerido, nomeSeguro, partirCaminho } from "./documentos";
+import { GERAL, caminho, comSufixo, escopoSugerido, nomeSeguro, partirCaminho } from "./documentos";
 
 // A) Ida e volta: o que se escreve é o que se lê.
 {
@@ -50,4 +50,16 @@ import { GERAL, caminho, escopoSugerido, nomeSeguro, partirCaminho } from "./doc
   assert.equal(escopoSugerido("x.pdf", [null, ""]), null, "fracao sem artigo nunca casa");
 }
 
-console.log("documentos: casos OK (A, B, C, D, E)");
+// F) Um nome repetido nunca escreve por cima: ganha um sufixo antes da extensão.
+{
+  assert.equal(comSufixo("182341-U-5077-A__contrato.pdf", 2), "182341-U-5077-A__contrato-2.pdf");
+  assert.equal(comSufixo("geral__notas", 3), "geral__notas-3", "sem extensão, o sufixo vai no fim");
+  // O ponto do escopo nunca conta como extensão.
+  assert.equal(comSufixo("a.b__ficheiro", 2), "a.b__ficheiro-2");
+  assert.deepEqual(partirCaminho(comSufixo(caminho("182341-U-1", "x.pdf"), 2)), {
+    escopo: "182341-U-1",
+    nome: "x-2.pdf",
+  });
+}
+
+console.log("documentos: casos OK (A, B, C, D, E, F)");

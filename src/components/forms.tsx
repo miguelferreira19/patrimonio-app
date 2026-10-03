@@ -26,12 +26,13 @@ import type {
   PropertyOwner,
 } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
+import { parseAmount } from "@/lib/parse";
 import { Button, Field, Input, Modal, Select, Textarea } from "./ui";
 
+/** Número escrito à portuguesa ("1.200", "1.234,56 €", "50%"). Vazio ou ilegível dá null.
+ *  Era `Number(s.replace(",", "."))`, que lia "1.200" como 1,2 e "1.234,56" como nada. */
 function numOrNull(s: string): number | null {
-  if (s.trim() === "") return null;
-  const v = Number(s.replace(",", "."));
-  return Number.isFinite(v) ? v : null;
+  return parseAmount(s);
 }
 
 /** Opção de território (código INE) para ligar frações aos benchmarks. */
@@ -79,7 +80,7 @@ export function PropertyFormButton({
   small?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { pending, error, run } = useAction();
+  const { pending, error, run, setError } = useAction();
 
   const [f, setF] = useState(() => ({
     name: property?.name ?? "",
@@ -106,6 +107,13 @@ export function PropertyFormButton({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Uma quota ilegível NÃO vira 100%: era o que acontecia a "50 %" ou a um campo vazio,
+    // e as quotas alimentam o IRS e o AIMI de cada senhorio.
+    const quotas = own.filter((o) => o.landlord_id).map((o) => numOrNull(o.quota));
+    if (quotas.some((q) => q === null)) {
+      setError("Há uma quota por preencher ou ilegível. Escreve a percentagem, por exemplo 50.");
+      return;
+    }
     run(
       saveProperty({
         id: property?.id,
@@ -124,7 +132,7 @@ export function PropertyFormButton({
         notes: f.notes || null,
         owners: own
           .filter((o) => o.landlord_id)
-          .map((o) => ({ landlord_id: o.landlord_id, quota: numOrNull(o.quota) ?? 100 })),
+          .map((o, i) => ({ landlord_id: o.landlord_id, quota: quotas[i] as number })),
       }),
       () => setOpen(false),
     );
@@ -326,7 +334,7 @@ export function ContractFormButton({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const { pending, error, run } = useAction();
+  const { pending, error, run, setError } = useAction();
   const [f, setF] = useState(() => ({
     tenant_name: contract?.tenant_name ?? "",
     tenant_nif: contract?.tenant_nif ?? "",
@@ -343,7 +351,10 @@ export function ContractFormButton({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const rent = numOrNull(f.rent);
-    if (rent === null) return;
+    if (rent === null) {
+      setError("A renda está vazia ou ilegível. Escreve o valor mensal, por exemplo 850 ou 1.200,00.");
+      return;
+    }
     run(
       saveContract({
         id: contract?.id,
@@ -426,7 +437,7 @@ export function RentUpdateButton({
   suggestedRent?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const { pending, error, run } = useAction();
+  const { pending, error, run, setError } = useAction();
   const [newRent, setNewRent] = useState(suggestedRent ? String(suggestedRent) : "");
   const [date, setDate] = useState(todayISO());
   const [reason, setReason] = useState<"coeficiente" | "acordo" | "novo_contrato" | "outro">("coeficiente");
@@ -434,7 +445,10 @@ export function RentUpdateButton({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const v = numOrNull(newRent);
-    if (v === null) return;
+    if (v === null) {
+      setError("A nova renda está vazia ou ilegível.");
+      return;
+    }
     run(
       applyRentUpdate({ contract_id: contract.id, new_rent: v, effective_date: date, reason }),
       () => setOpen(false),
@@ -545,7 +559,7 @@ export function ExpenseFormButton({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const { pending, error, run } = useAction();
+  const { pending, error, run, setError } = useAction();
   const [f, setF] = useState(() => ({
     property_id: expense?.property_id ?? defaultPropertyId ?? "",
     category: expense?.category ?? ("condominio" as ExpenseCategory),
@@ -558,7 +572,10 @@ export function ExpenseFormButton({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const amount = numOrNull(f.amount);
-    if (amount === null) return;
+    if (amount === null) {
+      setError("O valor está vazio ou ilegível. Escreve, por exemplo, 120,50.");
+      return;
+    }
     run(
       saveExpense({
         id: expense?.id,
