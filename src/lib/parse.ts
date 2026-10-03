@@ -7,20 +7,36 @@ export function parseAmount(v: unknown): number | null {
   let s = String(v).trim();
   if (!s) return null;
   s = s.replace(/[€%\s ]/g, "");
-  // formato PT: 1.234,56 → remove separador de milhares e troca vírgula
-  if (/,\d{1,2}$/.test(s)) {
-    s = s.replace(/\./g, "").replace(",", ".");
+  // Regras de PT-PT (2026-10-03), por ordem:
+  //   1. vírgula E ponto: o ÚLTIMO dos dois é o decimal ("1.234,56", e também "1,234.56"
+  //      de uma folha em inglês);
+  //   2. só vírgula: é o decimal ("850,5", "3,125" de quota). Várias vírgulas são milhares;
+  //   3. só pontos em grupos perfeitos de três ("1.200", "12.345.678"): milhares. Era lido
+  //      como 1,2, e uma renda escrita assim ficava gravada mil vezes abaixo;
+  //   4. qualquer outro ponto é decimal ("1.5", "1.0216" de um coeficiente).
+  // O ambíguo "3.125" lê-se 3125 pela regra 3; é por isso que os formulários pré-preenchem
+  // com vírgula (`numeroParaCampo`) e o cartão dos coeficientes tem o seu próprio parse.
+  const virgula = s.lastIndexOf(",");
+  const ponto = s.lastIndexOf(".");
+  if (virgula >= 0 && ponto >= 0) {
+    const decimal = virgula > ponto ? "," : ".";
+    const milhar = decimal === "," ? "." : ",";
+    s = s.split(milhar).join("").replace(decimal, ".");
+  } else if (virgula >= 0) {
+    s = s.indexOf(",") === virgula ? s.replace(",", ".") : s.split(",").join("");
   } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
-    // "1.200" em PT-PT são mil e duzentos, não 1,2 (2026-10-03: uma renda escrita assim
-    // ficava gravada mil vezes abaixo). Só pontos de milhar perfeitos: "1.5" e "1.0216"
-    // (um coeficiente) continuam decimais. Um coeficiente "1.021" leria-se 1021, e é
-    // por isso que o cartão dos coeficientes tem o seu próprio parse decimal.
-    s = s.replace(/\./g, "");
-  } else {
-    s = s.replace(/,/g, "");
+    s = s.split(".").join("");
   }
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
+}
+
+/** Um número para pré-preencher um campo de formulário, à portuguesa ("3,125", "850,5").
+ *  É o inverso exato de `parseAmount`: com `String(v)` uma quota 3.125 voltava a ler-se 3125
+ *  ao gravar sem tocar no campo. Sem separador de milhares de propósito, para não haver
+ *  ambiguidade nenhuma. */
+export function numeroParaCampo(v: number | null | undefined): string {
+  return v === null || v === undefined || !Number.isFinite(v) ? "" : String(v).replace(".", ",");
 }
 
 /** Números de série de datas do Excel (dias desde 1899-12-30). */

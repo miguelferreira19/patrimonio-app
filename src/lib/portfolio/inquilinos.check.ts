@@ -1,4 +1,4 @@
-// Self-check de inquilinos.ts. Correr com `npm run check:inquilinos`.
+// Self-check de inquilinos.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
 import { chaveDoInquilino, fichaDoInquilino, fichasDeInquilinos } from "./inquilinos";
 import type { Ativo, Snapshot } from "./snapshot";

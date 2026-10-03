@@ -8,6 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { ADIAR_DIAS } from "../insight-prazo";
+import { todayISO } from "../format";
 import { fail, requireAdmin, type ActionResult } from "./util";
 
 // Um ficheiro "use server" só pode exportar funções async, por isso a constante vive em
@@ -24,8 +25,10 @@ export async function snoozeInsight(input: {
 }): Promise<ActionResult> {
   try {
     const { supabase } = await requireAdmin();
-    const ate = new Date();
-    ate.setDate(ate.getDate() + (input.dias ?? ADIAR_DIAS));
+    // A partir de HOJE em Lisboa e em aritmética UTC: com getters locais e `toISOString()`,
+    // adiar depois da meia-noite podia gravar um dia a menos.
+    const ate = new Date(`${todayISO()}T00:00:00Z`);
+    ate.setUTCDate(ate.getUTCDate() + (input.dias ?? ADIAR_DIAS));
     const { error } = await supabase.from("insight_state").upsert(
       {
         kind: input.kind,
@@ -38,7 +41,7 @@ export async function snoozeInsight(input: {
     );
     if (error) throw new Error(error.message);
     refresh();
-    return { ok: true, info: `Adiado até ${ate.toLocaleDateString("pt-PT")}.` };
+    return { ok: true, info: `Adiado até ${ate.toLocaleDateString("pt-PT", { timeZone: "UTC" })}.` };
   } catch (e) {
     return fail(e);
   }

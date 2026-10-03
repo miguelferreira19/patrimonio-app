@@ -1,4 +1,4 @@
-// Self-check do escritor de .docx. Correr com `npm run check:docx`.
+// Self-check do escritor de .docx. Corre com `npm run check`.
 // Um ZIP mal escrito não "fica feio": o Word recusa o ficheiro inteiro e a mensagem que
 // aparece não diz porquê. Estes casos apanham as três formas de o partir.
 import assert from "node:assert/strict";

@@ -1,4 +1,4 @@
-// Self-check de irs.ts. Correr com `npm run check:irs`.
+// Self-check de irs.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
 import {
   AUTONOMOUS_RATE,

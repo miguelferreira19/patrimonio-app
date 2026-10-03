@@ -1,4 +1,4 @@
-// Self-check de conselhos.ts. Correr com `npm run check:conselhos`.
+// Self-check de conselhos.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
 import { buildSnapshot } from "./snapshot";
 import { LIMIAR_CONSELHO_EUR, construirConselhos } from "./conselhos";

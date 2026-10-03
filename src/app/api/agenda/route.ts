@@ -14,10 +14,10 @@ export const dynamic = "force-dynamic";
 const DIAS = 366;
 
 export async function GET(request: Request) {
-  const { user } = await getSession();
+  const { user, isAdmin } = await getSession();
   if (!user) return new Response("Sessão expirada.", { status: 403 });
 
-  const { prazos } = await getAgenda(DIAS);
+  const { prazos } = await getAgenda(DIAS, { comRendas: isAdmin });
   const ics = criarIcs(prazos, new Date(), new URL(request.url).origin);
   return new Response(ics, {
     headers: {

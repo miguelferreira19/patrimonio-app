@@ -1,4 +1,4 @@
-// Self-check de renda.ts. Correr com `npm run check:renda`.
+// Self-check de renda.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
 import {
   acumuladoDoAno,

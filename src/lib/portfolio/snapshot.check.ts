@@ -1,4 +1,4 @@
-// Self-check de PARIDADE do snapshot. Correr com `npm run check:snapshot`.
+// Self-check de PARIDADE do snapshot. Corre com `npm run check`.
 //
 // Porque existe: a Fase 1 do PLANO.md é um refactor que não pode mudar um único número.
 // A prova ideal seria abrir a produção e o local lado a lado, mas isso depende de

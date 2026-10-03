@@ -1,4 +1,4 @@
-// Self-check do arquivo. Correr com `npm run check:documentos`.
+// Self-check do arquivo. Corre com `npm run check`.
 // O que está aqui é a convenção de nomes do bucket: se se partir, os documentos deixam de
 // aparecer na fração certa (ou pior, um upload rebenta com 400 e ninguém sabe porquê).
 import assert from "node:assert/strict";

@@ -1,4 +1,4 @@
-// Self-check de validar.ts. Correr com `npm run check:validar`.
+// Self-check de validar.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
 import {
   eData,

@@ -1,4 +1,4 @@
-// Self-check do ENQUADRAMENTO das minutas. Correr com `npm run check:minutas`.
+// Self-check do ENQUADRAMENTO das minutas. Corre com `npm run check`.
 // O que está aqui é a regra de quem vê que carta: se se partir, a app volta a oferecer
 // uma oposição à renovação que é ineficaz ou uma interpelação a quem está em dia — e uma
 // carta destas produz efeitos jurídicos.

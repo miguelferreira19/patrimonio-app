@@ -53,14 +53,17 @@ export type { RawData } from "./load";
 export { loadRaw } from "./load";
 
 /** A agenda dos próximos `dias` (Início e /api/agenda). Lê pelo `getSnapshotComRaw`, por
- *  isso numa página que já o chamou não custa leitura nenhuma. */
-export async function getAgenda(dias: number) {
+ *  isso numa página que já o chamou não custa leitura nenhuma.
+ *
+ *  `comRendas`: as cartas de atualização são tarefas de quem decide (o admin). O viewer vê
+ *  o calendário fiscal, que é da família toda (V3: separar o que cada um vê). */
+export async function getAgenda(dias: number, { comRendas }: { comRendas: boolean }) {
   const { raw, snap } = await getSnapshotComRaw();
   const hoje = todayISO();
   const prazos = construirAgenda({
     hoje,
     dias,
-    rendas: rendasDosAtivos(snap.correntes),
+    rendas: comRendas ? rendasDosAtivos(snap.correntes) : [],
     aimi: aimiPorSenhorio(raw.landlords, raw.owners, raw.properties),
   });
   const contratosSemFim = raw.contracts.filter((c) => c.status === "ativo" && !c.end_date).length;

@@ -26,7 +26,7 @@ import type {
   PropertyOwner,
 } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
-import { parseAmount } from "@/lib/parse";
+import { numeroParaCampo, parseAmount } from "@/lib/parse";
 import { Button, Field, Input, Modal, Select, Textarea } from "./ui";
 
 /** Número escrito à portuguesa ("1.200", "1.234,56 €", "50%"). Vazio ou ilegível dá null.
@@ -90,8 +90,8 @@ export function PropertyFormButton({
     parish: property?.parish ?? "",
     dicofre: property?.dicofre ?? "",
     typology: property?.typology ?? "",
-    area_m2: property?.area_m2?.toString() ?? "",
-    vpt: property?.vpt?.toString() ?? "",
+    area_m2: numeroParaCampo(property?.area_m2),
+    vpt: numeroParaCampo(property?.vpt),
     vpt_year: property?.vpt_year?.toString() ?? "",
     matriz_article: property?.matriz_article ?? "",
     status: property?.status ?? ("arrendado" as const),
@@ -99,7 +99,7 @@ export function PropertyFormButton({
   }));
   const [own, setOwn] = useState<Array<{ landlord_id: string; quota: string }>>(
     owners && owners.length > 0
-      ? owners.map((o) => ({ landlord_id: o.landlord_id, quota: String(o.quota) }))
+      ? owners.map((o) => ({ landlord_id: o.landlord_id, quota: numeroParaCampo(o.quota) }))
       : [{ landlord_id: landlords[0]?.id ?? "", quota: "100" }],
   );
 
@@ -341,7 +341,7 @@ export function ContractFormButton({
     pf_contract_no: contract?.pf_contract_no ?? "",
     start_date: contract?.start_date ?? "",
     end_date: contract?.end_date ?? "",
-    rent: contract?.rent?.toString() ?? "",
+    rent: numeroParaCampo(contract?.rent),
     due_day: contract?.due_day?.toString() ?? "1",
     status: contract?.status ?? ("ativo" as const),
     notes: contract?.notes ?? "",
@@ -438,7 +438,7 @@ export function RentUpdateButton({
 }) {
   const [open, setOpen] = useState(false);
   const { pending, error, run, setError } = useAction();
-  const [newRent, setNewRent] = useState(suggestedRent ? String(suggestedRent) : "");
+  const [newRent, setNewRent] = useState(numeroParaCampo(suggestedRent));
   const [date, setDate] = useState(todayISO());
   const [reason, setReason] = useState<"coeficiente" | "acordo" | "novo_contrato" | "outro">("coeficiente");
 
@@ -563,7 +563,7 @@ export function ExpenseFormButton({
   const [f, setF] = useState(() => ({
     property_id: expense?.property_id ?? defaultPropertyId ?? "",
     category: expense?.category ?? ("condominio" as ExpenseCategory),
-    amount: expense?.amount?.toString() ?? "",
+    amount: numeroParaCampo(expense?.amount),
     expense_date: expense?.expense_date ?? todayISO(),
     description: expense?.description ?? "",
   }));

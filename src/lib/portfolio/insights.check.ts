@@ -1,4 +1,4 @@
-// Self-check de insights.ts. Correr com `npm run check:insights`.
+// Self-check de insights.ts. Corre com `npm run check`.
 // ponytail: um só check, no que é não-trivial — o gate de materialidade, a separação dos
 // valores assumidos e a ordem. Os geradores em si são leituras do snapshot já testado.
 import assert from "node:assert/strict";

@@ -21,4 +21,9 @@ const encontrar = (dir) =>
 const checks = encontrar(raiz).sort();
 if (checks.length === 0) throw new Error("Nenhum check compilado em .check/");
 for (const f of checks) require(f);
-console.log(`\n${checks.length} checks OK.`);
+// O veredicto só à SAÍDA: há checks assíncronos (o de atrasos), e dizer "OK" logo depois do
+// último `require` anunciava sucesso antes de eles acabarem. Uma rejeição por tratar faz o
+// Node sair com código 1, e então a linha não se imprime.
+process.on("exit", (codigo) => {
+  if (codigo === 0) console.log(`\n${checks.length} checks OK.`);
+});

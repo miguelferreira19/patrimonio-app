@@ -1,6 +1,6 @@
-// Self-check de parse.ts. Correr com `npm run check:parse`.
+// Self-check de parse.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
-import { guessHeader, parseAmount } from "./parse";
+import { guessHeader, numeroParaCampo, parseAmount } from "./parse";
 
 // Cabeçalho limpo continua a funcionar (comportamento antigo).
 assert.equal(guessHeader(["Referência", "Nº de Contrato"], ["referência", "referencia"]), "Referência");
@@ -32,5 +32,20 @@ assert.equal(parseAmount("-1.200,00"), -1200);
 assert.equal(parseAmount("50%"), 50);
 assert.equal(parseAmount("abc"), null);
 assert.equal(parseAmount(""), null);
+
+// Vírgula sozinha é SEMPRE decimal em PT-PT ("3,125" de quota é 3,125, não 3125); com
+// vírgula e ponto, o último é o decimal.
+assert.equal(parseAmount("3,125"), 3.125);
+assert.equal(parseAmount("85,125"), 85.125);
+assert.equal(parseAmount("1,5"), 1.5);
+assert.equal(parseAmount("1,234.56"), 1234.56);
+assert.equal(parseAmount("1.234.567,8"), 1234567.8);
+
+// Ida e volta: o que um formulário pré-preenche tem de voltar a ler-se IGUAL ao gravar sem
+// tocar no campo. Com `toString()`, uma quota 3.125 (1/32) voltava como 3125.
+for (const v of [3.125, 9.375, 85.125, 1200, 850.5, 1.0216, 0.5, 45230.5, 33.3333]) {
+  assert.equal(parseAmount(numeroParaCampo(v)), v, `ida e volta de ${v}`);
+}
+assert.equal(numeroParaCampo(null), "");
 
 console.log("parse.check.ts: OK");

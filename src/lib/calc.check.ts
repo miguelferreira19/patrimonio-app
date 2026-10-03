@@ -1,4 +1,4 @@
-// Self-check de calc.ts. Correr com `npm run check:calc`.
+// Self-check de calc.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
 import { benchmarkForMetric, currentProperties, isCurrentProperty, marketView, missingFichaFields, rentUpdateEligibility, upcomingContractEnds, vacancyGaps } from "./calc";
 import { dicofreFromGeocod } from "./ine";
@@ -215,6 +215,37 @@ function property(over: Partial<Property> = {}): Property {
     "concelho",
     "outra freguesia do concelho de Viseu cai no concelho por prefixo",
   );
+}
+
+// Datas que atravessam a mudança de hora (2026-10-03). O servidor corre agora em hora de
+// Lisboa (src/instrumentation.ts), e somar meses com getters LOCAIS a uma data lida em UTC
+// recuava um dia em março: 2025-03-30 + 12 meses dava 2026-03-29. O caso força o fuso
+// para não depender da máquina onde o check corre.
+{
+  const tzAntes = process.env.TZ;
+  process.env.TZ = "Europe/Lisbon";
+  try {
+    const r = rentUpdateEligibility(contract({ start_date: "2025-03-30" }), [], [], "2026-03-29");
+    assert.equal(r.eligibleSince, "2026-03-30");
+    assert.equal(r.eligible, false, "ainda não passou o ano no dia 29");
+    const fim = vacancyGaps(
+      [
+        contract({ id: "a", property_id: "p", start_date: "2025-01-01", end_date: "2026-03-28", status: "cessado" }),
+        contract({ id: "b", property_id: "p", start_date: "2026-05-01" }),
+      ],
+      "2026-10-03",
+    );
+    assert.equal(fim[0].gapStart, "2026-03-29", "o vazio começa no dia a seguir ao fim, mesmo no dia da mudança de hora");
+    const ends = upcomingContractEnds(
+      [contract({ id: "c", end_date: "2026-03-30" })],
+      "2026-01-01",
+      88,
+    );
+    assert.equal(ends.length, 1, "1 de janeiro + 88 dias = 30 de março, inclusive");
+  } finally {
+    if (tzAntes === undefined) delete process.env.TZ;
+    else process.env.TZ = tzAntes;
+  }
 }
 
 console.log("calc.check.ts: OK");

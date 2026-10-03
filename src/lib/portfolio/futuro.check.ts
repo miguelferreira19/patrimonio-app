@@ -1,4 +1,4 @@
-// Self-check de futuro.ts. Correr com `npm run check:futuro`.
+// Self-check de futuro.ts. Corre com `npm run check`.
 //
 // O caso B é uma nota importante: este modelo NUNCA dá p̂ = 1 exato, de propósito (risk.ts
 // nunca deixa o posterior chegar a um extremo — "dois meses não fazem ninguém" é a mesma

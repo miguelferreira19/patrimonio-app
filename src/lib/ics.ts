@@ -5,7 +5,8 @@
 // que elas. Um ficheiro destes abre-se no iPhone, no Google Calendar e no Outlook.
 //
 // Eventos de DIA INTEIRO (`VALUE=DATE`): um prazo fiscal não tem hora, e com hora o
-// calendário de cada um mudava-a de fuso. Cada evento leva um alarme três dias antes.
+// calendário de cada um mudava-a de fuso. Cada evento leva um alarme três dias antes, às 9h
+// (`-P2DT15H` a contar da meia-noite do dia do prazo): `-P3D` tocava à meia-noite.
 
 import type { Prazo } from "./portfolio/agenda";
 
@@ -70,7 +71,7 @@ export function criarIcs(prazos: Prazo[], agora: Date, url: string): string {
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
       `DESCRIPTION:${escaparTexto(p.titulo)}`,
-      "TRIGGER:-P3D",
+      "TRIGGER:-P2DT15H",
       "END:VALARM",
       "END:VEVENT",
     );

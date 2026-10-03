@@ -49,10 +49,10 @@ const DIAS_DA_AGENDA = 92;
 export default async function AgoraPage() {
   // `getSnapshotComRaw` e não `getSnapshot`: a agenda precisa das quotas e dos titulares
   // (o AIMI por senhorio), e as duas funções em cache partilham assim UMA leitura.
-  const [{ isAdmin }, { snap }, agenda] = await Promise.all([
-    getSession(),
+  const { isAdmin } = await getSession();
+  const [{ snap }, agenda] = await Promise.all([
     getSnapshotComRaw(),
-    getAgenda(DIAS_DA_AGENDA),
+    getAgenda(DIAS_DA_AGENDA, { comRendas: isAdmin }),
   ]);
 
   if (snap.ativos.length === 0) return <Vazio />;

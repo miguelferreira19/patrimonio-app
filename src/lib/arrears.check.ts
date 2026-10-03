@@ -1,4 +1,4 @@
-// Self-check da metodologia de Atrasos. Correr com `npm run check:arrears`.
+// Self-check da metodologia de Atrasos. Corre com `npm run check`.
 // Não é uma suite: são os casos reais que produziam falsos positivos na produção
 // (Vitest completo continua a ser o P2-4 do PLANO.md). Cada assert falha se a regra
 // da renda de referência se perder num refactor futuro.

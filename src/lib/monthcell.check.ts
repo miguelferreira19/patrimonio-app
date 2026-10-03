@@ -1,4 +1,4 @@
-// Self-check de monthcell.ts. Correr com `npm run check:monthcell`.
+// Self-check de monthcell.ts. Corre com `npm run check`.
 // Sem framework: assert puro sobre o código real, como os outros checks do projeto.
 import assert from "node:assert/strict";
 import {

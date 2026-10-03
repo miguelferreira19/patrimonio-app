@@ -43,7 +43,7 @@ assert.equal(escaparTexto("a; b, c\\d\ne"), "a\\; b\\, c\\\\d\\ne");
   assert.ok(ics.includes("UID:x-1@patrimonio-app"));
   assert.ok(ics.includes("SUMMARY:IMI\\, 3.ª prestação"));
   assert.ok(ics.replace(/\r\n /g, "").includes("https://exemplo.pt/ano/2026"));
-  assert.ok(ics.includes("TRIGGER:-P3D"));
+  assert.ok(ics.includes("TRIGGER:-P2DT15H"), "alarme às 9h de três dias antes, não à meia-noite");
 }
 
 console.log("ics.check.ts: OK (A, B, C)");

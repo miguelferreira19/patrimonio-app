@@ -159,8 +159,10 @@ export function rentUpdateEligibility(
   const baseDate = lastUpdate?.effective_date ?? contract.start_date ?? null;
   if (!baseDate) return { eligible: false, baseDate: null, eligibleSince: null, suggestedRent: null };
 
-  const base = new Date(baseDate);
-  base.setMonth(base.getMonth() + 12);
+  // Tudo em UTC: `new Date("YYYY-MM-DD")` é meia-noite UTC, e somar com o setter LOCAL
+  // recuava um dia ao atravessar a mudança de hora de março (com o servidor em Lisboa).
+  const base = new Date(`${baseDate.slice(0, 10)}T00:00:00Z`);
+  base.setUTCMonth(base.getUTCMonth() + 12);
   const eligibleSince = base.toISOString().slice(0, 10);
 
   const latestCoef = coefficients.slice().sort((a, b) => b.year - a.year)[0];
@@ -197,8 +199,8 @@ export function vacancyGaps(contracts: Contract[], todayISO: string): VacancyGap
     for (let i = 0; i < sorted.length; i++) {
       const prev = sorted[i];
       if (!prev.end_date) continue; // ainda ativo ou sem data de fim registada — não é vazio conhecido
-      const gapStartDate = new Date(prev.end_date);
-      gapStartDate.setDate(gapStartDate.getDate() + 1);
+      const gapStartDate = new Date(`${prev.end_date.slice(0, 10)}T00:00:00Z`);
+      gapStartDate.setUTCDate(gapStartDate.getUTCDate() + 1);
       const gapStart = gapStartDate.toISOString().slice(0, 10);
 
       const next = sorted[i + 1];
@@ -226,8 +228,8 @@ export function upcomingContractEnds(
   todayISO: string,
   horizonDays = 90,
 ): Contract[] {
-  const horizon = new Date(todayISO);
-  horizon.setDate(horizon.getDate() + horizonDays);
+  const horizon = new Date(`${todayISO.slice(0, 10)}T00:00:00Z`);
+  horizon.setUTCDate(horizon.getUTCDate() + horizonDays);
   const horizonISO = horizon.toISOString().slice(0, 10);
   return contracts
     .filter((c) => c.status === "ativo" && c.end_date && c.end_date >= todayISO && c.end_date <= horizonISO)

@@ -1,4 +1,4 @@
-// Self-check de rent.ts. Correr com `npm run check:rent`.
+// Self-check de rent.ts. Corre com `npm run check`.
 // Os casos A e B são os dois contratos REAIS que estavam errados na carteira em 2026-07-25;
 // o C é o falso positivo que 19 contratos produziam e que não pode voltar a aparecer.
 import assert from "node:assert/strict";

@@ -1,4 +1,4 @@
-// Self-check da Saúde dos dados. Correr com `npm run check:health`.
+// Self-check da Saúde dos dados. Corre com `npm run check`.
 // Mesmo espírito do arrears.check.ts: sem framework, só os casos que, se se partirem num
 // refactor, transformam a página num alarme falso (ou pior, num silêncio falso).
 import assert from "node:assert/strict";

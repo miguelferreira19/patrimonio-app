@@ -26,7 +26,8 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - `npm run check` = **21 self-checks puros** (os 18 de sempre, mais validar, agenda e ics), sem BD
   nem framework. Desde 2026-10-03 é UMA compilação (`tsconfig.check.json`, modo strict) e um runner
   (`scripts/checks.cjs`) que descobre sozinho todo o `src/lib/**/*.check.ts`: um check novo não se
-  regista em lado nenhum. ~10 s (eram 73). Os `check:<mod>` continuam para correr um só. Casos
+  regista em lado nenhum. ~10 s (eram 73). Os 19 scripts `check:<mod>` saíram: compilavam sem `strict` e
+  divergiam do gate. Casos
   novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
 - **Nunca correr `npm run build` com o dev ligado**: os dois escrevem na mesma `.next` e o dev
   passa a dar páginas em branco (`Cannot find module './vendor-chunks/...'`). Parar o dev, apagar
