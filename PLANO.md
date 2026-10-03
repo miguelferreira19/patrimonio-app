@@ -602,8 +602,8 @@ da app **não** substitui o pipeline. Nunca grava sem o ecrã de diff.
 - Um `loadRaw` por request (hoje: 13 páginas × N queries).
 - Faixa em CSS grid; virtualizar linhas só se falhar o orçamento de 60 fps com 43 × 60 células.
 - `paginateAll` continua a ser a única forma de ler `payments`/`receipts` (Apêndice A.3).
-- Gate por tarefa: `npm run build` + `npm run check` verdes. Cada módulo novo acrescenta o seu
-  `check:<mod>` ao script `check`.
+- Gate por tarefa: `npm run build` + `npm run check` verdes. Desde 2026-10-03 o `check` descobre
+  sozinho todo o `src/lib/**/*.check.ts` (uma compilação, ~10 s): não é preciso registar nada.
 
 ---
 
@@ -978,6 +978,14 @@ de referência normaliza quem paga sistematicamente a menos do que devia — da�
 não escondido.
 
 ## A.3 Armadilhas e decisões permanentes (não re-litigar)
+
+- **(2026-10-03) Erros do Supabase nunca viram lista vazia** (`lib/supabase/dados.ts`). Eram 56
+  sítios com `(q.data ?? []) as T[]`; uma falha de rede no `aplicarImport` gravava recibos com
+  `property_id` nulo, que o import (só insere, deduplica por `receipt_number`) nunca volta a ligar.
+- **(2026-10-03) `market_benchmarks` tem uma linha por território E por período**: 698 linhas com
+  um só trimestre, mais de 1000 a partir do seguinte. Ler sempre filtrado por `dicofre` ou paginado.
+- **(2026-10-03) "1.200" num formulário são mil e duzentos euros.** Todo o número escrito à mão
+  passa por `parseAmount`.
 
 - **Ótica de família:** valores por INTEIRO em toda a apresentação; as quotas de `property_owners` só
   servem para o IRS.

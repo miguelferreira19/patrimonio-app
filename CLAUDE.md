@@ -23,8 +23,14 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
 - Build (gate obrigatório antes de dar qualquer tarefa por terminada): `npm run build`
-- `npm run check` = **18 self-checks puros** (arrears, health, calc, parse, irs, monthcell, rent,
-  documentos, minutas, docx, snapshot, insights, risk, import, renda, futuro, conselhos, inquilinos), sem BD nem framework. Casos novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
+- `npm run check` = **21 self-checks puros** (os 18 de sempre, mais validar, agenda e ics), sem BD
+  nem framework. Desde 2026-10-03 é UMA compilação (`tsconfig.check.json`, modo strict) e um runner
+  (`scripts/checks.cjs`) que descobre sozinho todo o `src/lib/**/*.check.ts`: um check novo não se
+  regista em lado nenhum. ~10 s (eram 73). Os `check:<mod>` continuam para correr um só. Casos
+  novos vão para o `*.check.ts` do módulo respetivo — nunca um framework novo.
+- **Nunca correr `npm run build` com o dev ligado**: os dois escrevem na mesma `.next` e o dev
+  passa a dar páginas em branco (`Cannot find module './vendor-chunks/...'`). Parar o dev, apagar
+  `.next`, voltar a arrancar.
 - Dev: `npm run dev` (ou `start.cmd`; launch.json tem "patrimonio-dev", porta 3000)
 - Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node).
 - Supabase: projeto `iidvzcgtfbpzhjbsrqql` (UE). Schema em `supabase/schema.sql` (idempotente, pode
@@ -143,6 +149,24 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
   modais) vai ser dissolvido em edição inline e no comando ⌘K; ver PLANO.md §10.7.
 - CTAs que navegam (`<Link>`, `<a href="/api/...">`) usam `buttonClass(...)`, nunca strings de
   classes copiadas.
+
+## Regras da remodelação de 2026-10-03 (ver RELATORIO_FINAL.md)
+- **Leituras nunca engolem erros.** `linhas()`/`linha()` de `lib/supabase/dados.ts` lançam com o
+  nome da tabela; `(q.data ?? []) as T[]` é proibido (tratava uma falha como carteira vazia, e o
+  Anexo F podia sair sem rendas). Quem lança cai no `(app)/error.tsx`.
+- **Escritas validam no servidor** com as guardas puras de `lib/validar.ts` (quotas em ]0,100] e
+  soma ≤ 100, datas reais, valores finitos). Números escritos à mão passam SEMPRE por
+  `parseAmount` (lê "1.200" como 1200; o `Number(s.replace(",", "."))` lia 1,2).
+- **Titulares: upsert e depois poda**, nunca apagar e inserir. **Upload: nunca `upsert: true`** (o
+  arquivo não tem versões); um nome repetido ganha sufixo (`comSufixo`).
+- **Relógio de Lisboa no servidor** (`src/instrumentation.ts` fixa `TZ`; a Vercel corre em UTC).
+- **CSP em `next.config.ts`**: o browser só fala com a própria app e com o Supabase. Um serviço
+  externo novo chamado do BROWSER tem de entrar no `connect-src`, senão é bloqueado em silêncio.
+- **O cron do INE falha fechado** sem `CRON_SECRET`; o núcleo `runIneRefresh` vive em
+  `lib/ine-refresh.ts` porque num ficheiro `"use server"` qualquer export vira endpoint.
+- **Agenda** (`lib/portfolio/agenda.ts`, `lib/ics.ts`, `/api/agenda`): prazos fiscais de
+  calendário fixo e cartas de atualização de renda; os fins de contrato NÃO entram porque 0 de 42
+  contratos ativos têm `end_date`.
 
 ## Saúde dos dados: o que NÃO é anomalia (2026-07-30)
 Três checks estavam a acusar factos normais da carteira. As três regras novas vivem em

@@ -12,7 +12,7 @@ vive em **`CLAUDE.md`** — lê-o inteiro antes de tocar em código; este fichei
 ## O essencial em dez linhas
 - App interna da família para ~61 frações arrendadas. **PT-PT sempre.** Ótica de família (valores por inteiro).
 - Live: https://patrimonio-app-beryl.vercel.app · Supabase `iidvzcgtfbpzhjbsrqql` · repo privado `miguelferreira19/patrimonio-app`.
-- Node: bundled da Logitech (`start.cmd` mete o PATH). Gates: `npm run build` + `npm run check` (18 self-checks puros; casos novos no `*.check.ts` do módulo, nunca framework novo).
+- Node: bundled da Logitech (`start.cmd` mete o PATH). Gates: `npm run build` + `npm run check` (21 self-checks puros numa compilação só; um `*.check.ts` novo em `src/lib` é descoberto sozinho, nunca framework novo).
 - Deploy é manual por CLI: **"faz deploy" = build + check verdes → `npx vercel@latest deploy --prod --yes` → commit + push.** Gate vermelho = não deployar nem commitar. Fora de um deploy, sem commits sem pedido.
 - `dados/` tem dados pessoais reais (gitignored) — nunca commitar, nunca expor. Recolha automática de recibos a correr no Agendador do Windows (dias 15 e último).
 - PostgREST corta a 1000 linhas → `paginateAll`. Smoke sem login não valida páginas com dados.
