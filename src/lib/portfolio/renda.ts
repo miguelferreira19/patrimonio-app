@@ -72,6 +72,23 @@ export function acumuladoDoAno(payments: RollPayment[], hoje: Date): PontoAcumul
   return pontos;
 }
 
+/** O ano corrente contra o MESMO período do ano anterior, até `ate` ("YYYY-MM-01").
+ *  É a única comparação honesta de um ano a meio. `null` quando `ate` não é um mês já
+ *  decorrido do ano corrente (em janeiro, antes de haver dados, não há nada a comparar). */
+export function anoContraAnterior(
+  acumulado: PontoAcumulado[],
+  ate: string | null,
+): { ate: string; esteAno: number; anoAnterior: number; variacao: number | null } | null {
+  const p = ate ? acumulado.find((x) => x.mes === ate) : undefined;
+  if (!p || p.esteAno === null) return null;
+  return {
+    ate: p.mes,
+    esteAno: p.esteAno,
+    anoAnterior: p.anoAnterior,
+    variacao: p.anoAnterior > 0 ? p.esteAno / p.anoAnterior - 1 : null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 2. Série anual e crescimento
 // ---------------------------------------------------------------------------
@@ -158,7 +175,11 @@ export function crescimento(serie: AnoRenda[]): Crescimento {
   const porAno = serie.map((a, i) => {
     if (i === 0) return { ano: a.ano, variacao: null };
     const anterior = serie[i - 1];
-    const variacao = anterior.recebido > 0 ? a.recebido / anterior.recebido - 1 : null;
+    // Mesma regra do CAGR, ano a ano (2026-10-03): um ano parcial contra um completo dava
+    // "+888%" em 2015 (2014 só tinha 5 meses) e "-35%" no ano corrente a meio. Quem quer o
+    // ano corrente compara-o pelo acumulado, contra o MESMO período do ano anterior.
+    const variacao =
+      !a.parcial && !anterior.parcial && anterior.recebido > 0 ? a.recebido / anterior.recebido - 1 : null;
     return { ano: a.ano, variacao };
   });
 

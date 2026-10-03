@@ -93,7 +93,7 @@ export default async function CarteiraPage({
     .map((a) => linhaDe(a, lente, janela))
     .sort(ordemDa(lente));
 
-  const meses = snap.carteira.slice(-janela).map((c) => c.month);
+  const meses = snap.faixaMeses.slice(-janela);
   const calibracao = fraseDeCalibracao(snap.risco, (v) => fmtEur(v));
   const totalDireita = linhas.reduce((acc, l) => acc + (l.valor ?? 0), 0);
 
@@ -139,7 +139,15 @@ export default async function CarteiraPage({
               {snap.horizon ? monthLabel(snap.horizon) : "nenhum"}
             </span>
           }
-          nota={snap.horizon ? "à direita disto, a app não sabe" : "sem base para dizer o que está pago"}
+          nota={
+            !snap.horizon
+              ? "sem base para dizer o que está pago"
+              : snap.cobertura.fontesParadas.length > 0
+                ? snap.cobertura.fontesParadas
+                    .map((f) => `${f.nome} só até ${monthLabel(f.horizonte)}`)
+                    .join(", ")
+                : "à direita disto, a app não sabe"
+          }
         />
       </dl>
 
@@ -346,7 +354,9 @@ function Segmentado({
           href={href(o.v)}
           aria-current={o.v === ativo ? "page" : undefined}
           className={cn(
-            "rounded-full px-2.5 py-1 text-xs transition-colors",
+            // py-1.5 no telemóvel: a 24px de altura os chips eram alvos de toque pequenos
+            // demais para um dedo, e são a única maneira de mudar de lente ou de senhorio.
+            "rounded-full px-3 py-1.5 text-xs transition-colors sm:px-2.5 sm:py-1",
             o.v === ativo
               ? "bg-acao-tenue font-medium text-acao"
               : "text-tinta-2 hover:bg-elevado hover:text-tinta",

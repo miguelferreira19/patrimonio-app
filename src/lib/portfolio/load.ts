@@ -58,8 +58,12 @@ export interface RawData {
   receiptsThisMonth: Array<Pick<Receipt, "contract_id" | "pf_contract_no">>;
   /** Recibos dos últimos 12 meses, em colunas mínimas. `amount` é ILÍQUIDO, e é por isso
    *  que serve para conferir `contracts.rent` (também ilíquido) — ao contrário de
-   *  `payments.amount`, que é líquido de retenção. ~42 contratos × 12 meses. */
-  receiptsRecentes: Array<Pick<Receipt, "contract_id" | "ref_month" | "amount">>;
+   *  `payments.amount`, que é líquido de retenção. ~42 contratos × 12 meses.
+   *  `landlord_id` e `issue_date` dão a fronteira de cada fonte (`horizontePorContrato`). */
+  receiptsRecentes: Array<
+    Pick<Receipt, "contract_id" | "ref_month" | "amount"> &
+      Partial<Pick<Receipt, "landlord_id" | "issue_date">>
+  >;
   /** Contagem, nunca as linhas: são >5000 e só interessa saber quantos estão órfãos. */
   orphanReceipts: number;
   /** Decisões adiadas ou dispensadas (S3). Uma linha por (kind, subject); a tabela tem
@@ -182,11 +186,11 @@ export async function loadRaw(
     supabase.from("receipts").select("contract_id,pf_contract_no").eq("ref_month", thisMonth),
     supabase.from("receipts").select("id", { count: "exact", head: true }).is("contract_id", null),
     // PAGINADO pela mesma razao: o .limit(5000) NAO passa por cima do max-rows do servidor.
-    paginateAll<{ contract_id: string | null; ref_month: string; amount: number }>(
+    paginateAll<RawData["receiptsRecentes"][number]>(
       async (from, to) => {
         const { data, error } = await supabase
           .from("receipts")
-          .select("contract_id,ref_month,amount")
+          .select("contract_id,ref_month,amount,landlord_id,issue_date")
           .gte("ref_month", recuar12Meses(thisMonth))
           .order("id", { ascending: true })
           .range(from, to);
@@ -221,9 +225,7 @@ export async function loadRaw(
     receiptsThisMonth: (receiptsMonthQ.data ?? []) as Array<
       Pick<Receipt, "contract_id" | "pf_contract_no">
     >,
-    receiptsRecentes: receiptsRecentesQ as Array<
-      Pick<Receipt, "contract_id" | "ref_month" | "amount">
-    >,
+    receiptsRecentes: receiptsRecentesQ,
     orphanReceipts: orphanQ.count ?? 0,
     insightState: (insightStateQ.data ?? []) as InsightState[],
     historicoCarregado: comHistorico,

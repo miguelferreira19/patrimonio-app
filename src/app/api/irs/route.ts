@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       async (from, to) => {
         const { data, error } = await supabase
           .from("receipts")
-          .select("property_id,amount,withholding,issue_date")
+          .select("property_id,contract_id,amount,withholding,issue_date")
           .gte("issue_date", yearStart)
           .lte("issue_date", yearEnd)
           .order("id", { ascending: true })

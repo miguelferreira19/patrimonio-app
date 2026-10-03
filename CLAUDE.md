@@ -168,6 +168,19 @@ Três checks estavam a acusar factos normais da carteira. As três regras novas 
 reimplementar. **`futuro` = além da fronteira de dados**: um mês ainda não importado NUNCA é "falta"
 (era o bug B2, que fazia o mesmo mês aparecer vermelho em Pagamentos e verde em Atrasos).
 
+**A fronteira é POR FONTE desde 2026-10-03** (`horizontePorContrato` em arrears.ts). Cada
+contrato pára no mês da última emissão do senhorio que lhe passa os recibos (o do recibo
+mais recente), nunca para lá da fronteira global. Foi a morte do avô: os recibos dele param a
+2/07, os do António continuam, e a fronteira global cobrava ago/set como dívida a 20
+inquilinos do avô. Uma fonte com a última emissão 2+ meses atrás do último mês devido é
+`parada`: os contratos dela saem dos "recibos por emitir", aparece UM aviso "Recibos de X
+parados desde…" (grupo Por saber, `assumido`), e a Cobertura diz "X só até…". O snapshot
+expõe `fontes`, `fronteiraComum` (o mês que TODAS as fontes conhecem, corte de qualquer
+comparação da carteira inteira) e `faixaMeses` (os meses das faixas; a Carteira desenha o
+eixo com estes). A ficha da fração aplica a mesma regra com uma query à última emissão da
+fonte. Quando os herdeiros começarem a emitir, os recibos novos vêm de outro `landlord_id` e
+os contratos mudam de fonte sozinhos.
+
 ## Estrutura
 - `src/app/(app)/` páginas autenticadas. **Viewer vê 5 destinos** (Início, Carteira, Mercado, IRS,
   Documentos);

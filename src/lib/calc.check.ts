@@ -112,6 +112,9 @@ function property(over: Partial<Property> = {}): Property {
   assert.equal(isCurrentProperty(property({ status: "outro" })), true);
   assert.equal(isCurrentProperty(property({ status: "terreno" })), false);
   assert.equal(isCurrentProperty(property({ status: "vendido" })), false);
+  // O rústico importado do Portal vem como "vago": é o artigo que diz que é terreno.
+  assert.equal(isCurrentProperty(property({ status: "vago", matriz_article: "182301-R-401" })), false);
+  assert.equal(isCurrentProperty(property({ status: "vago", matriz_article: "182341-U-3500-B" })), true);
 
   const list = [
     property({ id: "a", status: "arrendado" }),

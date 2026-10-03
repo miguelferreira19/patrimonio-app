@@ -48,6 +48,12 @@ const PONTO: Record<LinhaFaixa["estado"], string> = {
   atencao: "bg-atencao",
 };
 
+/** A coluna dos nomes. No telemóvel a faixa faz scroll para o lado (24 meses não cabem em
+ *  375px) e, sem isto, o nome da fração saía do ecrã com o primeiro gesto: via-se uma
+ *  linha de células sem saber de quem eram. Fica colada à esquerda, com fundo de papel
+ *  para as células passarem por baixo, e mais estreita onde o ecrã é estreito. */
+const NOME = "sticky left-0 z-30 w-[136px] shrink-0 bg-papel pr-1 sm:w-[240px]";
+
 const NOTA_TOM = {
   "tinta-2": "text-tinta-2",
   perda: "text-perda",
@@ -85,13 +91,16 @@ export function Faixa({
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
-        <div className="min-w-[720px]">
+        {/* Largura mínima para cada célula ter ~20px: o rótulo do mês ("mai") em mono de
+            10px precisa de 18. A 720px fixos, 24 meses davam células de 14px e os rótulos
+            colavam uns aos outros ("mjunjulago"). Abaixo disto, a faixa faz scroll. */}
+        <div className="min-w-[820px] sm:min-w-[900px]">
           {/* Eixo: o ano no PRIMEIRO mês e depois só em cada janeiro. Marcar só os
               janeiros deixava uma janela que começa em agosto com uma única etiqueta,
               "2026", em cima de doze meses que em metade são de 2025 — quem lia a faixa
               não tinha como saber onde acabava um ano e começava o outro. */}
           <div className="flex items-end gap-3 pb-1">
-            <div className="w-[240px] shrink-0" />
+            <div className={NOME} />
             <div className="relative grid flex-1 gap-[2px]" style={grelha}>
               {meses.map((m, i) => (
                 <span
@@ -112,7 +121,7 @@ export function Faixa({
           <ul className="divide-y divide-regua border-y border-regua">
             {linhas.map((l) => (
               <li key={l.id} className="flex items-center gap-3 py-1.5">
-                <div className="flex w-[240px] shrink-0 items-baseline gap-2">
+                <div className={cn(NOME, "flex items-baseline gap-2")}>
                   <span
                     aria-hidden="true"
                     className={cn("mt-1 h-1.5 w-1.5 shrink-0 rounded-full", PONTO[l.estado])}
@@ -147,7 +156,7 @@ export function Faixa({
               "Últimos 12 meses" redundante: a substância já é o gráfico. */}
           {carteira.length > 0 && (
             <div className="flex items-center gap-3 border-b border-regua-forte py-1.5">
-              <div className="w-[240px] shrink-0 text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-2">
+              <div className={cn(NOME, "text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-2")}>
                 Carteira
               </div>
               <div className="relative grid flex-1 gap-[2px]" style={grelha}>

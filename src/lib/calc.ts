@@ -1,7 +1,7 @@
 // Cálculos de negócio: rendas esperadas, desvios ao mercado, yields.
 import type { Contract, Expense, MarketBenchmark, Payment, Property, RentUpdate, UpdateCoefficient } from "./types";
 import { endOfMonthISO } from "./format";
-import { classifyUso } from "./irs";
+import { classifyUso, isRustico } from "./irs";
 
 /**
  * Um contrato conta para um mês se já tinha começado até ao fim do mês e
@@ -241,11 +241,18 @@ export function upcomingContractEnds(
  */
 // Aceita `Pick<Property, "status">` (não só `Property` inteiro) para servir também
 // leituras parciais do Supabase que só pedem as colunas de que precisam (ex.: atrasos).
-export function isCurrentProperty(p: Pick<Property, "status">): boolean {
-  return p.status !== "terreno" && p.status !== "vendido";
+/** Rústicos também ficam de fora (2026-10-03): os do Portal chegam com `status = vago` e
+ *  entravam como frações por arrendar — a ocupação descia e a Saúde pedia área e tipologia
+ *  a um terreno. O teste é o `-R-` do artigo, o mesmo do AIMI (`isRustico`). */
+export function isCurrentProperty(
+  p: Pick<Property, "status"> & Partial<Pick<Property, "matriz_article">>,
+): boolean {
+  return p.status !== "terreno" && p.status !== "vendido" && !isRustico(p.matriz_article);
 }
 
-export function currentProperties<T extends Pick<Property, "status">>(list: T[]): T[] {
+export function currentProperties<T extends Pick<Property, "status"> & Partial<Pick<Property, "matriz_article">>>(
+  list: T[],
+): T[] {
   return list.filter(isCurrentProperty);
 }
 

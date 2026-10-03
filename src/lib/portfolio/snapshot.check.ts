@@ -259,9 +259,12 @@ const oldBelow = oldMarketRows
   assert.equal(julho, undefined, "a faixa acaba na fronteira, não inventa meses");
   const junho = p1.faixa.find((c) => c.month === "2026-06-01");
   assert.equal(junho?.status, "pago", "junho está pago");
-  // A carteira agregada vai até ao mês corrente, e julho tem de ser `futuro` — nunca falta.
-  const carteiraJulho = snap.carteira.find((c) => c.month === "2026-07-01");
-  assert.equal(carteiraJulho?.status, "futuro", "julho é por importar, não em falta");
+  // A carteira agregada tem os MESMOS meses das faixas (2026-10-03): antes ia até ao mês
+  // corrente com 12 meses, e a Carteira desenhava 24 células numa grelha de 12 colunas.
+  assert.deepEqual(snap.carteira.map((c) => c.month), snap.faixaMeses, "agregado alinhado com as faixas");
+  assert.deepEqual(p1.faixa.map((c) => c.month), snap.faixaMeses, "e cada faixa também");
+  assert.equal(snap.faixaMeses.length, 24);
+  assert.equal(snap.carteira.find((c) => c.month === "2026-07-01"), undefined, "julho não se inventa");
 }
 
 // G — retenção na fonte: a renda de referência desce e NÃO há dívida inventada.

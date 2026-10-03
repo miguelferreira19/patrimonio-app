@@ -16,11 +16,15 @@ import { Figure, Money } from "@/components/kit";
 import { cn } from "@/lib/cn";
 import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 import type { Snapshot } from "@/lib/portfolio";
+import { anoContraAnterior } from "@/lib/portfolio/renda";
 
 export function Retrato({ snap, className }: { snap: Snapshot; className?: string }) {
   const emAtraso = snap.arrears.summary.contractsInArrears;
   const arrendadas = snap.correntes.filter((a) => a.activeContract).length;
-  const recebidoMes = snap.fluxo[snap.fluxo.length - 1]?.recebido ?? 0;
+  // O ano até ao mês que todas as fontes já conhecem, contra o mesmo período do ano
+  // anterior. Substitui "entrou este mês": a 3 do mês esse número era quase zero e não
+  // dizia nada (2026-10-03).
+  const ano = anoContraAnterior(snap.acumulado, snap.fronteiraComum);
 
   return (
     <dl
@@ -39,11 +43,23 @@ export function Retrato({ snap, className }: { snap: Snapshot; className?: strin
         nota="últimos 12 meses"
         valor={<Money value={snap.totais.recebido12m} escala="lg" />}
       />
-      <Numero
-        label={`Entrou em ${monthLabel(snap.meses[snap.meses.length - 1], false)}`}
-        nota="mês corrente, ainda a decorrer"
-        valor={<Money value={recebidoMes} escala="lg" tom="tinta-2" />}
-      />
+      {ano ? (
+        <Numero
+          label={`Este ano, até ${monthLabel(ano.ate, false)}`}
+          nota={
+            ano.variacao === null
+              ? "sem ano anterior para comparar"
+              : `${ano.variacao >= 0 ? "+" : ""}${fmtPct(ano.variacao, 1)} face ao mesmo período de ${parseInt(ano.ate.slice(0, 4), 10) - 1}`
+          }
+          valor={<Money value={ano.esteAno} escala="lg" />}
+        />
+      ) : (
+        <Numero
+          label={`Entrou em ${monthLabel(snap.meses[snap.meses.length - 1], false)}`}
+          nota="mês corrente, ainda a decorrer"
+          valor={<Money value={snap.fluxo[snap.fluxo.length - 1]?.recebido ?? 0} escala="lg" tom="tinta-2" />}
+        />
+      )}
       <Numero
         label="Ocupação"
         nota={`${arrendadas} de ${snap.correntes.length} frações arrendadas`}

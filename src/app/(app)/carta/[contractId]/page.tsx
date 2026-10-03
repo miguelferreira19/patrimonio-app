@@ -20,7 +20,7 @@ function NaoDisponivel({ propertyId, children }: { propertyId?: string; children
   return (
     <div className="space-y-4">
       <p className="text-xs text-zinc-500">
-        <Link href="/carteira?lente=renda" className="hover:text-teal-700 hover:underline">
+        <Link href="/carteira" className="hover:text-teal-700 hover:underline">
           Frações
         </Link>
         {propertyId && (
@@ -155,7 +155,7 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     <PapelImpresso
       migalhas={
         <>
-          <Link href="/carteira?lente=renda" className="hover:text-acao hover:underline">
+          <Link href="/carteira" className="hover:text-acao hover:underline">
             Frações
           </Link>
           <span className="mx-1.5">/</span>

@@ -89,7 +89,7 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
     paginateAll<IrsReceiptInput>(async (from, to) => {
       const { data, error } = await supabase
         .from("receipts")
-        .select("property_id,amount,withholding,issue_date")
+        .select("property_id,contract_id,amount,withholding,issue_date")
         .gte("issue_date", inicio)
         .lte("issue_date", fim)
         .order("id", { ascending: true })

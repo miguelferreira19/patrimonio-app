@@ -3,7 +3,14 @@
 // (Vitest completo continua a ser o P2-4 do PLANO.md). Cada assert falha se a regra
 // da renda de referência se perder num refactor futuro.
 import assert from "node:assert/strict";
-import { computeArrears, computeArrearsRow, referenceRent, type ArrearsPaymentInput } from "./arrears";
+import {
+  computeArrears,
+  computeArrearsRow,
+  horizonteDaFonte,
+  horizontePorContrato,
+  referenceRent,
+  type ArrearsPaymentInput,
+} from "./arrears";
 import { addMonthsKey } from "./format";
 import { paginateAll } from "./paginate";
 
@@ -93,6 +100,40 @@ function row(rent: number, start: string, payments: ArrearsPaymentInput[]) {
   assert.equal(st.streak, 5, "horizonte = jun (dado pelo outro); parou em jan → 5 meses");
 }
 
+// B4) Fronteira POR FONTE (2026-10-03). O avô deixou de emitir a 2 de julho; o António
+// continua. Com a fronteira global (setembro, dada pelo António) os inquilinos do avô
+// apareciam com agosto e setembro em atraso. Cada contrato passa a parar na fonte dele.
+{
+  const hoje = new Date(2026, 9, 3); // 3 out: ainda em carência, último devido = setembro
+  const recibos = [
+    { contract_id: "avo", landlord_id: "AVO", issue_date: "2026-07-02" },
+    { contract_id: "pai", landlord_id: "PAI", issue_date: "2026-09-01" },
+    // mesmo senhorio, último recibo DESTE contrato em junho: a fronteira é a da fonte
+    { contract_id: "pai2", landlord_id: "PAI", issue_date: "2026-06-16" },
+    { contract_id: null, landlord_id: "PAI", issue_date: "2026-09-20" }, // órfão também conta para a fonte
+  ];
+  const { porContrato, fonte } = horizontePorContrato(recibos, hoje);
+  assert.equal(porContrato.get("avo"), "2026-07-01");
+  assert.equal(porContrato.get("pai"), "2026-09-01");
+  assert.equal(porContrato.get("pai2"), "2026-09-01", "fronteira da FONTE, não do último recibo do contrato");
+  assert.equal(fonte.get("avo"), "AVO");
+  assert.equal(horizonteDaFonte("2026-12-01", hoje), "2026-09-01", "nunca passa o calendário");
+
+  const ct = (id: string) => ({ id, rent: 300, start_date: "2020-01-01", property_id: `p${id}`, tenant_name: id, pf_contract_no: null });
+  const pays: ArrearsPaymentInput[] = [
+    ...monthly(300, "2026-07-01", 24).map((p) => ({ ...p, contract_id: "avo" })),
+    ...monthly(300, "2026-09-01", 24).map((p) => ({ ...p, contract_id: "pai" })),
+    ...monthly(300, "2026-05-01", 24).map((p) => ({ ...p, contract_id: "pai2" })), // parou mesmo
+  ];
+  const contratos = [ct("avo"), ct("pai"), ct("pai2")];
+  const sem = computeArrears(contratos, pays, hoje);
+  assert.equal(sem.rows.find((r) => r.contractId === "avo")!.streak, 2, "o bug: ago e set do avô em falta");
+  const com = computeArrears(contratos, pays, hoje, porContrato);
+  assert.equal(com.rows.find((r) => r.contractId === "avo")!.streak, 0, "o avô fica em dia até à fonte dele");
+  assert.equal(com.rows.find((r) => r.contractId === "pai")!.streak, 0);
+  assert.equal(com.rows.find((r) => r.contractId === "pai2")!.streak, 4, "quem parou mesmo continua apanhado");
+}
+
 // C) Mês parcial não conta duas vezes: o streak já o conta como mês inteiro em falta,
 // somar-lhe também o défice dava 3 × 300 + 150.
 {
@@ -151,7 +192,7 @@ void (async () => {
   assert.equal(got2.length, 2000);
   assert.equal(calls, 3, "2 páginas cheias + 1 vazia");
 
-  console.log("arrears: casos OK (A, B, B2, B3, C, D, E, F, G, H)");
+  console.log("arrears: casos OK (A, B, B2, B3, B4, C, D, E, F, G, H)");
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

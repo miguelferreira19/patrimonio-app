@@ -193,7 +193,7 @@ export default async function AnoPage({
               }; limite de casal ${fmtEur(AIMI_THRESHOLD_COUPLE)}${
                 aimi.overCouple ? ", ultrapassado" : ", não atingido"
               }.`}
-              conta="Taxas marginais do art. 135.º-F: 0,7% acima de 600.000 €, 1% acima de 1.000.000 €, 1,5% acima de 2.000.000 €. Ficam de fora, por lei, os rústicos e os urbanos de comércio, indústria ou serviços (art. 135.º-B n.º 2). O valor assume tributação separada; com tributação conjunta a dedução é do casal. Confirmar na nota da AT — é dedutível no quadro 9 do Anexo F."
+              conta="Taxas marginais do art. 135.º-F: 0,7% acima de 600.000 €, 1% acima de 1.000.000 €, 1,5% acima de 2.000.000 €. Ficam de fora, por lei, os rústicos e os urbanos de comércio, indústria ou serviços (art. 135.º-B n.º 2). O valor assume tributação separada; com tributação conjunta a dedução é do casal. Confirmar na nota da AT: é dedutível no quadro 9 do Anexo F."
             />
           </ol>
         </Seccao>

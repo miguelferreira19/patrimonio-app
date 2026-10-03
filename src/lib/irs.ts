@@ -124,7 +124,8 @@ export const EXPENSE_DEDUCTIBILITY: Record<ExpenseCategory, ExpenseDeductibility
 // Agregação por fração e ano — ano fiscal = ano de RECEBIMENTO (issue_date)
 // ---------------------------------------------------------------------------
 
-export type IrsReceiptInput = Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date">;
+export type IrsReceiptInput = Pick<Receipt, "property_id" | "amount" | "withholding" | "issue_date"> &
+  Partial<Pick<Receipt, "contract_id">>;
 export type IrsExpenseInput = Pick<
   Expense,
   "property_id" | "landlord_id" | "category" | "amount" | "expense_date" | "origem"
@@ -467,7 +468,7 @@ export function aimiTax(totalVpt: number): number {
 
 /** Prédio rústico. O artigo matricial é o teste fiável — `status` diz "vago" na maior parte
  *  dos rústicos da carteira, e só `terreno` era cego a todos eles. */
-function isRustico(matriz: string | null | undefined): boolean {
+export function isRustico(matriz: string | null | undefined): boolean {
   return !!matriz && matriz.includes("-R-");
 }
 
@@ -578,16 +579,45 @@ export function anexoFRows(
   expenses: IrsExpenseInput[],
   todayISO: string,
 ): AnexoFRow[] {
-  const receiptTotals = receiptTotalsByProperty(receipts, year);
   const quotaByProperty = quotaPctByProperty(owners, landlordId);
   const expenseTotals = expenseTotalsByProperty(expenses, year, landlordId, quotaByProperty);
+
+  // As rendas são do CONTRATO, não da fração (2026-10-03). Somavam-se por fração e
+  // colava-se o total a cada contrato dela — uma fração com três inquilinos ao longo dos
+  // anos saía três vezes no quadro 4.1 com a mesma renda (46 linhas para 21 contratos do
+  // António, e o mesmo no .xlsx que vai para a declaração). Os recibos sem contrato e as
+  // despesas da fração entram UMA vez, na linha do contrato mais recente dela.
+  const porContrato = new Map<string, PropertyReceiptTotals>();
+  const semContrato = new Map<string, PropertyReceiptTotals>();
+  for (const r of receipts) {
+    if (!r.property_id || yearOf(r.issue_date) !== year) continue;
+    const [mapa, chave] = r.contract_id ? [porContrato, r.contract_id] : [semContrato, r.property_id];
+    const cur = mapa.get(chave) ?? { grossRent: 0, withholding: 0 };
+    cur.grossRent += r.amount;
+    cur.withholding += r.withholding;
+    mapa.set(chave, cur);
+  }
+  const principal = new Map<string, Pick<Contract, "id" | "start_date">>();
+  for (const c of contracts) {
+    const p = principal.get(c.property_id);
+    if (!p || (c.start_date ?? "") > (p.start_date ?? "")) principal.set(c.property_id, c);
+  }
 
   const rows: AnexoFRow[] = [];
   for (const c of contracts) {
     const quotaPct = quotaByProperty.get(c.property_id);
     if (quotaPct === undefined) continue; // este senhorio não é titular desta fração
-    const rt = receiptTotals.get(c.property_id);
-    const et = expenseTotals.get(c.property_id);
+    const ePrincipal = principal.get(c.property_id)?.id === c.id;
+    const proprio = porContrato.get(c.id);
+    const orfao = ePrincipal ? semContrato.get(c.property_id) : undefined;
+    const rt =
+      proprio || orfao
+        ? {
+            grossRent: (proprio?.grossRent ?? 0) + (orfao?.grossRent ?? 0),
+            withholding: (proprio?.withholding ?? 0) + (orfao?.withholding ?? 0),
+          }
+        : undefined;
+    const et = ePrincipal ? expenseTotals.get(c.property_id) : undefined;
     if (!rt && !et) continue; // sem rendas nem despesas dedutíveis no ano — não entra no Anexo F
     const q = quotaPct / 100;
     const property = propertiesById.get(c.property_id);

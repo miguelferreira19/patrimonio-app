@@ -70,6 +70,13 @@ export function monthCellTitle(cell: MonthCellData): string {
   }
 }
 
+/** Um mês da CARTEIRA ficou abaixo do esperado: não se liquidou com a mesma tolerância de
+ *  90% de cada contrato. Era "1 € abaixo", e com 40 contratos há sempre um inquilino
+ *  atrasado — 11 dos 12 meses do Início saíam âmbar, um alarme que não distingue nada. */
+export function mesAbaixo({ recebido, esperado }: { recebido: number; esperado: number }): boolean {
+  return esperado > 0 && !isMonthSettled(recebido, esperado);
+}
+
 /** Estado de um mês a partir dos dados crus.
  *
  *  `horizon` é o último mês com recibos na carteira (`dataHorizonMonth`). Tudo o que

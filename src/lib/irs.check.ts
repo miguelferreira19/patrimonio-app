@@ -382,4 +382,38 @@ function prop(id: string, vpt: number, extra: Partial<PropAimi> = {}): [string, 
   assert.equal(row.reduced.annualSavings, 540);
 }
 
+// anexoFRows: uma fração com TRÊS contratos ao longo dos anos não pode sair três vezes com a
+// mesma renda (2026-10-03: 46 linhas para os 21 contratos do António no quadro 4.1). Cada
+// contrato leva as SUAS rendas; as despesas e os recibos sem contrato vão uma só vez para o
+// contrato mais recente.
+{
+  const owners: PropertyOwner[] = [{ property_id: "p1", landlord_id: "L1", quota: 100 }];
+  const contracts = [
+    { id: "velho", property_id: "p1", pf_contract_no: "1", start_date: "2015-01-01", rent: 300 },
+    { id: "saiu", property_id: "p1", pf_contract_no: "2", start_date: "2020-01-01", rent: 350 },
+    { id: "novo", property_id: "p1", pf_contract_no: "3", start_date: "2025-07-01", rent: 400 },
+  ];
+  const propertiesById = new Map<string, Pick<Property, "id" | "matriz_article" | "typology">>([
+    ["p1", { id: "p1", matriz_article: "182341-U-2381-K", typology: "T2" }],
+  ]);
+  const receipts = [
+    { property_id: "p1", contract_id: "saiu", amount: 350 * 6, withholding: 0, issue_date: "2025-03-01" },
+    { property_id: "p1", contract_id: "novo", amount: 400 * 6, withholding: 0, issue_date: "2025-10-01" },
+    { property_id: "p1", contract_id: null, amount: 50, withholding: 0, issue_date: "2025-12-01" },
+  ];
+  const expenses = [
+    { property_id: "p1", landlord_id: null, origem: "registada" as const, category: "imi" as const, amount: 200, expense_date: "2025-12-31" },
+  ];
+  const rows = anexoFRows("L1", 2025, owners, contracts, propertiesById, receipts, expenses, "2026-01-01");
+  assert.deepEqual(rows.map((r) => r.contractId).sort(), ["novo", "saiu"], "o contrato sem rendas no ano não entra");
+  assert.equal(rows.find((r) => r.contractId === "saiu")!.grossRent, 2100, "só as rendas dele");
+  assert.equal(rows.find((r) => r.contractId === "novo")!.grossRent, 2450, "as dele + o recibo sem contrato");
+  assert.equal(rows.reduce((a, r) => a + r.imi, 0), 200, "o IMI da fração entra uma só vez");
+  assert.equal(
+    rows.reduce((a, r) => a + r.grossRent, 0),
+    computeLandlordFiscalYear("L1", 2025, owners, receipts, expenses).grossRent,
+    "a soma do quadro bate com o mapa anual",
+  );
+}
+
 console.log("irs.check.ts: OK");

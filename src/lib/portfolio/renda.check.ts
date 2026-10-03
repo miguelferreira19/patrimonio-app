@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import {
   acumuladoDoAno,
+  anoContraAnterior,
   concentracao,
   crescimento,
   rendasParadas,
@@ -88,7 +89,11 @@ function pagamento(contractId: string, refMonth: string, amount: number) {
   const c = crescimento(serie);
   const esperado = Math.pow(12000 / 10000, 1 / 2) - 1;
   assert.ok(c.cagr !== null && Math.abs(c.cagr - esperado) < 1e-9, "CAGR só 2023 a 2025");
-  assert.equal(c.porAno.length, 4, "porAno cobre a serie toda, so o CAGR filtra");
+  assert.equal(c.porAno.length, 4, "porAno cobre a serie toda");
+  // ...mas a variação de um ano parcial é null: era o "+888%" de 2015 contra os 5 meses
+  // de 2014, e o "-35%" de um ano corrente a meio contra um ano fechado.
+  assert.equal(c.porAno[3].variacao, null, "2026 parcial não tem variação");
+  assert.ok(Math.abs(c.porAno[2].variacao! - 1 / 11) < 1e-9, "2025 contra 2024, os dois completos");
 }
 
 // D — carteira vazia devolve zeros/null em todas as funções, sem rebentar.
@@ -185,4 +190,20 @@ function pagamento(contractId: string, refMonth: string, amount: number) {
   assert.ok(!maisExigente.some((p) => p.contractId === "parado"), "60 meses e mais exigente que os ~54 do contrato");
 }
 
-console.log("renda.check.ts: OK (A, B, C, D, E, F)");
+// G — o ano corrente compara-se com o MESMO período do ano anterior, nunca com o ano todo.
+{
+  const pg = (m: string, v: number) => ({ contract_id: "c", ref_month: m, amount: v, received_date: m });
+  const acum = acumuladoDoAno(
+    [pg("2025-01-01", 100), pg("2025-02-01", 100), pg("2025-03-01", 100), pg("2025-12-01", 900),
+     pg("2026-01-01", 110), pg("2026-02-01", 110)],
+    new Date(2026, 9, 3),
+  );
+  const r = anoContraAnterior(acum, "2026-02-01")!;
+  assert.equal(r.esteAno, 220);
+  assert.equal(r.anoAnterior, 200, "jan+fev de 2025, não o ano inteiro");
+  assert.ok(Math.abs(r.variacao! - 0.1) < 1e-9);
+  assert.equal(anoContraAnterior(acum, "2026-11-01"), null, "mês ainda por vir");
+  assert.equal(anoContraAnterior(acum, null), null);
+}
+
+console.log("renda.check.ts: OK (A, B, C, D, E, F, G)");

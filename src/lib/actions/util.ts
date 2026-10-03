@@ -8,7 +8,7 @@ export async function requireAdmin() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Sessão expirada — volta a entrar.");
+  if (!user) throw new Error("Sessão expirada, volta a entrar.");
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")

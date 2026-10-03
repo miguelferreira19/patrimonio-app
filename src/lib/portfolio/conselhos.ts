@@ -95,7 +95,7 @@ const GERADORES: GeradorConselho[] = [
         euros: total,
         confianca: "estimado",
         conta: `Σ (renda sugerida − renda atual) × 12, por contrato parado, = ${fmtEur(total)}/ano.`,
-        acoes: [{ label: "Ver rendas", href: "/carteira?lente=renda" }],
+        acoes: [{ label: "Ver rendas", href: "/carteira" }],
       },
     ];
   },
@@ -180,7 +180,7 @@ const GERADORES: GeradorConselho[] = [
         euros,
         confianca: "estimado",
         conta: `${fmtEur(resumo.quedaContratada)}/mês × 12 = ${fmtEur(euros)}/ano.`,
-        acoes: [{ label: "Ver rendas", href: "/carteira?lente=renda" }],
+        acoes: [{ label: "Ver rendas", href: "/carteira" }],
       },
     ];
   },

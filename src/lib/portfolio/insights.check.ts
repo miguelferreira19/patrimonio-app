@@ -102,8 +102,10 @@ const fila = construirFila(snap);
   );
   assert.equal(
     fila.total,
-    fila.itens.filter((i) => i.confianca !== "assumido").reduce((a, i) => a + i.euros, 0),
-    "total só com medido e estimado",
+    fila.itens
+      .filter((i) => i.confianca !== "assumido" && i.grupo !== "fazer")
+      .reduce((a, i) => a + i.euros, 0),
+    "total só com medido e estimado, e sem as obrigações do mês",
   );
 }
 
@@ -167,8 +169,10 @@ const fila = construirFila(snap);
 // A prova de que o estado filtra a fila sem apagar o facto: o gerador continua a correr,
 // o item aparece em `silenciadas` com a mesma soma de euros.
 {
-  const alvo = fila.itens[0];
+  // O primeiro que soma no topo: um item do grupo "fazer" não mexe no total.
+  const alvo = fila.itens.find((i) => i.grupo !== "fazer" && i.confianca !== "assumido");
   assert.ok(alvo, "há pelo menos um item para silenciar");
+  if (!alvo) throw new Error("sem alvo");
   const chave = { kind: alvo.kind, subject: alvo.subject ?? "" };
 
   const comAdiar = construirFila(
@@ -208,4 +212,29 @@ const fila = construirFila(snap);
   assert.ok(comDispensar.silenciadas[0].dispensada, "e fica marcado como dispensado");
 }
 
-console.log("insights.check.ts: OK (A, B, C, D, E, F, G, H)");
+// I — fonte parada (2026-10-03). c3 deixou de ter recibos em março porque QUEM os emitia
+// parou (o avô), não porque o inquilino deixou de pagar. Os recibos trazem o senhorio e a
+// data de emissão; com isso c3 sai dos atrasos e da checklist do mês, e aparece UM aviso.
+{
+  const recibos = pagamentos.map((p) => ({
+    ...p,
+    landlord_id: p.contract_id === "c3" ? "AVO" : "L1",
+    issue_date: p.ref_month.slice(0, 8) + "05",
+  }));
+  const s = buildSnapshot(
+    { ...raw, landlords: [...raw.landlords, { id: "AVO", name: "Miguel", nif: null, notes: null }], receiptsRecentes: recibos },
+    TODAY,
+  );
+  const f = construirFila(s);
+  assert.equal(s.arrears.rows.find((r) => r.contractId === "c3")!.streak, 0, "c3 por importar, não em atraso");
+  assert.equal(s.arrears.rows.find((r) => r.contractId === "c2")!.streak, 2, "c2 (fonte viva) continua apanhado");
+  assert.ok(!s.recibosPorEmitir.some((r) => r.contract.id === "c3"), "fora da checklist do mês");
+  const aviso = f.itens.find((i) => i.kind === "fonte_parada");
+  assert.ok(aviso, "um aviso de fonte parada");
+  assert.equal(aviso!.euros, 300 * 3, "abr, mai e jun (até à fronteira global), não até julho");
+  assert.equal(aviso!.confianca, "assumido", "não soma ao número de topo");
+  assert.deepEqual(s.cobertura.fontesParadas, [{ nome: "Miguel", horizonte: "2026-03-01" }]);
+  assert.equal(s.fronteiraComum, "2026-03-01");
+}
+
+console.log("insights.check.ts: OK (A, B, C, D, E, F, G, H, I)");

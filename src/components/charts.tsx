@@ -31,6 +31,7 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import { fmtEur, fmtPct } from "@/lib/format";
+import { mesAbaixo } from "@/lib/monthcell";
 
 // Os tokens, tal como estão em globals.css. Trocam de par com o tema sozinhos.
 const TINTA = "var(--s-tinta)";
@@ -220,8 +221,8 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
           {data.map((d) => (
             <Cell
               key={d.month}
-              fill={d.recebido + 0.5 < d.esperado ? ATENCAO : TINTA}
-              fillOpacity={d.recebido + 0.5 < d.esperado ? 0.85 : 1}
+              fill={mesAbaixo(d) ? ATENCAO : TINTA}
+              fillOpacity={mesAbaixo(d) ? 0.85 : 1}
             />
           ))}
         </Bar>

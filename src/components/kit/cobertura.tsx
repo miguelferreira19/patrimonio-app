@@ -10,6 +10,8 @@ export interface CoberturaFactos {
   senhoriosModelados: number;
   senhoriosTotal: number;
   fichasIncompletas: number;
+  /** Fontes paradas: o nome do senhorio e o último mês que se conhece dele. */
+  fontesParadas?: Array<{ nome: string; horizonte: string }>;
 }
 
 /** A tira de cobertura: o que a app sabe, e até onde.
@@ -47,6 +49,15 @@ export function Cobertura({
           title: "Nenhum pagamento na carteira. Todos os números de cobrança estão vazios.",
         },
   );
+
+  for (const f of factos.fontesParadas ?? []) {
+    itens.push({
+      texto: `${f.nome} só até ${monthLabel(f.horizonte)}`,
+      title:
+        `${f.nome} deixou de emitir recibos. Os contratos dele ficam por importar depois ` +
+        "deste mês, e não em atraso.",
+    });
+  }
 
   if (senhoriosTotal > 0 && senhoriosModelados < senhoriosTotal) {
     itens.push({

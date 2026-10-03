@@ -13,6 +13,8 @@
 import {
   computeArrears,
   dataHorizonMonth,
+  horizonteDaFonte,
+  horizontePorContrato,
   isMonthSettled,
   lastDueMonthKey,
   referenceRent,
@@ -109,6 +111,7 @@ export interface Snapshot {
     senhoriosModelados: number;
     fichasIncompletas: number;
     recibosOrfaos: number;
+    fontesParadas: Array<{ nome: string; horizonte: string }>;
   };
   /** Risco da carteira: prior, curva de cura medida e perda esperada por contrato. */
   risco: RiscoCarteira;
@@ -126,6 +129,17 @@ export interface Snapshot {
    *  registada abaixo do que se recebe. Ver lib/rent.ts. */
   rendaObservadaPorContrato: Record<string, RendaObservada>;
   horizon: string | null;
+  /** De onde vêm os recibos, e até quando cada fonte se sabe. `parada` = o senhorio não
+   *  emite há mais de um mês para lá do normal (o avô, desde 27/07/2026): os contratos dele
+   *  ficam `futuro` depois da fronteira dele, e não em falta. */
+  fontes: FonteDeRecibos[];
+  /** O último mês que TODAS as fontes com contratos ativos já conhecem. É o corte das
+   *  comparações da carteira inteira: depois dele, uma descida pode ser só uma fonte por
+   *  importar (o avô em agosto) e não dinheiro que deixou de entrar. */
+  fronteiraComum: string | null;
+  /** Os meses da faixa de cada fração (acabam na fronteira global). A Carteira desenha o
+   *  eixo com ESTES, e não com `meses`, que são os 12 do fluxo e acabam no mês corrente. */
+  faixaMeses: string[];
   /** false num snapshot leve (sem histórico de pagamentos): `arrears`, `faixa`, `fluxo` e
    *  `carteira` vêm vazios de propósito. Quem os lê precisa do snapshot completo. */
   historicoCarregado: boolean;
@@ -148,6 +162,18 @@ export interface Snapshot {
   ocupacao: { taxa: number; vagas: Property[]; perdaAtual: number };
   mercado: { potencialMes: number; abaixo: Ativo[] };
   totais: { rendaContratada: number; recebido12m: number; vptTotal: number };
+}
+
+export interface FonteDeRecibos {
+  landlord: Landlord;
+  /** Data (ISO) do último recibo emitido por este senhorio. */
+  ultimaEmissao: string;
+  /** Último mês que a app conhece para os contratos desta fonte. */
+  horizonte: string;
+  parada: boolean;
+  /** Contratos ATIVOS cujos recibos vêm desta fonte, e a renda mensal deles. */
+  contratos: number;
+  renda: number;
 }
 
 export interface SnapshotOptions {
@@ -173,6 +199,20 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
   // A MESMA trava dos atrasos: o último mês devido nunca passa o último mês importado.
   const horizon = dataHorizonMonth(raw.payments, today);
   const lastDue = horizon ?? lastDueMonthKey(today);
+
+  // ...e a de cada contrato, que nunca a passa: a fronteira de quem lhe emite os recibos.
+  const fontesRaw = horizontePorContrato(
+    raw.receiptsRecentes.flatMap((r) =>
+      r.landlord_id ? [{ contract_id: r.contract_id, landlord_id: r.landlord_id, issue_date: r.issue_date ?? null }] : [],
+    ),
+    today,
+  );
+  const lastDueDe = (contractId: string): string => {
+    const h = fontesRaw.porContrato.get(contractId);
+    return h && h < lastDue ? h : lastDue;
+  };
+  /** O mês `m` é conhecido para o contrato: se não, não é esperado nem pode faltar. */
+  const conhecido = (contractId: string, m: string) => m <= lastDueDe(contractId);
 
   // ---------- Somas por contrato-mês (uma passagem sobre os ~5.100 pagamentos) ----------
   const sumsByContract = new Map<string, Map<string, number>>();
@@ -216,7 +256,7 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
   const activeContracts = currentContracts.filter((c) => c.status === "ativo");
 
   // ---------- Atrasos: fonte ÚNICA, a mesma da página de Atrasos ----------
-  const arrearsResult = computeArrears(activeContracts, raw.payments, today);
+  const arrearsResult = computeArrears(activeContracts, raw.payments, today, fontesRaw.porContrato);
   const arrearsByContract = new Map(arrearsResult.rows.map((r) => [r.contractId, r]));
 
   // ---------- Risco (Fase 4): PD, cura e perda esperada ----------
@@ -231,9 +271,8 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
   //     incluí-lo fazia a perda esperada ultrapassar a dívida que ela veio substituir e as
   //     duas deixavam de ser comparáveis.
   //
-  // O teto de ambas é `lastDue`, a mesma fronteira de tudo o resto: meses por importar não
-  // são meses falhados.
-  const inicioPerda = addMonthsKey(lastDue, -23);
+  // O teto de ambas é a fronteira DO CONTRATO, a mesma de tudo o resto: meses por importar
+  // não são meses falhados.
   const observacaoPorContrato = new Map<
     string,
     { liquidados: number; devidos: number; faltas: Array<{ valor: number; idadeMeses: number }> }
@@ -243,8 +282,10 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
     const esperado = expectedByContract[c.id] ?? c.rent;
     const obs = { liquidados: 0, devidos: 0, faltas: [] as Array<{ valor: number; idadeMeses: number }> };
     const inicio = c.start_date ? toMonthKey(c.start_date) : null;
+    const ate = lastDueDe(c.id);
+    const inicioPerda = addMonthsKey(ate, -23);
     if (inicio) {
-      for (let m = inicio; m <= lastDue; m = addMonthsKey(m, 1)) {
+      for (let m = inicio; m <= ate; m = addMonthsKey(m, 1)) {
         if (!contractActiveInMonth(c, m)) continue;
         obs.devidos += 1;
         const pago = sums.get(m) ?? 0;
@@ -254,7 +295,7 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
           if (m >= inicioPerda) {
             obs.faltas.push({
               valor: Math.max(0, esperado - pago),
-              idadeMeses: mesesEntre(m, lastDue),
+              idadeMeses: mesesEntre(m, ate),
             });
           }
         }
@@ -333,7 +374,7 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
         sumsByContract,
         expectedByContract,
         faixaMesesKeys,
-        horizon,
+        activeContract && horizon ? lastDueDe(activeContract.id) : horizon,
       ),
       vazios: vacancyGaps(contracts, hoje).filter((g) => g.propertyId === property.id),
       risco: activeContract ? riscoPorContrato.get(activeContract.id) ?? null : null,
@@ -349,8 +390,12 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
     const roll = monthRoll(m, currentContracts, raw.payments, propertiesById);
     const esperadoContratado = sum(roll.map((r) => r.expected));
     const recebido = sum(roll.map((r) => r.payment?.amount));
+    // Só os contratos cuja fonte já chegou a `m`: o gráfico do Início compara o que entrou
+    // com isto, e um mês do avô por importar não é renda que devia ter entrado.
     const esperadoReferencia = sum(
-      roll.map((r) => expectedByContract[r.contract.id] ?? r.contract.rent),
+      roll
+        .filter((r) => conhecido(r.contract.id, m))
+        .map((r) => expectedByContract[r.contract.id] ?? r.contract.rent),
     );
     const despesas = sum(expensesInMonth(raw.expenses, m).map((e) => e.amount));
     return {
@@ -368,9 +413,16 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
   // Agregado: recebido vs esperado de referência dos contratos JÁ em vigor no mês. O
   // estado usa a mesma função das faixas individuais, por isso a fronteira aparece aqui
   // exatamente como aparece em cada linha.
-  const carteira: MonthCellData[] = meses.map((m) => {
+  //
+  // Os MESMOS meses das faixas (2026-10-03). Eram os 12 do fluxo, a acabar no mês
+  // corrente, e as faixas são 24 a acabar na fronteira: a Carteira desenhava 24 células
+  // numa grelha de 12 colunas (cada linha partia-se em duas) e o eixo ia um mês à frente.
+  // O esperado é só o dos contratos cuja fonte já chegou a este mês — o resto é por saber.
+  const carteira: MonthCellData[] = faixaMesesKeys.map((m) => {
     const ativosNoMes = currentContracts.filter((c) => contractActiveInMonth(c, m));
-    const expected = sum(ativosNoMes.map((c) => expectedByContract[c.id] ?? c.rent));
+    const expected = sum(
+      ativosNoMes.filter((c) => conhecido(c.id, m)).map((c) => expectedByContract[c.id] ?? c.rent),
+    );
     const paid = sum(
       ativosNoMes.map((c) => sumsByContract.get(c.id)?.get(m) ?? 0),
     );
@@ -388,6 +440,29 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
     };
   });
 
+  // ---------- Fontes dos recibos ----------
+  // Parada = a última emissão ficou dois meses ou mais atrás do último mês devido. Um mês
+  // de atraso é o ritmo normal de quem emite em lote; dois já não.
+  const limiteParada = addMonthsKey(lastDueMonthKey(today), -2);
+  const fontePorContrato = fontesRaw.fonte;
+  const fontes: FonteDeRecibos[] = Array.from(fontesRaw.ultimaEmissao.entries())
+    .flatMap(([landlordId, ultimaEmissao]) => {
+      const landlord = landlordsById.get(landlordId);
+      if (!landlord) return [];
+      const seus = activeContracts.filter((c) => fontePorContrato.get(c.id) === landlordId);
+      const horizonte = horizonteDaFonte(ultimaEmissao, today);
+      return [{
+        landlord,
+        ultimaEmissao,
+        horizonte,
+        parada: horizonte <= limiteParada,
+        contratos: seus.length,
+        renda: sum(seus.map((c) => c.rent)),
+      }];
+    })
+    .sort((a, b) => a.horizonte.localeCompare(b.horizonte));
+  const paradas = new Set(fontes.filter((f) => f.parada).map((f) => f.landlord.id));
+
   // ---------- Recibos por emitir (checklist do mês) ----------
   const issued = new Set<string>();
   for (const r of raw.receiptsThisMonth) {
@@ -397,6 +472,10 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
   const recibosPorEmitir = activeContracts
     .filter((c) => {
       if (issued.has(c.id) || (c.pf_contract_no && issued.has(c.pf_contract_no))) return false;
+      // Fonte parada: quem emitia já não emite (o avô). Não é um recibo a emitir este mês,
+      // é a fonte toda por resolver — e isso é UM aviso, não vinte linhas na checklist.
+      const fonte = fontePorContrato.get(c.id);
+      if (fonte && paradas.has(fonte)) return false;
       // Contratos de cadência própria (ex.: trimestral) só entram no mês em que voltam
       // a vencer — senão a checklist pedia recibos todos os meses a quem paga ao trimestre.
       const row = arrearsByContract.get(c.id);
@@ -428,6 +507,9 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
       senhoriosModelados: new Set(raw.owners.map((o) => o.landlord_id)).size,
       fichasIncompletas: correntes.filter((a) => a.fichaEmFalta.length > 0).length,
       recibosOrfaos: raw.orphanReceipts,
+      fontesParadas: fontes
+        .filter((f) => f.parada && f.contratos > 0)
+        .map((f) => ({ nome: f.landlord.name, horizonte: f.horizonte })),
     },
     ativos,
     correntes,
@@ -438,6 +520,12 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
     insightState: raw.insightState,
     rendaObservadaPorContrato,
     horizon,
+    fontes,
+    fronteiraComum:
+      horizon === null
+        ? null
+        : [horizon, ...fontes.filter((f) => f.contratos > 0).map((f) => f.horizonte)].sort()[0],
+    faixaMeses: faixaMesesKeys,
     fluxo,
     // Só com histórico completo: num snapshot leve `raw.payments` vem vazio, e uma série
     // de zeros lia-se como "não entrou nada este ano" em vez de "não foi carregado".

@@ -24,7 +24,8 @@ import { monthCellStatus, type MonthCellData } from "@/lib/monthcell";
 import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacancyGaps } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
-import { lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
+import { classifyUso } from "@/lib/irs";
+import { horizonteDaFonte, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import { chaveDoInquilino } from "@/lib/portfolio/inquilinos";
 import { ListaDocumentos, lerArquivo } from "@/components/documentos/lista";
 import { escopoSeguro } from "@/lib/documentos";
@@ -221,6 +222,11 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const portfolioHorizon = (horizonQ.data as { ref_month: string }[] | null)?.[0]?.ref_month ?? null;
 
   const active = contracts.find((c) => c.status === "ativo");
+  // Quem emite os recibos desta fração: o senhorio do recibo mais recente.
+  const fonteDosRecibos =
+    receipts
+      .filter((r) => r.issue_date)
+      .sort((a, b) => (b.issue_date ?? "").localeCompare(a.issue_date ?? ""))[0]?.landlord_id ?? null;
   const rentEligibility = active
     ? rentUpdateEligibility(active, rentUpdates, coefficients, todayISO())
     : null;
@@ -239,7 +245,23 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   // últimos 12 meses?"). Um bloco por contrato (fica "unificado" quando só há um). ----------
   const today = new Date();
   // Limitado ao horizonte de dados da carteira (ver query acima) — igual a Atrasos.
-  const lastDue = portfolioHorizon ? toMonthKey(portfolioHorizon) : lastDueMonthKey(today);
+  const lastDueCarteira = portfolioHorizon ? toMonthKey(portfolioHorizon) : lastDueMonthKey(today);
+  // ...parado na fonte desta fração (2026-10-03): a fronteira de quem lhe emite os recibos,
+  // a mesma regra do snapshot (`horizontePorContrato`). Sem isto, a ficha de uma casa do avô
+  // mostrava agosto e setembro "em falta" enquanto a Carteira os mostrava por importar.
+  const fonteQ = fonteDosRecibos
+    ? await supabase
+        .from("receipts")
+        .select("issue_date")
+        .eq("landlord_id", fonteDosRecibos)
+        .not("issue_date", "is", null)
+        .order("issue_date", { ascending: false })
+        .limit(1)
+    : { data: null };
+  const ultimaEmissao = (fonteQ.data as { issue_date: string }[] | null)?.[0]?.issue_date;
+  const horizonteFonte = ultimaEmissao ? horizonteDaFonte(ultimaEmissao, today) : null;
+  const lastDue =
+    horizonteFonte && horizonteFonte < lastDueCarteira ? horizonteFonte : lastDueCarteira;
   const currentYear = today.getFullYear();
   const paymentsByContract = new Map<string, Payment[]>();
   for (const p of payments) {
@@ -274,7 +296,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
       {/* Cabeçalho */}
       <div>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          <Link href="/carteira?lente=renda" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
+          <Link href="/carteira" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
             Frações
           </Link>
           <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">/</span>
@@ -447,12 +469,19 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
             </dl>
           ) : (
             <EmptyState icon={TrendingUp}>
-              Sem benchmark para esta freguesia. Preenche o DICOFRE da fração e importa os dados do
-              INE na página Admin.
+              {/* A causa, e não sempre a mesma frase: "Casa" tem freguesia e tipologia "T?",
+                  e o aviso mandava preencher um DICOFRE que já lá estava. */}
+              {!property.dicofre
+                ? "Sem freguesia (DICOFRE) na ficha. Preenche-a a partir da caderneta predial."
+                : classifyUso(property.typology) !== "habitacao"
+                  ? "Sem comparação: a tipologia não é de habitação ou está por confirmar, e as medianas do INE são de alojamentos."
+                  : !property.area_m2
+                    ? "Sem área na ficha, por isso não há €/m² para comparar."
+                    : "Sem medianas do INE para este concelho. Importa-as na página Admin."}
             </EmptyState>
           )}
           <p className="mt-3 text-[11px] leading-snug text-zinc-400 dark:text-zinc-500">
-            Estimativas com base nas medianas do INE por freguesia (rendas de novos contratos e
+            Estimativas com base nas medianas do INE do concelho (rendas de novos contratos e
             valores de venda): são ordens de grandeza, não avaliações imobiliárias.
           </p>
         </Card>
@@ -480,7 +509,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
         subtitle={
           cessadosOcultos > 0
             ? `Um bloco por ano civil, desde o início do contrato ativo. ${cessadosOcultos} ${cessadosOcultos === 1 ? "contrato cessado fica" : "contratos cessados ficam"} de fora; o histórico deles está na ficha do arrendatário.`
-            : "Um bloco por ano civil, desde o início do contrato. Marca os pagamentos na página Pagamentos."
+            : "Um bloco por ano civil, desde o início do contrato. Os pagamentos entram pelo import dos recibos do Portal."
         }
       >
         <div

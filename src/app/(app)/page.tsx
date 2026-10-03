@@ -32,6 +32,7 @@ import { CheckCircle2, Download } from "lucide-react";
 import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
 import { Retrato } from "@/components/agora/retrato";
 import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
+import { mesAbaixo } from "@/lib/monthcell";
 import { buttonClass, EmptyState } from "@/components/ui";
 import { Cobertura, Confianca, Lede, Money, Seccao } from "@/components/kit";
 import { getSession } from "@/lib/data";
@@ -86,8 +87,13 @@ function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNod
   const ultimo = dados[dados.length - 1];
   const anterior = dados[dados.length - 2];
   const delta = ultimo && anterior ? ultimo.recebido - anterior.recebido : 0;
-  const variacao = ultimo && anterior && anterior.recebido > 0 ? delta / anterior.recebido : null;
-  const falhados = dados.filter((m) => m.recebido + 0.5 < m.esperado).length;
+  // Sem variação quando o mês já passou a fronteira comum: setembro sem os recibos do avô
+  // contra agosto com metade deles dava "-56%", que é a fonte parada e não a cobrança.
+  const comparavel = !!ultimo && !!snap.fronteiraComum && ultimo.month <= snap.fronteiraComum;
+  const variacao =
+    comparavel && anterior && anterior.recebido > 0 ? delta / anterior.recebido : null;
+  const falhados = dados.filter(mesAbaixo).length;
+  const paradas = snap.fontes.filter((f) => f.parada && f.contratos > 0);
 
   if (dados.length === 0) {
     return (
@@ -130,6 +136,8 @@ function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNod
           {falhados === 0
             ? `Nenhum dos ${dados.length} meses ficou abaixo dela.`
             : `${falhados} ${falhados === 1 ? "mês ficou" : "meses ficaram"} abaixo dela, a âmbar.`}
+          {paradas.length > 0 &&
+            ` Depois de ${monthLabel(paradas[0].horizonte)} faltam os recibos de ${paradas.map((f) => f.landlord.name).join(" e ")}: esses contratos ficam fora do esperado.`}
         </p>
       </div>
 
@@ -225,7 +233,7 @@ function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
         >
           {n === 0
             ? `A carteira está em ordem. Cobraste ${fmtPct(snap.fluxo[snap.fluxo.length - 1].taxa, 0)} do esperado este mês.`
-            : `A ganhar este ano, se fizeres as ${n} coisas em baixo.`}
+            : "A ganhar este ano com as decisões em baixo."}
         </Lede>
       </Abertura>
 
@@ -379,7 +387,7 @@ function Vazio() {
         Admin
       </Link>
       , ou cria uma fração em{" "}
-      <Link href="/carteira?lente=renda" className="font-medium text-acao hover:underline">
+      <Link href="/carteira" className="font-medium text-acao hover:underline">
         Carteira
       </Link>
       .

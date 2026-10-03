@@ -180,6 +180,65 @@ export function dataHorizonMonth(payments: ArrearsPaymentInput[], today: Date): 
   return max;
 }
 
+/** O mínimo de quem sabe da fronteira de UMA fonte: a última emissão do senhorio, nunca
+ *  para lá do último mês devido pelo calendário. */
+export function horizonteDaFonte(ultimaEmissao: string, today: Date): string {
+  const cap = lastDueMonthKey(today);
+  const k = toMonthKey(ultimaEmissao);
+  return k < cap ? k : cap;
+}
+
+export interface ReciboFonte {
+  contract_id: string | null;
+  landlord_id: string;
+  issue_date: string | null;
+}
+
+/**
+ * A fronteira de dados de CADA contrato: o mês da última emissão de quem lhe passa os
+ * recibos (2026-10-03).
+ *
+ * Porquê. `dataHorizonMonth` é UMA fronteira para a carteira toda, e assume que os
+ * recibos chegam em lote para a família inteira. Deixou de ser verdade quando o avô
+ * Miguel morreu (27/07/2026): os recibos dele param a 2 de julho, os do António
+ * continuam, e a fronteira global (setembro, empurrada pelo António) cobrava agosto e
+ * setembro como dívida a vinte inquilinos do avô que ninguém sabe se pagaram.
+ *
+ * A fonte de um contrato é o senhorio do seu recibo mais recente (numa compropriedade o
+ * mesmo recibo só fica guardado uma vez, por isso há sempre um). Um contrato sem
+ * recibos na amostra não entra no mapa e fica com a fronteira global — é o caso do
+ * contrato parado há um ano, que tem de continuar a ser apanhado.
+ */
+export function horizontePorContrato(
+  recibos: ReciboFonte[],
+  today: Date,
+): {
+  /** contrato → último mês conhecido */
+  porContrato: Map<string, string>;
+  /** contrato → senhorio que lhe emite os recibos */
+  fonte: Map<string, string>;
+  /** senhorio → data do último recibo que emitiu */
+  ultimaEmissao: Map<string, string>;
+} {
+  const ultimaEmissao = new Map<string, string>(); // landlord → issue_date máx.
+  const fonte = new Map<string, { data: string; landlord: string }>(); // contrato → recibo mais recente
+  for (const r of recibos) {
+    if (!r.issue_date) continue;
+    const u = ultimaEmissao.get(r.landlord_id);
+    if (!u || r.issue_date > u) ultimaEmissao.set(r.landlord_id, r.issue_date);
+    if (!r.contract_id) continue;
+    const f = fonte.get(r.contract_id);
+    if (!f || r.issue_date > f.data) fonte.set(r.contract_id, { data: r.issue_date, landlord: r.landlord_id });
+  }
+  const porContrato = new Map<string, string>();
+  const quem = new Map<string, string>();
+  for (const [contrato, f] of fonte) {
+    porContrato.set(contrato, horizonteDaFonte(ultimaEmissao.get(f.landlord)!, today));
+    quem.set(contrato, f.landlord);
+  }
+  return { porContrato, fonte: quem, ultimaEmissao };
+}
+
 /**
  * Renda de REFERÊNCIA do contrato: o que este inquilino efetivamente costuma pagar por mês.
  *
@@ -353,10 +412,17 @@ export function computeArrears(
   contracts: ArrearsContractInput[],
   payments: ArrearsPaymentInput[],
   today: Date,
+  /** Fronteira de cada contrato (`horizontePorContrato`). Nunca passa a global; sem
+   *  entrada, o contrato fica com a global. */
+  horizontes?: Map<string, string>,
 ): { rows: ArrearsRow[]; summary: ArrearsSummary } {
   // O último mês devido é limitado ao horizonte de dados: nunca cobrar atraso por meses que
   // a família ainda não importou (ver dataHorizonMonth). Sem dados nenhuns, cai no calendário.
   const lastDue = dataHorizonMonth(payments, today) ?? lastDueMonthKey(today);
+  const lastDueDe = (id: string) => {
+    const h = horizontes?.get(id);
+    return h && h < lastDue ? h : lastDue;
+  };
 
   const contractIds = new Set(contracts.map((c) => c.id));
   const byContract = new Map<string, ArrearsPaymentInput[]>();
@@ -374,7 +440,7 @@ export function computeArrears(
     }
   }
 
-  const rows = contracts.map((c) => computeArrearsRow(c, byContract.get(c.id) ?? [], lastDue));
+  const rows = contracts.map((c) => computeArrearsRow(c, byContract.get(c.id) ?? [], lastDueDe(c.id)));
 
   const inArrears = rows.filter((r) => r.streak >= 1 && r.severity !== "ritmo_proprio");
   const rentAtRisk = inArrears.reduce((acc, r) => acc + r.expectedRent, 0);

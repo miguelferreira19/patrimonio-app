@@ -218,7 +218,7 @@ export default async function SenhoriosPage() {
     <div className="space-y-4">
       <PageHeader
         title="Senhorios"
-        description="Frações e renda mensal por inteiro (ótica de família): uma fração partilhada conta uma vez no total. Recebido, despesas e líquido de cada senhorio são a PARTE dele, pela quota — para o total da família, ver a última linha."
+        description="Frações e renda mensal por inteiro (ótica de família): uma fração partilhada conta uma vez no total. Recebido, despesas e líquido de cada senhorio são a PARTE dele, pela quota. O total da família está na última linha."
         actions={isAdmin && <LandlordFormButton />}
       />
 
@@ -256,7 +256,7 @@ export default async function SenhoriosPage() {
                     <Money value={r.receivedYtd - r.expensesYtd} tom="acao" />
                   </Td>
                   <Td className="text-right tabular-nums text-zinc-500 dark:text-zinc-400">
-                    {r.quotaAvg !== null ? `${r.quotaAvg.toLocaleString("pt-PT")}%` : "n/d"}
+                    {r.quotaAvg !== null ? `${Math.round(r.quotaAvg)}%` : "n/d"}
                   </Td>
                   {isAdmin && (
                     <Td>
@@ -297,7 +297,7 @@ export default async function SenhoriosPage() {
                 {isAdmin && <LandlordFormButton landlord={r.landlord} />}
               </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                {r.nProps} fração{r.nProps === 1 ? "" : "ões"} · {statusSummary(r.statusCounts)}
+                {r.nProps} {r.nProps === 1 ? "fração" : "frações"} · {statusSummary(r.statusCounts)}
               </p>
               <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
                 <div>
@@ -307,7 +307,7 @@ export default async function SenhoriosPage() {
                 <div>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Quota média</p>
                   <p className="tabular-nums text-zinc-700 dark:text-zinc-300">
-                    {r.quotaAvg !== null ? `${r.quotaAvg.toLocaleString("pt-PT")}%` : "n/d"}
+                    {r.quotaAvg !== null ? `${Math.round(r.quotaAvg)}%` : "n/d"}
                   </p>
                 </div>
                 <div>
@@ -320,7 +320,7 @@ export default async function SenhoriosPage() {
                 </div>
                 <div>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Líquido {year}</p>
-                  <p className="tabular-nums text-zinc-400 dark:text-zinc-500">n/d</p>
+                  <Money value={r.receivedYtd - r.expensesYtd} tom="acao" />
                 </div>
               </div>
             </div>
@@ -354,14 +354,14 @@ export default async function SenhoriosPage() {
           </div>
         </div>
         <p className="mt-2 text-xs text-tinta-2">
-          Nota: as colunas por senhorio são POR INTEIRO, não repartidas por quota (ótica de
-          família). Uma fração com dois titulares conta a 100% na linha de cada um, por isso
-          as linhas somadas dão mais do que o total da família, que conta cada fração uma só
-          vez. Para valores repartidos por quota, ver a página de IRS.
+          Nota: as frações e a renda mensal de cada senhorio são POR INTEIRO. Uma fração com
+          dois titulares conta a 100% na linha de cada um, por isso essas colunas somadas dão
+          mais do que o total da família. O recebido, as despesas e o líquido são a PARTE de
+          cada um, pela quota.
         </p>
         {nForaDoCorrente > 0 && (
           <p className="mt-2 text-xs text-tinta-2">
-            Nota: {nForaDoCorrente} {nForaDoCorrente === 1 ? "fração" : "frações"} (terrenos ou já
+            Nota: {nForaDoCorrente} {nForaDoCorrente === 1 ? "fração" : "frações"} (terrenos, rústicos ou já
             vendidas) não contam nas frações, nos estados nem na renda mensal. O que receberam e
             custaram em {year} continua incluído no total da família.
           </p>

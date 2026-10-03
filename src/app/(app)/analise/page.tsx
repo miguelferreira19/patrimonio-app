@@ -109,9 +109,14 @@ function Recomendacoes({ conselhos, temAreas }: { conselhos: Conselho[]; temArea
   return (
     <Seccao
       titulo="O que a carteira sugere"
+      // Uma contagem e não uma soma (2026-10-03): os conselhos medem coisas diferentes (o
+      // valor de VENDA de uma fração, a sobra de 24 meses, um ganho anual de renda) e a soma
+      // dava "1.080.085 €", um número que não é nada.
       valor={
         conselhos.length > 0 ? (
-          <Money value={conselhos.reduce((acc, c) => acc + c.euros, 0)} escala="sm" tom="tinta-2" />
+          <span className="text-xs text-tinta-2">
+            {conselhos.length} {conselhos.length === 1 ? "sugestão" : "sugestões"}
+          </span>
         ) : undefined
       }
       nota={
@@ -325,7 +330,7 @@ function Concentracao({
       }
       valor={
         <span className="text-xs text-tinta-2">
-          carteira {leitura} (HHI {conc.hhi.toFixed(2)})
+          carteira {leitura} (HHI {conc.hhi.toFixed(2).replace(".", ",")})
         </span>
       }
     >

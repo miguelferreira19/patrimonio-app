@@ -8,7 +8,7 @@
 
 import { reducedRateEligibility, yearsBetween } from "../irs";
 import { desalinhamentoDaRenda } from "../rent";
-import { fmtEur, fmtPct, monthLabel } from "../format";
+import { fmtDate, fmtEur, fmtPct, monthLabel } from "../format";
 import type { Nivel } from "../types";
 import type { Snapshot } from "./snapshot";
 
@@ -70,10 +70,9 @@ const GERADORES: Gerador[] = [
         euros: total,
         confianca: "medido",
         conta: `Soma das rendas: ${fmtEur(total)}`,
-        acoes: [
-          { label: "Abrir Portal das Finanças", href: PORTAL_RECIBOS, externo: true },
-          { label: "Marcar pagamentos", href: "/carteira?lente=cobranca" },
-        ],
+        // Sem "Marcar pagamentos": o registo manual acabou em 2026-07-31, o dinheiro entra
+        // todo pelo import do Portal.
+        acoes: [{ label: "Abrir Portal das Finanças", href: PORTAL_RECIBOS, externo: true }],
       },
     ];
   },
@@ -163,7 +162,7 @@ const GERADORES: Gerador[] = [
         acoes: elegiveis
           .slice(0, 1)
           .map((a) => ({ label: "Gerar carta", href: `/carta/${a.activeContract!.id}` }))
-          .concat([{ label: "Ver frações", href: "/carteira?lente=renda" }]),
+          .concat([{ label: "Ver frações", href: "/carteira" }]),
       },
     ];
   },
@@ -177,9 +176,12 @@ const GERADORES: Gerador[] = [
         kind: "renda_abaixo_mercado",
         grupo: "poupar",
         titulo: `Rever ${s.mercado.abaixo.length} ${s.mercado.abaixo.length === 1 ? "renda" : "rendas"} abaixo da mediana do mercado`,
-        porque: `A pior é ${pior.property.name}, ${fmtPct(pior.mercado.deviation ?? 0, 0)} face à mediana INE da freguesia.`,
+        porque: `A pior é ${pior.property.name}, ${fmtPct(pior.mercado.deviation ?? 0, 0)} face à mediana INE. Só se capta quando a fração muda de inquilino.`,
         euros: total,
-        confianca: "estimado",
+        // ASSUMIDO, e por isso fora do número de topo (2026-10-03): a mediana é de NOVOS
+        // contratos e a um inquilino em casa só se aplica o coeficiente anual. Somar isto a
+        // "a ganhar este ano" prometia 46.833 € que nenhuma decisão deste ano capta.
+        confianca: "assumido",
         conta: `${fmtEur(s.mercado.potencialMes)}/mês × 12. Mediana INE de NOVOS contratos: não é o que se pode exigir a um contrato em vigor.`,
         acoes: [{ label: "Ver mercado", href: "/mercado" }],
       },
@@ -255,12 +257,9 @@ const GERADORES: Gerador[] = [
         confianca: "estimado",
         conta:
           s.risco.esperada > 0
-            ? `Σ valor_mês × (1 − cura(idade)) × (1 − p̂). A soma crua dos meses em falta daria ${fmtEur(ingenua)} — a diferença é o que a carteira historicamente recupera sozinha. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`
+            ? `Σ valor_mês × (1 − cura(idade)) × (1 − p̂). A soma crua dos meses em falta daria ${fmtEur(ingenua)}; a diferença é o que a carteira historicamente recupera sozinha. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`
             : `Σ (meses em falta × renda de referência), com cap de 24 meses por contrato. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`,
-        acoes: [
-          { label: "Ver atrasos", href: "/carteira?lente=risco&filtro=atraso" },
-          { label: "Registar pagamento", href: "/carteira?lente=cobranca" },
-        ],
+        acoes: [{ label: "Ver atrasos", href: "/carteira?lente=risco&filtro=atraso" }],
       },
     ];
   },
@@ -301,13 +300,38 @@ const GERADORES: Gerador[] = [
           .join(", "),
         euros: total,
         confianca: "medido",
-        conta: `Renda anual em jogo: ${fmtEur(total)}. Prazos legais de denúncia não são calculados — confirmar caso a caso.`,
-        acoes: [{ label: "Ver frações", href: "/carteira?lente=renda" }],
+        conta: `Renda anual em jogo: ${fmtEur(total)}. Prazos legais de denúncia não são calculados: confirmar caso a caso.`,
+        acoes: [{ label: "Ver frações", href: "/carteira" }],
       },
     ];
   },
 
   // ---------- POR SABER ----------
+  function fontesParadas(s) {
+    // Um senhorio deixou de emitir (o avô, desde 27/07/2026). Os contratos dele não estão em
+    // atraso, estão por saber: a app pára a fronteira deles na última emissão. Isto é o
+    // lembrete de que esses meses existem e que alguém tem de os passar (os herdeiros).
+    return s.fontes
+      .filter((f) => f.parada && f.contratos > 0)
+      .map((f) => {
+        // Até à fronteira GLOBAL (o último mês que as outras fontes já cobrem), e não até ao
+        // mês corrente: esse ainda está em carência para toda a gente.
+        const meses = Math.max(1, mesesEntre(f.horizonte, s.horizon ?? f.horizonte));
+        const euros = f.renda * meses;
+        return {
+          kind: "fonte_parada",
+          subject: f.landlord.id,
+          grupo: "saber" as const,
+          titulo: `Recibos de ${f.landlord.name} parados desde ${monthLabel(f.horizonte)}`,
+          porque: `${f.contratos} ${f.contratos === 1 ? "contrato" : "contratos"} sem recibo emitido depois de ${fmtDate(f.ultimaEmissao)}. Esses meses ficam por importar, não em atraso.`,
+          euros,
+          confianca: "assumido" as const,
+          conta: `${fmtEur(f.renda)}/mês × ${meses} ${meses === 1 ? "mês" : "meses"} de rendas sem recibo.`,
+          acoes: [{ label: "Ver contratos", href: `/carteira?senhorio=${f.landlord.id}` }],
+        };
+      });
+  },
+
   function fichasIncompletas(s) {
     const incompletas = s.correntes.filter((a) => a.fichaEmFalta.length > 0);
     if (incompletas.length === 0) return [];
@@ -345,7 +369,9 @@ export interface Fila {
   itens: Insight[];
   /** Quantos ficaram abaixo do limiar de materialidade, e quanto valiam ao todo. */
   residuais: { n: number; euros: number };
-  /** Soma dos itens medidos e estimados. É a linha de dinheiro do topo. */
+  /** Soma dos itens medidos e estimados, fora o grupo "fazer". É a linha de dinheiro do
+   *  topo ("a ganhar este ano"): emitir os recibos do mês é uma obrigação, não um ganho, e
+   *  somava a renda inteira do mês a esse número. */
   total: number;
   /** Soma dos itens `assumido`, à parte: dependem de uma premissa que a app não confirma
    *  (PLANO.md §12, risco C3 — nunca somar premissas ao número de topo). */
@@ -386,7 +412,9 @@ export function construirFila(s: Snapshot): Fila {
   return {
     itens,
     residuais: { n: abaixo.length, euros: abaixo.reduce((a, i) => a + i.euros, 0) },
-    total: itens.filter((i) => i.confianca !== "assumido").reduce((a, i) => a + i.euros, 0),
+    total: itens
+      .filter((i) => i.confianca !== "assumido" && i.grupo !== "fazer")
+      .reduce((a, i) => a + i.euros, 0),
     totalAssumido: itens.filter((i) => i.confianca === "assumido").reduce((a, i) => a + i.euros, 0),
     silenciadas: silenciadas.sort((a, b) => b.item.euros - a.item.euros),
   };
