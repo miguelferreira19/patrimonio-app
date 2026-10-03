@@ -88,10 +88,13 @@ partilham a mesma resposta.
 em dezenas de sítios para decidir "hoje" e "o mês corrente". Entre a meia-noite e a uma da manhã
 de Lisboa (no verão), a app ainda vive no dia anterior. No dia 1 do mês é o mês anterior.
 
-**M3. A ficha da fração (823 linhas) ainda é V1.** Usa `zinc/teal/emerald` em vez dos tokens
-semânticos, e tem precisamente o que a regra fundadora proíbe: uma caixa **verde** com um visto a
-dizer "Meses em falta: nenhum" (verde de ok), e `Badge tone="green"` para "Ativo" e "Arrendado".
-É a página onde a família mais vai parar.
+**M3. A ficha da fração (823 linhas) ainda é V1, com dois defeitos visíveis.** A primeira versão
+desta análise dizia que tinha "verde de ok". **Estava errado**: as escalas da V1 já estão
+redefinidas no `@theme`, e o `emerald` é tinta. O que a página tem de facto, verificado no
+browser em tema escuro: (1) o cabeçalho da tabela de recibos é um bloco **branco** (`bg-white`
+fixo) com texto claro, quase ilegível; (2) na tabela de despesas, a descrição empurra o **valor**
+para trás de um scroll horizontal. Migrar as 800 linhas para tokens semânticos seria só higiene,
+sem mudança visível, e fica fora desta ronda.
 
 **M4. `npm run check` demora 73 s.** São 18 compilações `tsc` separadas, cada uma a recompilar
 os mesmos módulos. Um gate lento é um gate que se salta.

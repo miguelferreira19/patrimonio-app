@@ -614,7 +614,9 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                     <tr>
                       <Th>Data</Th>
                       <Th>Categoria</Th>
-                      <Th>Descrição</Th>
+                      {/* Só a partir de xl: em duas colunas a descrição empurrava o VALOR
+                          para trás de um scroll horizontal, e o valor é o que se procura. */}
+                      <Th className="hidden xl:table-cell">Descrição</Th>
                       <Th className="text-right">Valor</Th>
                       {isAdmin && <Th />}
                     </tr>
@@ -624,7 +626,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                       <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
                         <Td className="whitespace-nowrap tabular-nums">{fmtDate(e.expense_date)}</Td>
                         <Td>{EXPENSE_CATEGORY_LABEL[e.category]}</Td>
-                        <Td className="max-w-44 truncate">{e.description ?? "n/d"}</Td>
+                        <Td className="hidden max-w-44 truncate xl:table-cell">{e.description ?? "n/d"}</Td>
                         <Td className="text-right tabular-nums">{fmtEur(e.amount, 2)}</Td>
                         {isAdmin && (
                           <Td>
@@ -675,10 +677,10 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
                 <Table>
                   <thead>
                     <tr>
-                      <Th className="sticky top-0 z-10 bg-white">Mês</Th>
-                      <Th className="sticky top-0 z-10 bg-white">Nº recibo</Th>
-                      <Th className="sticky top-0 z-10 bg-white">Emitido</Th>
-                      <Th className="sticky top-0 z-10 bg-white text-right">Valor</Th>
+                      <Th className="sticky top-0 z-10 bg-carta">Mês</Th>
+                      <Th className="sticky top-0 z-10 bg-carta">Nº recibo</Th>
+                      <Th className="sticky top-0 z-10 bg-carta">Emitido</Th>
+                      <Th className="sticky top-0 z-10 bg-carta text-right">Valor</Th>
                     </tr>
                   </thead>
                   <tbody>
