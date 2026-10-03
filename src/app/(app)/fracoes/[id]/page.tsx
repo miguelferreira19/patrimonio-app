@@ -29,6 +29,7 @@ import { horizonteDaFonte, lastDueMonthKey, referenceRent, toMonthKey } from "@/
 import { chaveDoInquilino } from "@/lib/portfolio/inquilinos";
 import { ListaDocumentos, lerArquivo } from "@/components/documentos/lista";
 import { escopoSeguro } from "@/lib/documentos";
+import { codigosDeTerritorioEmUso, fetchGeoOptions } from "@/lib/portfolio/load";
 import type {
   Contract,
   Expense,
@@ -146,12 +147,13 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const { supabase, isAdmin } = await getSession();
 
-  const [propQ, ownersQ, landlordsQ, contractsQ, benchQ] = await Promise.all([
+  const [propQ, ownersQ, landlordsQ, contractsQ, geo] = await Promise.all([
     supabase.from("properties").select("*").eq("id", id).maybeSingle(),
     supabase.from("property_owners").select("*").eq("property_id", id),
     supabase.from("landlords").select("*").order("name"),
     supabase.from("contracts").select("*").eq("property_id", id).order("start_date", { ascending: false }),
-    supabase.from("market_benchmarks").select("*"),
+    // A lista TODA de territórios só serve o formulário de edição, e só o admin o vê.
+    isAdmin ? fetchGeoOptions(supabase) : Promise.resolve([]),
   ]);
 
   const property = linha<Property>(propQ, "properties");
@@ -160,8 +162,7 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const owners = linhas<PropertyOwner>(ownersQ, "property_owners");
   const landlords = linhas<Landlord>(landlordsQ, "landlords");
   const contracts = linhas<Contract>(contractsQ, "contracts");
-  const benchmarks = linhas<MarketBenchmark>(benchQ, "market_benchmarks");
-  const geoOptions = geoOptionsFromBenchmarks(benchmarks);
+  const geoOptions = geoOptionsFromBenchmarks(geo);
 
   // Horizonte de dados da CARTEIRA (não só desta fração): último mês devido não pode passar
   // o último mês importado, senão a grelha marca meses ainda-não-importados como "em falta".
@@ -169,7 +170,11 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   const horizonCap = lastDueMonthKey(new Date());
 
   const contractIds = contracts.map((c) => c.id);
-  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ, coefficientsQ, arquivo] = await Promise.all([
+  // Só os territórios DESTA fração (a freguesia e os prefixos do concelho), como no
+  // snapshot. Era um `select("*")` à tabela inteira: o país todo, e cortado às 1000 linhas
+  // pelo PostgREST assim que o INE publicar o próximo trimestre.
+  const codigos = codigosDeTerritorioEmUso([property]);
+  const [paymentsQ, receiptsQ, expensesQ, updatesQ, horizonQ, coefficientsQ, arquivo, benchQ] = await Promise.all([
     // Histórico COMPLETO (sem piso temporal) — a secção "Histórico de pagamentos" precisa
     // de todos os anos, não só dos últimos 12 meses.
     // ATENÇÃO ao que este .limit() NÃO faz: não passa por cima do max-rows (~1000) do
@@ -209,7 +214,11 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
     // O arquivo inteiro numa chamada (os caminhos são planos, ver lib/documentos.ts) e
     // filtra-se em memória. Enquanto o bucket não existir devolve vazio sem rebentar.
     lerArquivo(supabase),
+    codigos.length > 0
+      ? supabase.from("market_benchmarks").select("*").in("dicofre", codigos)
+      : Promise.resolve({ data: [] as MarketBenchmark[] }),
   ]);
+  const benchmarks = linhas<MarketBenchmark>(benchQ, "market_benchmarks");
 
   const docsDaFracao = property.matriz_article
     ? arquivo.docs.filter((d) => d.escopo === escopoSeguro(property.matriz_article))

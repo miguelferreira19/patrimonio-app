@@ -122,7 +122,7 @@ async function fetchAllExpenses(supabase: SupabaseClient): Promise<Expense[]> {
  *  dicofre exato e o concelho por PREFIXO do dicofre da fração. Gerar todos os prefixos
  *  ≥4 caracteres cobre isso sem depender de assumir o comprimento do código (os do INE têm
  *  7 ou 9, o schema documenta 6 — ver bug B5 no PLANO.md). */
-function codigosDeTerritorioEmUso(properties: Property[]): string[] {
+export function codigosDeTerritorioEmUso(properties: Property[]): string[] {
   const out = new Set<string>();
   for (const p of properties) {
     const d = p.dicofre?.trim();
@@ -245,8 +245,16 @@ function recuar12Meses(monthKey: string): string {
  *  frações que JÁ têm dicofre, mas o formulário precisa da lista toda — é lá que se escolhe
  *  o território de uma fração que ainda não tem nenhum. Só 4 colunas, e só para admin. */
 export async function fetchGeoOptions(supabase: SupabaseClient): Promise<GeoBenchmark[]> {
-  const { data } = await supabase
-    .from("market_benchmarks")
-    .select("dicofre,parish_name,municipality,level");
-  return (data ?? []) as GeoBenchmark[];
+  // PAGINADO (2026-10-03): a tabela tem uma linha por território E por período. Eram 698
+  // linhas com um só trimestre; o próximo passa das 1000, e o seletor começava a perder
+  // freguesias em silêncio. A repetição entre períodos resolve-a `geoOptionsFromBenchmarks`.
+  return paginateAll<GeoBenchmark>(async (from, to) => {
+    const { data, error } = await supabase
+      .from("market_benchmarks")
+      .select("dicofre,parish_name,municipality,level")
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(`Falhou a leitura de market_benchmarks: ${error.message}`);
+    return (data ?? []) as GeoBenchmark[];
+  });
 }

@@ -10,6 +10,7 @@ import { LargarFicheiro } from "@/components/importar/largar-ficheiro";
 import { SyncRentsCard } from "./sync-rents-card";
 import { UsersCard } from "./users-card";
 import { linhas } from "@/lib/supabase/dados";
+import { paginateAll } from "@/lib/paginate";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,17 @@ export default async function AdminPage() {
     supabase.from("properties").select("id", { count: "exact", head: true }),
     supabase.from("contracts").select("id", { count: "exact", head: true }),
     supabase.from("receipts").select("id", { count: "exact", head: true }),
-    supabase.from("market_benchmarks").select("period,source,level,fetched_at").eq("source", "ine"),
+    // PAGINADO: uma linha por território e período; passa das 1000 no próximo trimestre.
+    paginateAll<IneBenchmarkRow>(async (from, to) => {
+      const { data, error } = await supabase
+        .from("market_benchmarks")
+        .select("period,source,level,fetched_at")
+        .eq("source", "ine")
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw new Error(`Falhou a leitura de market_benchmarks (INE): ${error.message}`);
+      return (data ?? []) as IneBenchmarkRow[];
+    }),
     supabase.from("market_benchmarks").select("*").eq("source", "manual").order("dicofre"),
     supabase.from("update_coefficients").select("*"),
     supabase
@@ -59,7 +70,7 @@ export default async function AdminPage() {
   const landlords = linhas<Landlord>(landlordsQ, "landlords");
   const profiles = linhas<Profile>(profilesQ, "profiles");
   const manualBenchmarks = linhas<MarketBenchmark>(manualBenchQ, "market_benchmarks (manuais)");
-  const ineRows = linhas<IneBenchmarkRow>(ineBenchQ, "market_benchmarks (INE)");
+  const ineRows = ineBenchQ;
   const coefficients = linhas<UpdateCoefficient>(coefficientsQ, "update_coefficients");
 
   // Só as frações CORRENTES: um terreno sem área e um imóvel vendido não bloqueiam análise
