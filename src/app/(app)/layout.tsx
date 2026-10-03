@@ -2,31 +2,22 @@ import { redirect } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
 import { Masthead } from "@/components/masthead";
 import { SetupNotice } from "@/components/setup-notice";
-import { createClient, supabaseConfigured } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/types";
+import { supabaseConfigured } from "@/lib/supabase/server";
+import { getSession } from "@/lib/data";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigured()) return <SetupNotice />;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // A MESMA sessão que a página vai pedir (`getSession` está em `cache()`): um só
+  // `getUser()` e uma só leitura do perfil para o layout e a página juntos.
+  const { user, role, perfilErro: error } = await getSession();
   if (!user) redirect("/login");
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
 
   // Sem perfil legível a app cai para "leitura" e os botões de escrita desaparecem —
   // sem esta mensagem o utilizador não teria como perceber porquê.
   if (error) {
     console.error("[perfil] não foi possível ler public.profiles:", error.code, error.message);
   }
-
-  const role = profile?.role ?? "viewer";
 
   return (
     <div className="min-h-screen bg-papel">

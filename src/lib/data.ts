@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "./supabase/server";
 import { paginateAll, paginateAllParallel } from "./paginate";
 import type { Payment, Role } from "./types";
@@ -30,20 +31,31 @@ export async function fetchAllPayments(
   return paginateAllParallel<Payment>(count, pagina);
 }
 
-/** Sessão + papel do utilizador atual (para uso nas páginas server). */
-export async function getSession() {
+/** Sessão + papel do utilizador atual (para uso nas páginas server).
+ *
+ *  Em `cache()` (2026-10-03): o layout e a página chamavam isto cada um por si, e cada
+ *  chamada é um `getUser()` (pedido de rede ao Supabase Auth) mais uma leitura do perfil.
+ *  Com o middleware eram TRÊS idas ao Auth por página; assim são duas, e o perfil lê-se
+ *  uma vez. Sem argumentos de propósito, como o `getSnapshot`: é o que deixa o cache
+ *  deduplicar dentro do mesmo pedido.
+ *
+ *  `perfilErro` existe para o layout: sem perfil legível a app cai para "leitura", e o
+ *  utilizador tem de saber porquê. */
+export const getSession = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   let role: Role = "viewer";
+  let perfilErro: { code: string; message: string } | null = null;
   if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
+    if (error) perfilErro = { code: error.code, message: error.message };
     if (profile?.role === "admin") role = "admin";
   }
-  return { supabase, user, role, isAdmin: role === "admin" };
-}
+  return { supabase, user, role, isAdmin: role === "admin", perfilErro };
+});
