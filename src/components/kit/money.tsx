@@ -20,8 +20,8 @@ export const TOM_TEXTO: Record<Tom, string> = {
 };
 
 const ESCALA = {
-  hero: "text-[44px] leading-none font-serif font-normal tracking-[-0.02em]",
-  xl: "text-2xl leading-none font-medium tracking-[-0.01em]",
+  hero: "text-[40px] md:text-[44px] leading-none font-semibold tracking-[-0.025em]",
+  xl: "text-2xl leading-none font-semibold tracking-[-0.015em]",
   lg: "text-base font-medium",
   md: "text-[13px] font-medium",
   sm: "text-xs font-medium",

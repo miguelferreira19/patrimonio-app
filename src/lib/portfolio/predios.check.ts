@@ -1,7 +1,7 @@
 // Self-check de predios.ts. Corre com `npm run check`.
 // Os CÓDIGOS de andar são os formatos reais da carteira; as moradas são inventadas.
 import assert from "node:assert/strict";
-import { agruparPredios, andarPorExtenso, chaveDoPredio, normalizarMorada, rotuloDaFracao, semGritar } from "./predios";
+import { agruparPredios, andarPorExtenso, chaveDoPredio, nomeDaFracao, normalizarMorada, rotuloDaFracao, semGritar } from "./predios";
 
 // A. Códigos de andar, em todos os formatos que a carteira tem.
 const casos: Array<[string, string | null]> = [
@@ -64,4 +64,9 @@ assert.equal(rotuloDaFracao(p({ name: "CASA TONECA", matriz_article: "182341-U-2
   assert.equal(predios.length, 4);
 }
 
-console.log("predios.check.ts: OK (A, B, C, D, E)");
+// F. Fora do prédio: andar com morada; nome próprio sozinho.
+assert.equal(nomeDaFracao(p({ name: "1ESQ", matriz_article: "1-U-2-D", address: "RUA DAS FLORES Nº: 68" })), "Rua das Flores, 68 · 1.º Esq.");
+assert.equal(nomeDaFracao(p({ name: "Tevisil", matriz_article: "1-U-3-U", address: "Rua X Nº: 1" })), "Tevisil");
+assert.equal(nomeDaFracao(p({ name: "1-U-3-B", matriz_article: "1-U-3-B", address: null })), "Fração B");
+
+console.log("predios.check.ts: OK (A, B, C, D, E, F)");

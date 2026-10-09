@@ -143,3 +143,13 @@ export function agruparPredios<T extends FracaoBase>(fracoes: T[]): Predio<T>[] 
   }
   return out.sort((a, b) => a.nome.localeCompare(b.nome, "pt", { numeric: true }));
 }
+
+/** O nome de uma fração FORA do seu prédio (listas do Hoje, pesquisa, cartas): com a
+ *  morada quando o nome sozinho é só um andar ("1ESQ" → "Rua das Flores, 68 · 1.º Esq."). */
+export function nomeDaFracao(p: FracaoBase["property"]): string {
+  const rotulo = rotuloDaFracao(p);
+  const proprio = !!p.name.trim() && p.name.trim() !== (p.matriz_article ?? "").trim() && !andarPorExtenso(p.name);
+  if (proprio) return rotulo;
+  const morada = normalizarMorada(p.address);
+  return morada ? `${morada} · ${rotulo}` : rotulo;
+}

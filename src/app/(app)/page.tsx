@@ -1,54 +1,41 @@
-// O AGORA (PLANO.md §4, revisto na V3, reordenado em 2026-07-29).
+// HOJE (V4, REDESENHO.md §4.1, 2026-10-09). Substitui o "Agora" da V2/V3.
 //
-// A V2 fez esta página falar. A V3 fê-la calar-se: um número herói (R1), agrupamento por
-// hairline em vez de cartões (R2), o porquê atrás de um `<details>` (R3), e nenhum
-// parágrafo a explicar um gráfico (R4).
+// A pergunta de quem abre a app é "está tudo pago? o que tenho de fazer?", e era isso que
+// a página não respondia primeiro: abria com "12 259 € a ganhar com as decisões", um
+// número de estratégia, e despejava 8 blocos com o mesmo peso. Agora a ordem é:
+//   1. a frase do mês e o cartão do mês em curso (mes.ts: a ÚNICA manchete);
+//   2. os últimos 12 meses FECHADOS (o mês em curso já está no cartão; desenhá-lo no
+//      gráfico era o "colapso" de outubro no dia 9);
+//   3. "Para fazer": a fila do insights.ts em cartões de tarefa, com a lista longa (os
+//      recibos por emitir) numa folha lateral em vez de na página;
+//   4. os prazos (agenda.ts);
+//   5. as oportunidades em duas linhas, porque a estratégia vive em Dinheiro.
 //
-// O QUE MUDOU AGORA, e porquê. A página tinha QUATRO aberturas em fila — número herói,
-// tira de cobertura, seis números do retrato, e só depois o conteúdo — todas com o mesmo
-// peso visual. Quatro coisas a falar ao mesmo tempo é o mesmo que nenhuma: o olho não tem
-// onde pousar, e era isso, e não a cor, que fazia a página parecer densa.
-//
-// A ordem passa a ser a de uma primeira página:
-//   1. A ABERTURA — o número que importa e, ao lado, a curva do ano. Juntos, porque
-//      respondem à mesma pergunta ("como vai isto?") e separados obrigavam a atravessar a
-//      página inteira para cruzar os dois. A curva era o ÚLTIMO bloco; é o objeto mais
-//      legível que aqui existe e estava escondido no fim.
-//   2. O CONTEXTO — o retrato dos seis números, colado por baixo da curva (pedido do
-//      utilizador, 2026-07-30). Estava no fim da página, a três écrans de distância do
-//      gráfico que explica: quem lê "acumulado do ano" quer logo a seguir saber quanto
-//      está contratado e quanto está em atraso. Continua em voz baixa — é referência,
-//      não manchete.
-//   3. O CORPO — as decisões (admin) ou quem está em atraso (viewer).
-//   4. O RODAPÉ DE HONESTIDADE — a cobertura. Continua a dizer tudo o que a app não sabe,
-//      mas deixa de disputar a atenção com o dinheiro logo no topo: informação sobre o
-//      CONHECIMENTO não é manchete (PLANO.md §7.5).
-//
-// As duas leituras continuam separadas em vez de entrelaçadas por ternários: quem decide
-// vê a fila, quem só confirma vê o estado.
+// As duas leituras continuam separadas: `Tarefas` para o admin, `Atrasados` para o viewer.
 
 import Link from "next/link";
-import { CheckCircle2, Download } from "lucide-react";
-import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
-import { Retrato } from "@/components/agora/retrato";
-import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
-import { mesAbaixo } from "@/lib/monthcell";
-import { buttonClass, EmptyState } from "@/components/ui";
-import { Cobertura, Confianca, Lede, Money, Seccao } from "@/components/kit";
-import { getSession } from "@/lib/data";
+import { CalendarPlus, Download } from "lucide-react";
 import { Agenda } from "@/components/agora/agenda";
+import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
+import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
+import { Folha } from "@/components/folha";
+import { CartaoMes } from "@/components/hoje/cartao-mes";
+import { Cobertura, Confianca, Money } from "@/components/kit";
+import { Badge, buttonClass } from "@/components/ui";
+import { getSession } from "@/lib/data";
+import { fmtEur, fmtPct, mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
+import { mesAbaixo } from "@/lib/monthcell";
 import { getAgenda, getSnapshotComRaw, type Snapshot } from "@/lib/portfolio";
-import { GRUPO_LABEL, agrupar, construirFila } from "@/lib/portfolio/insights";
-import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
+import { construirFila, type Insight } from "@/lib/portfolio/insights";
+import { resumoDoSnapshot } from "@/lib/portfolio/mes";
+import { nomeDaFracao } from "@/lib/portfolio/predios";
 
 export const dynamic = "force-dynamic";
 
 /** Três meses: o que cabe numa leitura. O calendário exportado leva o ano inteiro. */
 const DIAS_DA_AGENDA = 92;
 
-export default async function AgoraPage() {
-  // `getSnapshotComRaw` e não `getSnapshot`: a agenda precisa das quotas e dos titulares
-  // (o AIMI por senhorio), e as duas funções em cache partilham assim UMA leitura.
+export default async function Hoje() {
   const { isAdmin } = await getSession();
   const [{ snap }, agenda] = await Promise.all([
     getSnapshotComRaw(),
@@ -57,353 +44,297 @@ export default async function AgoraPage() {
 
   if (snap.ativos.length === 0) return <Vazio />;
 
-  const thisMonth = snap.meses[snap.meses.length - 1];
+  const mes = resumoDoSnapshot(snap);
+  const dia = new Date(`${snap.hoje}T12:00:00Z`).toLocaleDateString("pt-PT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
 
   return (
-    <div className="space-y-12">
-      {isAdmin ? <Decisoes snap={snap} thisMonth={thisMonth} /> : <Estado snap={snap} />}
+    <div className="space-y-8 md:space-y-10">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">{dia}</p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-tinta md:text-[30px]">{mes.titulo}</h1>
+          <p className="mt-1.5 max-w-[62ch] text-sm text-tinta-2">{mes.contexto}</p>
+        </div>
+        <div className="flex gap-2">
+          <a href="/api/agenda" className={buttonClass({ variant: "outline" })}>
+            <CalendarPlus size={15} strokeWidth={1.75} />
+            Prazos no calendário
+          </a>
+          {isAdmin && (
+            <a href="/api/export" className={buttonClass({ variant: "ghost" })} title="Cópia de segurança em Excel">
+              <Download size={15} strokeWidth={1.75} />
+              <span className="hidden sm:inline">Exportar</span>
+            </a>
+          )}
+        </div>
+      </header>
 
-      {/* Os prazos dos próximos meses: depois do que se decide hoje, antes da cobertura. */}
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-5">
+        <CartaoMes r={mes} />
+        <Fluxo snap={snap} />
+      </div>
+
+      {isAdmin ? <Tarefas snap={snap} /> : <Atrasados snap={snap} />}
+
       <Agenda {...agenda} />
 
-      {/* Honestidade no fim: informação sobre o CONHECIMENTO não é manchete. O retrato dos
-          seis números subiu daqui para logo abaixo do gráfico, dentro da Abertura. */}
       <Cobertura factos={snap.cobertura} />
     </div>
   );
 }
 
 // ============================================================
-// A abertura: o número que importa, e a curva do ano ao lado
+// Os últimos 12 meses fechados
 // ============================================================
 
-/** Duas colunas assimétricas (5/7): o número precisa de ar à volta, a curva precisa de
- *  largura. No telemóvel empilham, e o número vem primeiro — é o que se lê num relance. */
-function Abertura({ snap, children }: { snap: Snapshot; children: React.ReactNode }) {
-  // MÊS A MÊS, não acumulado (2026-07-31, pedido do utilizador). A curva do acumulado só
-  // sabia dizer "o ano vai melhor ou pior do que o anterior": subia sempre, e um mês mau
-  // era uma inflexão que ninguém via. O que se quer saber é quanto entrou em cada mês e se
-  // ficou aquém do esperado — e isso é uma barra por mês.
-  //
-  // Corta-se na FRONTEIRA dos dados: um mês ainda não importado tem recebido zero, e
-  // desenhá-lo era um penhasco que diz "ninguém pagou" quando o que se passa é que a app
-  // ainda não sabe (é o bug B2, na versão gráfico).
+function Fluxo({ snap }: { snap: Snapshot }) {
+  const mesCorrente = `${snap.hoje.slice(0, 7)}-01`;
+  // Só meses FECHADOS e conhecidos: o corrente está no cartão do lado, e um mês além da
+  // fronteira dos dados tem recebido zero porque a app ainda não sabe (bug B2, gráfico).
   const dados: MonthlyFlowDatum[] = snap.fluxo
-    .filter((m) => !snap.horizon || m.month <= snap.horizon)
+    .filter((m) => m.month < mesCorrente && (!snap.horizon || m.month <= snap.horizon))
     .map((m) => ({
       month: m.month,
       label: monthLabel(m.month, false),
       esperado: m.esperadoReferencia,
       recebido: m.recebido,
     }));
-
-  const ultimo = dados[dados.length - 1];
-  const anterior = dados[dados.length - 2];
-  const delta = ultimo && anterior ? ultimo.recebido - anterior.recebido : 0;
-  // Sem variação quando o mês já passou a fronteira comum: setembro sem os recibos do avô
-  // contra agosto com metade deles dava "-56%", que é a fonte parada e não a cobrança.
-  const comparavel = !!ultimo && !!snap.fronteiraComum && ultimo.month <= snap.fronteiraComum;
-  const variacao =
-    comparavel && anterior && anterior.recebido > 0 ? delta / anterior.recebido : null;
+  const total = dados.reduce((s, d) => s + d.recebido, 0);
   const falhados = dados.filter(mesAbaixo).length;
   const paradas = snap.fontes.filter((f) => f.parada && f.contratos > 0);
 
-  if (dados.length === 0) {
-    return (
-      <section className="space-y-8">
-        {children}
-        <Retrato snap={snap} />
-      </section>
-    );
-  }
-
   return (
-    <section className="grid gap-8 lg:grid-cols-12 lg:gap-10">
-      <div className="lg:col-span-5">{children}</div>
-
-      <div className="lg:col-span-7">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-regua pb-1.5">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
-            Entrou por mês
-          </h2>
-          {ultimo && (
-            <p className="text-xs text-tinta-2">
-              <Money value={ultimo.recebido} escala="sm" />
-              {" em "}
-              {ultimo.label}
-              {variacao !== null && (
-                <span className={delta < 0 ? "text-perda" : "text-tinta-2"}>
-                  {" · "}
-                  {delta >= 0 ? "+" : ""}
-                  {fmtPct(variacao, 0)} face ao mês anterior
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-        <div className="mt-3">
-          <FluxoMensalChart data={dados} />
-        </div>
-        <p className="mt-2 text-[11px] text-tinta-3">
-          A linha tracejada é a renda esperada.{" "}
-          {falhados === 0
-            ? `Nenhum dos ${dados.length} meses ficou abaixo dela.`
-            : `${falhados} ${falhados === 1 ? "mês ficou" : "meses ficaram"} abaixo dela, a âmbar.`}
-          {paradas.length > 0 &&
-            ` Depois de ${monthLabel(paradas[0].horizonte)} faltam os recibos de ${paradas.map((f) => f.landlord.name).join(" e ")}: esses contratos ficam fora do esperado.`}
+    <section className="rounded-2xl border border-regua bg-carta p-5 shadow-[0_1px_2px_rgba(15,21,23,0.04)] md:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Meses fechados</p>
+        <p className="text-sm text-tinta-2">
+          <Money value={total} escala="md" /> em {dados.length} meses
         </p>
       </div>
-
-      {/* Os seis números atravessam as duas colunas, encostados por baixo do gráfico. */}
-      <Retrato snap={snap} className="lg:col-span-12" />
+      <div className="mt-2">{dados.length > 0 && <FluxoMensalChart data={dados} />}</div>
+      <p className="mt-1 text-xs text-tinta-3">
+        Tracejado: a renda esperada.{" "}
+        {falhados === 0 ? "Nenhum mês abaixo dela." : `${falhados} ${falhados === 1 ? "mês abaixo" : "meses abaixo"}, a âmbar.`}
+        {paradas.length > 0 &&
+          ` Depois de ${monthLabel(paradas[0].horizonte)} faltam os recibos de ${paradas.map((f) => f.landlord.name).join(" e ")}.`}
+      </p>
     </section>
   );
 }
 
 // ============================================================
-// Quem só confirma
+// Admin: para fazer
 // ============================================================
 
-/** A pergunta do viewer não é "o que faço?", é "como é que isto está?". Um número grande,
- *  a curva do ano, e quem está em atraso. Nada mais: não tem botões, e uma fila de
- *  decisões sem botões é uma lista de frustrações. */
-function Estado({ snap }: { snap: Snapshot }) {
-  const atrasados = snap.correntes
-    .filter((a) => (a.arrears?.streak ?? 0) > 0)
-    .sort((a, b) => (b.arrears?.debt ?? 0) - (a.arrears?.debt ?? 0));
-  const totalEmAtraso = atrasados.reduce((acc, a) => acc + (a.arrears?.debt ?? 0), 0);
+const ETIQUETA: Record<Insight["grupo"], { tom: "acao" | "perda" | "futuro" | "atencao"; texto: string }> = {
+  fazer: { tom: "acao", texto: "Este mês" },
+  risco: { tom: "perda", texto: "Risco" },
+  saber: { tom: "futuro", texto: "Por saber" },
+  poupar: { tom: "atencao", texto: "Oportunidade" },
+};
 
-  return (
-    <div className="space-y-12">
-      <Abertura snap={snap}>
-        <Lede
-          eyebrow="Últimos 12 meses"
-          title={<Money value={snap.totais.recebido12m} escala="hero" />}
-        >
-          {snap.correntes.length} frações,{" "}
-          {snap.ocupacao.vagas.length === 0
-            ? "todas arrendadas"
-            : `${snap.ocupacao.vagas.length} por arrendar`}
-          {snap.horizon ? `. Contas fechadas até ${monthLabel(snap.horizon)}.` : "."}
-        </Lede>
-      </Abertura>
-
-      <Seccao
-        titulo="Quem está em atraso"
-        valor={
-          atrasados.length > 0 ? <Money value={totalEmAtraso} escala="sm" tom="perda" /> : undefined
-        }
-      >
-        {atrasados.length === 0 ? (
-          <EmptyState icon={CheckCircle2}>Nenhum contrato em atraso.</EmptyState>
-        ) : (
-          <ul className="divide-y divide-regua">
-            {atrasados.map((a) => (
-              <li key={a.property.id} className="flex items-baseline justify-between gap-4 py-3">
-                <div className="min-w-0">
-                  <Link
-                    href={`/fracoes/${a.property.id}`}
-                    className="font-medium text-tinta transition-colors duration-150 hover:text-acao"
-                  >
-                    {a.property.name}
-                  </Link>
-                  <p className="truncate text-sm text-tinta-2">
-                    {a.activeContract?.tenant_name}
-                    {a.arrears &&
-                      `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} sem pagar`}
-                  </p>
-                </div>
-                <Money value={a.arrears?.debt ?? 0} escala="lg" tom="perda" className="shrink-0" />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Seccao>
-    </div>
-  );
-}
-
-// ============================================================
-// Quem decide
-// ============================================================
-
-function Decisoes({ snap, thisMonth }: { snap: Snapshot; thisMonth: string }) {
+function Tarefas({ snap }: { snap: Snapshot }) {
   const fila = construirFila(snap);
-  const grupos = agrupar(fila.itens);
-  const n = fila.itens.length;
+  const tarefas = fila.itens.filter((i) => i.grupo !== "poupar");
+  const oportunidades = fila.itens.filter((i) => i.grupo === "poupar");
+  const emJogo = tarefas.reduce((s, i) => s + i.euros, 0);
 
   return (
-    <div className="space-y-12">
-      <Abertura snap={snap}>
-        <Lede
-          title={n === 0 ? "Nada a decidir." : <Money value={fila.total} escala="hero" tom="acao" />}
-          actions={
-            <a href="/api/export" className={buttonClass({ variant: "outline" })}>
-              <Download size={15} strokeWidth={1.75} />
-              Exportar
-            </a>
-          }
-        >
-          {n === 0
-            ? `A carteira está em ordem. Cobraste ${fmtPct(snap.fluxo[snap.fluxo.length - 1].taxa, 0)} do esperado este mês.`
-            : "A ganhar este ano com as decisões em baixo."}
-        </Lede>
-      </Abertura>
-
-      {n === 0 ? (
-        <EmptyState icon={CheckCircle2}>
-          Nenhuma decisão acima do limiar de materialidade.
-          {fila.residuais.n > 0 &&
-            ` ${fila.residuais.n} ${fila.residuais.n === 1 ? "sinal" : "sinais"} abaixo de ${fmtEur(250)}/ano.`}
-        </EmptyState>
-      ) : (
-        <div className="space-y-10">
-          {grupos.map((g) => (
-            <Seccao
-              key={g.grupo}
-              titulo={GRUPO_LABEL[g.grupo]}
-              valor={<Money value={g.euros} escala="sm" tom="tinta-2" />}
-            >
-              {/* Caixas, não uma lista: com 6-8 decisões a lista virava uma coluna
-                  comprida a pedir scroll, e o que interessa é ver o conjunto de uma vez.
-                  Hairline e não Card — nada disto está elevado (R2). A régua fina da
-                  esquerda separa "a ganhar" de "a perder" sem gastar um fundo de cor. */}
-              <ul className="grid gap-3 sm:grid-cols-2">
-                {g.itens.map((item) => (
-                  <li
-                    key={item.kind + item.titulo}
-                    className="relative overflow-hidden rounded-xl border border-regua bg-carta p-4 transition-colors duration-200 hover:border-regua-forte"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`absolute inset-y-0 left-0 w-[2px] ${
-                        item.grupo === "risco" ? "bg-perda/40" : "bg-acao/40"
-                      }`}
-                    />
-                    {/* O valor primeiro e sozinho na linha: a pergunta é sempre "quanto
-                        vale isto?", e um número encostado ao título perde-se ao lado dele. */}
-                    <Money
-                      value={item.euros}
-                      escala="lg"
-                      tom={item.grupo === "risco" ? "perda" : "acao"}
-                    />
-                    <p className="mt-1 text-[15px] font-medium leading-snug text-tinta">
-                      {item.titulo}
-                    </p>
-
-                    <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                      {item.acoes.map((a) =>
-                        a.externo ? (
-                          <a
-                            key={a.label}
-                            href={a.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={buttonClass({ variant: "outline", size: "sm" })}
-                          >
-                            {a.label}
-                          </a>
-                        ) : (
-                          <Link
-                            key={a.label}
-                            href={a.href}
-                            className={buttonClass({ variant: "outline", size: "sm" })}
-                          >
-                            {a.label}
-                          </Link>
-                        ),
-                      )}
-                      <DecisaoAcoes kind={item.kind} subject={item.subject} />
-                      {/* R3: o porquê e a aritmética existem sempre, mas não gastam uma
-                          linha por item enquanto ninguém os pede. */}
-                      <details className="ml-auto text-xs">
-                        <summary className="cursor-pointer select-none text-tinta-3 transition-colors duration-150 hover:text-tinta-2">
-                          porquê
-                        </summary>
-                        <p className="mt-1.5 max-w-[60ch] text-tinta-2">{item.porque}</p>
-                        {item.conta && (
-                          <p className="mt-1 text-tinta-3">
-                            {item.conta} <Confianca nivel={item.confianca} conta={item.conta} />
-                          </p>
-                        )}
-                      </details>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Seccao>
-          ))}
-
-          {(fila.residuais.n > 0 || fila.silenciadas.length > 0) && (
-            <p className="border-t border-regua pt-3 text-xs text-tinta-3">
-              {fila.residuais.n > 0 &&
-                `${fila.residuais.n} abaixo de ${fmtEur(250)}/ano, no total de ${fmtEur(fila.residuais.euros)}.`}
-              {fila.silenciadas.length > 0 && (
-                <>
-                  {" "}
-                  {fila.silenciadas.length} silenciada{fila.silenciadas.length === 1 ? "" : "s"}:{" "}
-                  {fila.silenciadas.map(({ item, ate, dispensada }, i) => (
-                    <span key={item.kind + item.titulo}>
-                      {i > 0 && ", "}
-                      {item.titulo} (
-                      {dispensada ? "dispensada" : `até ${new Date(ate!).toLocaleDateString("pt-PT")}`},{" "}
-                      <ReporDecisao kind={item.kind} subject={item.subject} />)
-                    </span>
-                  ))}
-                </>
-              )}
+    <div className="space-y-8 md:space-y-10">
+      <section>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold tracking-[-0.01em]">Para fazer</h2>
+          {tarefas.length > 0 && (
+            <p className="text-sm text-tinta-2">
+              {tarefas.length} {tarefas.length === 1 ? "tarefa" : "tarefas"} · <Money value={emJogo} escala="md" tom="tinta-2" /> em jogo
             </p>
           )}
         </div>
-      )}
+        {tarefas.length === 0 ? (
+          <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">
+            Nada para fazer este mês.
+          </p>
+        ) : (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+            {tarefas.map((item) => (
+              <CartaoTarefa key={item.kind + item.titulo} item={item} snap={snap} />
+            ))}
+          </ul>
+        )}
+        {(fila.residuais.n > 0 || fila.silenciadas.length > 0) && (
+          <p className="mt-3 text-xs text-tinta-3">
+            {fila.residuais.n > 0 &&
+              `${fila.residuais.n} abaixo de ${fmtEur(250)}/ano, no total de ${fmtEur(fila.residuais.euros)}.`}
+            {fila.silenciadas.length > 0 && (
+              <>
+                {" "}
+                {fila.silenciadas.length} silenciada{fila.silenciadas.length === 1 ? "" : "s"}:{" "}
+                {fila.silenciadas.map(({ item, ate, dispensada }, i) => (
+                  <span key={item.kind + item.titulo}>
+                    {i > 0 && ", "}
+                    {item.titulo} (
+                    {dispensada ? "dispensada" : `até ${new Date(ate!).toLocaleDateString("pt-PT")}`},{" "}
+                    <ReporDecisao kind={item.kind} subject={item.subject} />)
+                  </span>
+                ))}
+              </>
+            )}
+          </p>
+        )}
+      </section>
 
-      {snap.recibosPorEmitir.length > 0 && (
-        <Seccao titulo={`Recibos por emitir em ${monthLabel(thisMonth)}`}>
-          <ul className="grid max-h-72 gap-x-8 overflow-y-auto sm:grid-cols-2">
-            {snap.recibosPorEmitir.map(({ contract, property }) => (
-              <li
-                key={contract.id}
-                className="flex items-baseline justify-between gap-3 border-b border-regua py-2"
-              >
-                <div className="min-w-0">
-                  {property ? (
-                    <Link
-                      href={`/fracoes/${property.id}`}
-                      className="font-medium text-tinta transition-colors duration-150 hover:text-acao"
-                    >
-                      {property.name}
-                    </Link>
-                  ) : (
-                    <span className="font-medium text-tinta">?</span>
-                  )}
-                  <p className="truncate text-xs text-tinta-2">{contract.tenant_name}</p>
-                </div>
-                <Money value={contract.rent} className="shrink-0" />
+      {oportunidades.length > 0 && (
+        <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold tracking-[-0.01em]">Oportunidades</h2>
+            <Link href="/dinheiro" className="text-sm font-medium text-acao hover:underline">
+              Ver em Dinheiro
+            </Link>
+          </div>
+          <p className="mt-0.5 text-sm text-tinta-2">Mudam o rendimento do ano. Não têm prazo.</p>
+          <ul className="mt-3 divide-y divide-regua">
+            {oportunidades.slice(0, 3).map((i) => (
+              <li key={i.kind} className="flex items-baseline justify-between gap-4 py-3">
+                <span className="min-w-0 text-[15px] text-tinta">{i.titulo}</span>
+                <span className="shrink-0 text-sm">
+                  <Money value={i.euros} escala="md" /> <span className="text-xs text-tinta-3">/ano</span>
+                </span>
               </li>
             ))}
           </ul>
-        </Seccao>
+        </section>
       )}
     </div>
   );
 }
 
+function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
+  const et = ETIQUETA[item.grupo];
+  const recibos = item.kind === "recibo_por_emitir" ? snap.recibosPorEmitir : null;
+  return (
+    <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5 shadow-[0_1px_2px_rgba(15,21,23,0.04)] transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-regua-forte">
+      <div className="flex items-start justify-between gap-3">
+        <Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "perda" : "tinta"} />
+        <Badge tone={et.tom}>{et.texto}</Badge>
+      </div>
+      <div>
+        <p className="text-[15px] font-semibold leading-snug text-tinta">{item.titulo}</p>
+        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-tinta-2">{item.porque}</p>
+      </div>
+      <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+        {recibos && recibos.length > 0 && (
+          <Folha
+            rotulo={`Ver os ${recibos.length}`}
+            titulo={`Recibos por emitir em ${mesPorExtenso(`${snap.hoje.slice(0, 7)}-01`)}`}
+            subtitulo="No Portal das Finanças, um por contrato."
+            variante="primary"
+          >
+            <ul className="divide-y divide-regua">
+              {recibos.map(({ contract, property }) => (
+                <li key={contract.id} className="flex items-baseline justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    {property ? (
+                      <Link href={`/fracoes/${property.id}`} className="font-medium text-tinta hover:text-acao">
+                        {nomeDaFracao(property)}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-tinta">Fração por associar</span>
+                    )}
+                    <p className="truncate text-xs text-tinta-2">{nomeProprio(contract.tenant_name)}</p>
+                  </div>
+                  <Money value={contract.rent} className="shrink-0" />
+                </li>
+              ))}
+            </ul>
+          </Folha>
+        )}
+        {item.acoes.map((a) =>
+          a.externo ? (
+            <a key={a.label} href={a.href} target="_blank" rel="noreferrer" className={buttonClass({ variant: "outline", size: "sm" })}>
+              {a.label}
+            </a>
+          ) : (
+            <Link key={a.label} href={a.href} className={buttonClass({ variant: "outline", size: "sm" })}>
+              {a.label}
+            </Link>
+          ),
+        )}
+        <details className="group ml-auto text-xs">
+          <summary className="cursor-pointer list-none select-none rounded-full px-2 py-1 text-tinta-3 hover:bg-vellum hover:text-tinta-2">
+            Mais
+          </summary>
+          <div className="mt-2 space-y-2">
+            {item.conta && (
+              <p className="text-tinta-3">
+                {item.conta} <Confianca nivel={item.confianca} conta={item.conta} />
+              </p>
+            )}
+            <div className="flex gap-1">
+              <DecisaoAcoes kind={item.kind} subject={item.subject} />
+            </div>
+          </div>
+        </details>
+      </div>
+    </li>
+  );
+}
+
 // ============================================================
-// Peças partilhadas
+// Viewer: quem está em atraso
 // ============================================================
+
+function Atrasados({ snap }: { snap: Snapshot }) {
+  const atrasados = snap.correntes
+    .filter((a) => (a.arrears?.streak ?? 0) > 0)
+    .sort((a, b) => (b.arrears?.debt ?? 0) - (a.arrears?.debt ?? 0));
+  return (
+    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
+      <h2 className="text-lg font-semibold tracking-[-0.01em]">Quem está em atraso</h2>
+      {atrasados.length === 0 ? (
+        <p className="mt-2 text-sm text-tinta-2">Ninguém. Todos os meses anteriores estão pagos.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-regua">
+          {atrasados.map((a) => (
+            <li key={a.property.id} className="flex items-baseline justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <Link href={`/fracoes/${a.property.id}`} className="font-medium text-tinta hover:text-acao">
+                  {nomeDaFracao(a.property)}
+                </Link>
+                <p className="truncate text-sm text-tinta-2">
+                  {nomeProprio(a.activeContract?.tenant_name)}
+                  {a.arrears && `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} sem pagar`}
+                </p>
+              </div>
+              <Money value={a.arrears?.debt ?? 0} tom="perda" className="shrink-0" />
+            </li>
+          ))}
+        </ul>
+      )}
+      {atrasados.length > 0 && (
+        <p className="mt-2 text-xs text-tinta-3">
+          {fmtPct(atrasados.length / Math.max(1, snap.correntes.length), 0)} das frações com algum mês por pagar.
+        </p>
+      )}
+    </section>
+  );
+}
 
 function Vazio() {
   return (
-    <Lede title="Ainda não há carteira.">
-      Começa por importar os recibos do Portal das Finanças em{" "}
-      <Link href="/admin" className="font-medium text-acao hover:underline">
-        Admin
-      </Link>
-      , ou cria uma fração em{" "}
-      <Link href="/carteira" className="font-medium text-acao hover:underline">
-        Carteira
-      </Link>
-      .
-    </Lede>
+    <div className="max-w-xl py-10">
+      <h1 className="text-2xl font-semibold tracking-[-0.02em]">Ainda não há carteira.</h1>
+      <p className="mt-2 text-sm text-tinta-2">
+        Começa por importar os recibos do Portal das Finanças em{" "}
+        <Link href="/admin" className="font-medium text-acao hover:underline">
+          Admin
+        </Link>
+        .
+      </p>
+    </div>
   );
 }

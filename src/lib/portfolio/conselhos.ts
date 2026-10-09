@@ -16,6 +16,7 @@
 // inventar um fallback a partir do VPT (decisão explícita do utilizador).
 
 import { SEVERITY_LABEL } from "../arrears";
+import { nomeDaFracao } from "./predios";
 import { fmtEur, fmtPct } from "../format";
 import type { Grupo, Insight } from "./insights";
 import type { CapacidadeDeInvestimento, MesProjetado, ResumoDaProjecao } from "./futuro";
@@ -115,7 +116,7 @@ const GERADORES: GeradorConselho[] = [
         porque:
           lista
             .slice(0, 3)
-            .map((c) => `${c.property?.name ?? "fração"} (${c.contract.end_date})`)
+            .map((c) => `${c.property ? nomeDaFracao(c.property) : "fração"} (${c.contract.end_date})`)
             .join(", ") + (n > 3 ? `, e outros ${n - 3}` : "") + ".",
         euros: total,
         confianca: "medido",
@@ -210,8 +211,8 @@ const GERADORES: GeradorConselho[] = [
         subject: a.property.id,
         grupo: "poupar",
         horizonte: "estrutural",
-        titulo: `Rever o yield de ${a.property.name}`,
-        porque: `${a.property.name} rende ${fmtPct(y, 1)} ao ano sobre o valor estimado, abaixo dos ${fmtPct(limiar, 1)} (70% da mediana da carteira, ${fmtPct(med, 1)}, sobre ${comYield.length} frações com área conhecida).`,
+        titulo: `Rever o yield de ${nomeDaFracao(a.property)}`,
+        porque: `${nomeDaFracao(a.property)} rende ${fmtPct(y, 1)} ao ano sobre o valor estimado, abaixo dos ${fmtPct(limiar, 1)} (70% da mediana da carteira, ${fmtPct(med, 1)}, sobre ${comYield.length} frações com área conhecida).`,
         euros: ganho,
         confianca: "estimado",
         conta: `(mediana ${fmtPct(med, 1)} − yield atual ${fmtPct(y, 1)}) × valor estimado ${fmtEur(valor)} = ${fmtEur(ganho)}/ano.`,
@@ -241,8 +242,8 @@ const GERADORES: GeradorConselho[] = [
         subject: a.property.id,
         grupo: "risco",
         horizonte: "estrutural",
-        titulo: `Considerar vender ${a.property.name}`,
-        porque: `${a.property.name} está no quartil inferior de yield da carteira (${fmtPct(y, 1)}, corte ${fmtPct(corte, 1)}) e tem histórico de atraso (${SEVERITY_LABEL[a.arrears!.severity]}).`,
+        titulo: `Rever a venda de ${nomeDaFracao(a.property)}`,
+        porque: `${nomeDaFracao(a.property)} está no quartil inferior de yield da carteira (${fmtPct(y, 1)}, corte ${fmtPct(corte, 1)}) e tem histórico de atraso (${SEVERITY_LABEL[a.arrears!.severity]}).`,
         euros: valor,
         confianca: "estimado",
         conta: `Valor estimado da fração (área × mediana de venda INE) = ${fmtEur(valor)}. É uma SIMULAÇÃO a partir dos dados da própria carteira, não uma recomendação de investimento.`,

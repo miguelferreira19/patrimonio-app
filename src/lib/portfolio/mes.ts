@@ -9,6 +9,7 @@
 // "por receber"; o atraso a sério é o dos meses anteriores, que o arrears.ts mede.
 
 import { isMonthSettled, toMonthKey } from "../arrears";
+import { emAtrasoDaCarteira } from "./insights";
 import type { Snapshot } from "./snapshot";
 import { mesPorExtenso } from "../format";
 
@@ -117,9 +118,10 @@ export function resumoDoSnapshot(snap: Snapshot): ResumoDoMes {
       },
     ];
   });
+  const emAtraso = emAtrasoDaCarteira(snap);
   return resumoDoMes({
     hoje: snap.hoje,
     contratos,
-    atraso: { valor: snap.arrears.summary.totalDebt, contratos: snap.arrears.summary.contractsInArrears },
+    atraso: { valor: emAtraso.reduce((a, r) => a + r.debt, 0), contratos: emAtraso.length },
   });
 }

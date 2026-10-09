@@ -7,8 +7,9 @@
 // acrescentar uma função a `GERADORES`.
 
 import { reducedRateEligibility, yearsBetween } from "../irs";
+import { nomeDaFracao } from "./predios";
 import { desalinhamentoDaRenda } from "../rent";
-import { fmtDate, fmtEur, fmtPct, monthLabel } from "../format";
+import { fmtDate, fmtEur, fmtPct, mesPorExtenso, monthLabel } from "../format";
 import type { Nivel } from "../types";
 import type { Snapshot } from "./snapshot";
 
@@ -65,7 +66,7 @@ const GERADORES: Gerador[] = [
       {
         kind: "recibo_por_emitir",
         grupo: "fazer",
-        titulo: `Emitir ${n} ${n === 1 ? "recibo" : "recibos"} de ${monthLabel(s.meses[s.meses.length - 1])}`,
+        titulo: `Emitir ${n} ${n === 1 ? "recibo" : "recibos"} de ${mesPorExtenso(s.meses[s.meses.length - 1])}`,
         porque: `${n} ${n === 1 ? "contrato ativo" : "contratos ativos"} ainda sem recibo do mês.`,
         euros: total,
         confianca: "medido",
@@ -152,7 +153,7 @@ const GERADORES: Gerador[] = [
         titulo: `Atualizar ${n} ${n === 1 ? "renda" : "rendas"} pelo coeficiente anual`,
         porque:
           n === 1
-            ? `${elegiveis[0].property.name} é atualizável desde ${monthLabel(
+            ? `${nomeDaFracao(elegiveis[0].property)} é atualizável desde ${monthLabel(
                 (elegiveis[0].rendaAtualizavel!.eligibleSince ?? s.hoje).slice(0, 7) + "-01",
               )}.`
             : `${n} contratos passaram os 12 meses desde a última atualização. Cada ano que não se atualiza compõe.`,
@@ -176,7 +177,7 @@ const GERADORES: Gerador[] = [
         kind: "renda_abaixo_mercado",
         grupo: "poupar",
         titulo: `Rever ${s.mercado.abaixo.length} ${s.mercado.abaixo.length === 1 ? "renda" : "rendas"} abaixo da mediana do mercado`,
-        porque: `A pior é ${pior.property.name}, ${fmtPct(pior.mercado.deviation ?? 0, 0)} face à mediana INE. Só se capta quando a fração muda de inquilino.`,
+        porque: `A pior é ${nomeDaFracao(pior.property)}, ${fmtPct(pior.mercado.deviation ?? 0, 0)} face à mediana INE. Só se capta quando a fração muda de inquilino.`,
         euros: total,
         // ASSUMIDO, e por isso fora do número de topo (2026-10-03): a mediana é de NOVOS
         // contratos e a um inquilino em casa só se aplica o coeficiente anual. Somar isto a
@@ -213,7 +214,7 @@ const GERADORES: Gerador[] = [
         grupo: "poupar",
         titulo: `Corrigir ${n} ${n === 1 ? "renda registada abaixo" : "rendas registadas abaixo"} do que os recibos mostram`,
         porque: erradas
-          .map((x) => `${x.ativo.property.name}: ${fmtEur(x.ativo.activeContract!.rent)} registados, ${fmtEur(x.obs!.valor)} nos recibos`)
+          .map((x) => `${nomeDaFracao(x.ativo.property)}: ${fmtEur(x.ativo.activeContract!.rent)} registados, ${fmtEur(x.obs!.valor)} nos recibos`)
           .join("; ") + ".",
         euros: porMes * 12,
         confianca: "medido",
@@ -230,10 +231,9 @@ const GERADORES: Gerador[] = [
     // PLANO.md ("a fila torna-se um segundo inbox que ninguém esvazia"), e com os dados
     // reais aconteceu logo à primeira. O detalhe contrato a contrato já vive em /atrasos:
     // a fila diz que há dinheiro a cobrar e quanto, a página diz de quem.
-    const emAtraso = s.arrears.rows
-      .filter((r) => r.debt > 0 && r.severity !== "ritmo_proprio")
-      .sort((a, b) => b.debt - a.debt);
+    const emAtraso = emAtrasoDaCarteira(s);
     if (emAtraso.length === 0) return [];
+    const divida = emAtraso.reduce((acc, r) => acc + r.debt, 0);
 
     // O valor da fila é a PERDA ESPERADA, não a dívida ingénua (Fase 4). A dívida crua
     // conta como perdido dinheiro que historicamente entra no import seguinte; pô-la na
@@ -244,7 +244,8 @@ const GERADORES: Gerador[] = [
     const total = s.risco.esperada > 0 ? s.risco.esperada : ingenua;
     const n = emAtraso.length;
     const piores = emAtraso.slice(0, 3).map((r) => {
-      const nome = s.ativos.find((a) => a.property.id === r.propertyId)?.property.name ?? "fração";
+      const prop = s.ativos.find((a) => a.property.id === r.propertyId)?.property;
+      const nome = prop ? nomeDaFracao(prop) : "fração";
       return `${nome} (${fmtEur(r.debt)})`;
     });
     return [
@@ -252,7 +253,11 @@ const GERADORES: Gerador[] = [
         kind: "atraso",
         grupo: "risco",
         titulo: `Cobrar ${n} ${n === 1 ? "contrato em atraso" : "contratos em atraso"}`,
-        porque: `Maiores: ${piores.join(", ")}${n > 3 ? `, e outros ${n - 3}` : ""}.`,
+        // V4: o número grande é a perda esperada; a dívida crua vai por extenso no porquê,
+        // senão a tarefa contradizia o "em atraso" do cartão do mês (que é a dívida).
+        porque:
+          `Em dívida ${fmtEur(divida)}; se ninguém cobrar, perde-se perto de ${fmtEur(total)}. ` +
+          `Maiores: ${piores.join(", ")}${n > 3 ? `, e outros ${n - 3}` : ""}.`,
         euros: total,
         confianca: "estimado",
         conta:
@@ -296,7 +301,7 @@ const GERADORES: Gerador[] = [
         titulo: `Decidir ${n} ${n === 1 ? "contrato que termina" : "contratos que terminam"} nos próximos 90 dias`,
         porque: s.contratosATerminar
           .slice(0, 3)
-          .map((c) => `${c.property?.name ?? "?"} (${c.contract.end_date})`)
+          .map((c) => `${c.property ? nomeDaFracao(c.property) : "?"} (${c.contract.end_date})`)
           .join(", "),
         euros: total,
         confianca: "medido",
@@ -322,7 +327,7 @@ const GERADORES: Gerador[] = [
           kind: "fonte_parada",
           subject: f.landlord.id,
           grupo: "saber" as const,
-          titulo: `Recibos de ${f.landlord.name} parados desde ${monthLabel(f.horizonte)}`,
+          titulo: `Recibos de ${f.landlord.name} parados desde ${mesPorExtenso(f.horizonte, true)}`,
           porque: `${f.contratos} ${f.contratos === 1 ? "contrato" : "contratos"} sem recibo emitido depois de ${fmtDate(f.ultimaEmissao)}. Esses meses ficam por importar, não em atraso.`,
           euros,
           confianca: "assumido" as const,
@@ -384,6 +389,15 @@ export interface Fila {
 /** Chave de um insight no `insight_state`. */
 export function chaveInsight(i: Pick<Insight, "kind" | "subject">): string {
   return `${i.kind}:${i.subject ?? ""}`;
+}
+
+/** Os contratos em atraso da carteira: dívida acima de zero, fora os de "ritmo próprio".
+ *  UMA definição, partilhada pela tarefa "Cobrar" e pelo cartão do mês (mes.ts), para os
+ *  dois nunca mostrarem números diferentes (V4, 2026-10-09). */
+export function emAtrasoDaCarteira(s: Pick<Snapshot, "arrears">) {
+  return s.arrears.rows
+    .filter((r) => r.debt > 0 && r.severity !== "ritmo_proprio")
+    .sort((a, b) => b.debt - a.debt);
 }
 
 export function construirFila(s: Snapshot): Fila {
