@@ -25,7 +25,7 @@ export default async function LoginPage() {
       {/* Painel de marca */}
       <div className="login-glow relative hidden w-[45%] flex-col overflow-hidden p-10 lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/15">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3fb39b]/15">
             <Image src="/logo.png" alt="" width={24} height={27} className="h-6 w-auto" />
           </span>
           <span className="text-lg font-semibold text-white">Património</span>
@@ -37,8 +37,8 @@ export default async function LoginPage() {
           </p>
           <ul className="mt-8 space-y-3">
             {HIGHLIGHTS.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex items-center gap-2.5 text-sm text-zinc-400">
-                <Icon size={16} strokeWidth={1.75} className="shrink-0 text-teal-400" />
+              <li key={label} className="flex items-center gap-2.5 text-sm text-white/60">
+                <Icon size={16} strokeWidth={1.75} className="shrink-0 text-[#6cc6b2]" />
                 {label}
               </li>
             ))}
@@ -47,14 +47,14 @@ export default async function LoginPage() {
       </div>
 
       {/* Formulário */}
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 p-6 dark:bg-zinc-950">
+      <div className="flex flex-1 items-center justify-center bg-papel p-6">
         <div className="w-full max-w-sm">
           <div className="mb-8">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Entrar</h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Gestão de arrendamentos da família</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-tinta">Entrar</h1>
+            <p className="mt-1 text-sm text-tinta-2">Gestão de arrendamentos da família</p>
           </div>
           <LoginForm />
-          <p className="mt-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
+          <p className="mt-4 text-center text-xs text-tinta-3">
             Não há registo público: os acessos são criados pelo administrador.
           </p>
         </div>

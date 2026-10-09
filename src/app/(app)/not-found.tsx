@@ -13,8 +13,8 @@ export default function NaoEncontrado() {
       <p className="mt-3 text-sm leading-relaxed text-tinta-2">
         O endereço pode vir de um marcador antigo, ou o registo pode ter sido apagado.
       </p>
-      <Link href="/carteira" className={buttonClass({ variant: "outline", className: "mt-6" })}>
-        Ir para a Carteira
+      <Link href="/imoveis" className={buttonClass({ variant: "outline", className: "mt-6" })}>
+        Ir para Imóveis
       </Link>
     </div>
   );

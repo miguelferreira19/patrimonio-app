@@ -227,7 +227,7 @@ export function PropertyFormButton({
           </div>
 
           <div>
-            <p className="mb-1 text-xs font-medium text-zinc-600 dark:text-zinc-400">Proprietários e quotas (%)</p>
+            <p className="mb-1 text-xs font-medium text-tinta-2">Proprietários e quotas (%)</p>
             <div className="space-y-2">
               {own.map((o, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -280,8 +280,8 @@ export function PropertyFormButton({
             <Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </Field>
 
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          {error && <p className="text-xs text-perda">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
@@ -316,7 +316,7 @@ export function DeletePropertyButton({ id }: { id: string }) {
       >
         <Trash2 size={14} /> Apagar fração
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-perda">{error}</p>}
     </div>
   );
 }
@@ -413,8 +413,8 @@ export function ContractFormButton({
           <Field label="Notas">
             <Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </Field>
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          {error && <p className="text-xs text-perda">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
@@ -462,7 +462,7 @@ export function RentUpdateButton({
       </Button>
       <Modal open={open} onClose={() => setOpen(false)} title="Atualizar renda">
         <form onSubmit={submit} className="space-y-3">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-tinta-2">
             Renda atual: <strong className="tabular-nums">{contract.rent.toLocaleString("pt-PT")} €</strong>
             {suggestedRent && (
               <>
@@ -488,8 +488,8 @@ export function RentUpdateButton({
               <option value="outro">Outro</option>
             </Select>
           </Field>
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          {error && <p className="text-xs text-perda">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
@@ -519,7 +519,7 @@ export function EndContractButton({ contractId }: { contractId: string }) {
       >
         Cessar contrato
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-perda">{error}</p>}
     </div>
   );
 }
@@ -539,7 +539,7 @@ export function DeleteContractButton({ id }: { id: string }) {
       >
         <Trash2 size={14} />
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-perda">{error}</p>}
     </div>
   );
 }
@@ -632,8 +632,8 @@ export function ExpenseFormButton({
           <Field label="Descrição">
             <Input value={f.description} onChange={(e) => set("description", e.target.value)} />
           </Field>
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          {error && <p className="text-xs text-perda">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
@@ -707,8 +707,8 @@ export function LandlordFormButton({ landlord }: { landlord?: Landlord }) {
           <Field label="Notas">
             <Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </Field>
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          {error && <p className="text-xs text-perda">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>

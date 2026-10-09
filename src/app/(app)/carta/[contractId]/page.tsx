@@ -20,19 +20,19 @@ export const dynamic = "force-dynamic";
 function NaoDisponivel({ propertyId, children }: { propertyId?: string; children: ReactNode }) {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-zinc-500">
-        <Link href="/carteira" className="hover:text-teal-700 hover:underline">
+      <p className="text-xs text-tinta-3">
+        <Link href="/imoveis" className="hover:text-acao hover:underline">
           Frações
         </Link>
         {propertyId && (
           <>
-            <span className="mx-1.5 text-zinc-300">/</span>
-            <Link href={`/fracoes/${propertyId}`} className="hover:text-teal-700 hover:underline">
+            <span className="mx-1.5 text-tinta-3">/</span>
+            <Link href={`/fracoes/${propertyId}`} className="hover:text-acao hover:underline">
               Fração
             </Link>
           </>
         )}
-        <span className="mx-1.5 text-zinc-300">/</span>
+        <span className="mx-1.5 text-tinta-3">/</span>
         Carta de atualização de renda
       </p>
       <Card title="Carta de atualização de renda">
@@ -156,7 +156,7 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     <PapelImpresso
       migalhas={
         <>
-          <Link href="/carteira" className="hover:text-acao hover:underline">
+          <Link href="/imoveis" className="hover:text-acao hover:underline">
             Frações
           </Link>
           <span className="mx-1.5">/</span>
@@ -170,13 +170,13 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
     >
         <div>
           <p className="font-semibold">{landlord.name}</p>
-          <p className="text-zinc-600">NIF {landlord.nif ?? "n/d"}</p>
+          <p className="text-tinta-2">NIF {landlord.nif ?? "n/d"}</p>
         </div>
 
         <div className="mt-8">
           <p>Ex.mo(a) Senhor(a)</p>
           <p className="font-medium">{contract.tenant_name}</p>
-          <p className="text-zinc-600">{fracaoMorada}</p>
+          <p className="text-tinta-2">{fracaoMorada}</p>
         </div>
 
         <p className="mt-8 font-semibold">Assunto: {minuta.assunto}</p>
@@ -189,18 +189,18 @@ export default async function CartaPage({ params }: { params: Promise<{ contract
 
         <div className="mt-12 grid grid-cols-2 gap-6">
           <div>
-            <p className="text-xs text-zinc-500">Local</p>
-            <div className="mt-6 h-px w-full bg-zinc-300" />
+            <p className="text-xs text-tinta-3">Local</p>
+            <div className="mt-6 h-px w-full bg-regua-forte" />
           </div>
           <div>
-            <p className="text-xs text-zinc-500">Data</p>
+            <p className="text-xs text-tinta-3">Data</p>
             <p className="mt-1">{fmtDate(todayISO())}</p>
           </div>
         </div>
 
         <Assinaturas legendas={minuta.assinaturas} />
 
-        <p className="mt-16 text-[10px] leading-snug text-zinc-400">
+        <p className="mt-16 text-[10px] leading-snug text-tinta-3">
           {minuta.nota} Carta gerada a partir dos dados do contrato; confirmar o enquadramento
           legal do contrato específico antes de enviar. Este conteúdo não constitui aconselhamento
           jurídico vinculativo.

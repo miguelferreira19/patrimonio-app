@@ -1,5 +1,7 @@
 # REDESENHO.md: plano da remodelação de experiência e visual (V4)
 
+Versão 1.1 · 9/10/2026. **Estado: F0 a F8 feitas** (direção A escolhida pelo utilizador), ver §11.
+
 Versão 1.0 · 9/10/2026. Base: auditoria de todas as superfícies em produção (computador e
 telemóvel, sessão de admin, dados reais), estudo de 9 sistemas de referência no
 styles.refero.design, e o protótipo navegável em
@@ -380,3 +382,36 @@ Ordem pensada para ter valor visível cedo: no fim da F3 a página que todos abr
 - **Mews:** centro de controlo com mosaicos por categoria e títulos pesados; base da C.
 - **Airbnb:** o objeto como cartão com capa. Daqui vieram os cartões de prédio com fachada.
 - **Era** e **Compound:** "ledger on paper", o que a app é hoje. Serviram de contraste.
+
+---
+
+## 11. O que foi feito, e onde o plano mudou (9/10/2026)
+
+F0 a F8 estão no `main`, um commit por fase, com `npm run build` e os checks verdes (25,
+contra 21). Verificado no browser com dados reais, a 375 px e em computador.
+
+| Fase | Feito |
+|---|---|
+| F1 | Tokens da direção A, Inter, `Shell` (barra lateral e separadores em baixo), rotas novas |
+| F2 | `predios.ts`, `mes.ts`, `nomeProprio`/`mesPorExtenso` (format.ts), `fonteDoContrato` no snapshot |
+| F3 | Hoje: cartão do mês, meses fechados, tarefas com folha lateral, prazos, oportunidades |
+| F4 | Imóveis por prédio (`imoveis.ts`), página do prédio, quadrados de mês |
+| F5 | Ficha em separadores, "Próximo passo", menu "…", formulários em folha |
+| F6 | Dinheiro: IRS, projeção e conselhos, mercado |
+| F7 | Arquivo com pesquisa e tipos; pesquisa global (Ctrl K) |
+| F8 | Admin, Saúde, Senhorios, login e formulários sem classes da V1 |
+
+**Desvios ao plano, e porquê:**
+- **O mês corrente não tem "em atraso"** (§3.4 dizia que tinha). Os recibos só entram com as
+  recolhas dos dias 15 e último: a 9 de outubro, chamar atraso ao que falta era acusar quem já
+  pagou. Ficou "por receber", e o atraso é o dos meses anteriores.
+- **Uma só definição de "em atraso"** (`emAtrasoDaCarteira`, insights.ts). A tarefa e o cartão
+  mostravam 15 364 € e 9 634 € para a mesma pergunta.
+- **`vocabulario.ts` não existe.** As palavras novas estão escritas nos ecrãs; o que era código
+  (`nomeProprio`, `mesPorExtenso`) vive no `format.ts`.
+- **`forms.tsx` não foi dividido.** O `Modal` partilhado passou a folha lateral, e com isso todos
+  os formulários mudaram de forma sem tocar nas 706 linhas. Dividir o ficheiro não muda nada
+  para quem usa a app.
+- **Dinheiro junta páginas existentes** (Ano, Análise, Mercado) em separadores, em vez de as
+  reescrever: o cálculo está testado e não havia razão para o duplicar.
+- **A faixa continua** como "Histórico mensal" (`/carteira`), a um toque de Imóveis.

@@ -34,7 +34,7 @@ export function SyncRentsCard() {
       {message && (
         <p
           className={`mt-2 text-xs ${
-            message.ok ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+ message.ok ? "text-tinta" : "text-perda"
           }`}
         >
           {message.text}

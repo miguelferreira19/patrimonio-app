@@ -23,7 +23,7 @@ superfície `/analise` (admin-only) com projeção de cashflow e recomendações
 - Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
 - Build (gate obrigatório antes de dar qualquer tarefa por terminada): `npm run build`
-- `npm run check` = **21 self-checks puros** (os 18 de sempre, mais validar, agenda e ics), sem BD
+- `npm run check` = **25 self-checks puros** (os 18 de sempre, mais validar, agenda, ics, predios, mes, imoveis e pesquisa), sem BD
   nem framework. Desde 2026-10-03 é UMA compilação (`tsconfig.check.json`, modo strict) e um runner
   (`scripts/checks.cjs`) que descobre sozinho todo o `src/lib/**/*.check.ts`: um check novo não se
   regista em lado nenhum. ~10 s (eram 73). Os 19 scripts `check:<mod>` saíram: compilavam sem `strict` e
@@ -150,6 +150,25 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
   modais) vai ser dissolvido em edição inline e no comando ⌘K; ver PLANO.md §10.7.
 - CTAs que navegam (`<Link>`, `<a href="/api/...">`) usam `buttonClass(...)`, nunca strings de
   classes copiadas.
+
+## V4 · "banca calma" (2026-10-09, REDESENHO.md §11)
+- **Quatro destinos** no `components/shell.tsx` (barra lateral; separadores EM BAIXO no
+  telemóvel): **Hoje** (`/`), **Imóveis** (`/imoveis`, `/imoveis/[chave]`), **Dinheiro**
+  (`/dinheiro?tab=irs|analise|mercado`, que embebe Ano, Análise e Mercado) e **Arquivo**
+  (`/arquivo`; `?fracao=` mostra a vista antiga de uma fração com as minutas). As rotas antigas
+  continuam a funcionar e acendem o destino certo (`DONO` no shell). `masthead.tsx` e `nav.tsx`
+  ficam no repo para voltar atrás.
+- **Prédio = artigo matricial sem a fração** (`lib/portfolio/predios.ts`): `nomeDaFracao()` é o
+  nome a usar FORA do prédio ("Rua X, 68 · 1.º Esq."), nunca `property.name` cru. Nomes de pessoas
+  passam por `nomeProprio()`.
+- **A manchete de Hoje é o `mes.ts`**: recebido / por receber do mês corrente, sem "em atraso"
+  (os recibos só entram nos dias 15 e último). Em atraso = `emAtrasoDaCarteira()` (insights.ts),
+  a MESMA definição na tarefa "Cobrar", no cartão do mês e nos Imóveis.
+- **Tipografia: só Inter** (`--font-inter`); `font-serif` legado cai na Inter. Geist Mono para
+  códigos. Cartões `rounded-2xl`, botões `rounded-full`. O `Modal` é uma folha lateral; listas
+  longas abrem em `components/folha.tsx` (`<dialog>` nativo).
+- **Pesquisa global**: `/api/pesquisa` devolve o índice uma vez; `procurar()` (pesquisa.ts) filtra
+  no browser. Números curtos casam a palavra inteira.
 
 ## Regras da remodelação de 2026-10-03 (ver RELATORIO_FINAL.md)
 - **Leituras nunca engolem erros.** `linhas()`/`linha()` de `lib/supabase/dados.ts` lançam com o

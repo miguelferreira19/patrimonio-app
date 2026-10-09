@@ -87,7 +87,7 @@ const VARIANTES: Record<ButtonVariant, string> = {
   primary: "bg-acao text-carta hover:bg-acao-forte",
   outline: "border border-regua-forte bg-carta text-tinta hover:bg-vellum",
   ghost: "text-tinta-2 hover:bg-vellum hover:text-tinta",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  danger: "bg-perda text-carta hover:opacity-90",
 };
 
 const TAMANHOS: Record<ButtonSize, string> = {

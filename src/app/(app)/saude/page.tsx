@@ -114,17 +114,17 @@ export default async function SaudePage() {
               </thead>
               <tbody>
                 {list.map((issue, i) => (
-                  <tr key={`${kind}-${i}`} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
+                  <tr key={`${kind}-${i}`} className="hover:bg-vellum">
                     <Td>
                       {issue.href ? (
-                        <Link href={issue.href} className="font-medium text-teal-700 hover:underline dark:text-teal-400">
+                        <Link href={issue.href} className="font-medium text-acao hover:underline">
                           {issue.title}
                         </Link>
                       ) : (
-                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{issue.title}</span>
+                        <span className="font-medium text-tinta-2">{issue.title}</span>
                       )}
                     </Td>
-                    <Td className="whitespace-normal text-zinc-600 dark:text-zinc-400">{issue.detail}</Td>
+                    <Td className="whitespace-normal text-tinta-2">{issue.detail}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -133,9 +133,9 @@ export default async function SaudePage() {
         ))
       )}
 
-      <p className="text-xs text-zinc-400 dark:text-zinc-500">
+      <p className="text-xs text-tinta-3">
         As verificações de contratos parados e de renda desalinhada usam a mesma base da página de{" "}
-        <Link href="/carteira?lente=risco&filtro=atraso" className="text-teal-700 hover:underline dark:text-teal-400">
+        <Link href="/imoveis?f=atraso" className="text-acao hover:underline">
           Atrasos
         </Link>
         .
