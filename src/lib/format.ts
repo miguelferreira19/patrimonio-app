@@ -126,3 +126,28 @@ export function todayISO(): string {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
+
+const MESES_LONGOS = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
+
+/** "2026-10-01" → "outubro" (ou "outubro de 2026"). */
+export function mesPorExtenso(key: string, comAno = false): string {
+  const nome = MESES_LONGOS[parseInt(key.slice(5, 7), 10) - 1] ?? "?";
+  return comAno ? `${nome} de ${key.slice(0, 4)}` : nome;
+}
+
+/** Maiúscula inicial em cada palavra, partículas em minúscula, para nomes que vieram TODOS
+ *  em maiúsculas do Portal ("MARTA SILVA DOS SANTOS"). Um nome escrito à mão pela família
+ *  (com minúsculas) não se toca. Só apresentação: a base de dados não muda. */
+export function nomeProprio(s: string | null | undefined): string {
+  const t = (s ?? "").trim();
+  if (t !== t.toUpperCase() || !/[A-ZÀ-Ý]/.test(t)) return t;
+  const PEQUENAS = new Set(["da", "de", "do", "das", "dos", "e", "em"]);
+  return t
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map((w, i) => (i > 0 && PEQUENAS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join("");
+}

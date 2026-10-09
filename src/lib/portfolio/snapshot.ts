@@ -133,6 +133,9 @@ export interface Snapshot {
    *  emite há mais de um mês para lá do normal (o avô, desde 27/07/2026): os contratos dele
    *  ficam `futuro` depois da fronteira dele, e não em falta. */
   fontes: FonteDeRecibos[];
+  /** Contrato → senhorio que lhe emite os recibos (o do recibo mais recente). Serve para
+   *  pôr em "por saber", e não em atraso, os contratos de uma fonte parada (V4, mes.ts). */
+  fonteDoContrato: Record<string, string>;
   /** O último mês que TODAS as fontes com contratos ativos já conhecem. É o corte das
    *  comparações da carteira inteira: depois dele, uma descida pode ser só uma fonte por
    *  importar (o avô em agosto) e não dinheiro que deixou de entrar. */
@@ -525,6 +528,7 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
       horizon === null
         ? null
         : [horizon, ...fontes.filter((f) => f.contratos > 0).map((f) => f.horizonte)].sort()[0],
+    fonteDoContrato: Object.fromEntries(fontesRaw.fonte),
     faixaMeses: faixaMesesKeys,
     fluxo,
     // Só com histórico completo: num snapshot leve `raw.payments` vem vazio, e uma série
