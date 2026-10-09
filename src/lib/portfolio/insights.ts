@@ -163,7 +163,7 @@ const GERADORES: Gerador[] = [
         acoes: elegiveis
           .slice(0, 1)
           .map((a) => ({ label: "Gerar carta", href: `/carta/${a.activeContract!.id}` }))
-          .concat([{ label: "Ver frações", href: "/carteira" }]),
+          .concat([{ label: "Ver imóveis", href: "/imoveis?f=atualizavel" }]),
       },
     ];
   },
@@ -264,7 +264,7 @@ const GERADORES: Gerador[] = [
           s.risco.esperada > 0
             ? `Σ valor_mês × (1 − cura(idade)) × (1 − p̂). A soma crua dos meses em falta daria ${fmtEur(ingenua)}; a diferença é o que a carteira historicamente recupera sozinha. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`
             : `Σ (meses em falta × renda de referência), com cap de 24 meses por contrato. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`,
-        acoes: [{ label: "Ver atrasos", href: "/carteira?lente=risco&filtro=atraso" }],
+        acoes: [{ label: "Ver atrasos", href: "/imoveis?f=atraso" }],
       },
     ];
   },
@@ -306,7 +306,7 @@ const GERADORES: Gerador[] = [
         euros: total,
         confianca: "medido",
         conta: `Renda anual em jogo: ${fmtEur(total)}. Prazos legais de denúncia não são calculados: confirmar caso a caso.`,
-        acoes: [{ label: "Ver frações", href: "/carteira" }],
+        acoes: [{ label: "Ver imóveis", href: "/imoveis?f=atualizavel" }],
       },
     ];
   },

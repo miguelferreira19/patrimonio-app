@@ -137,7 +137,7 @@ const fila = construirFila(snap);
   assert.ok(atrasos[0].porque.includes("Repeses"), "nomeia os maiores");
 
   assert.ok(
-    atrasos[0].acoes.some((a) => a.href.startsWith("/carteira?lente=risco")),
+    atrasos[0].acoes.some((a) => a.href.startsWith("/imoveis?f=atraso")),
     "leva ao detalhe (lente Risco)",
   );
 }
