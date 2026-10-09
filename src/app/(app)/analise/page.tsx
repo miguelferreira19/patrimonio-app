@@ -144,7 +144,7 @@ function Recomendacoes({ conselhos, temAreas }: { conselhos: Conselho[]; temArea
                 <Money
                   value={c.euros}
                   escala="lg"
-                  tom={c.grupo === "risco" ? "perda" : "acao"}
+                  tom="tinta"
                   className="shrink-0"
                 />
               </div>

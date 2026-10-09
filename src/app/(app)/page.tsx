@@ -192,7 +192,7 @@ function Tarefas({ snap }: { snap: Snapshot }) {
         <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold tracking-[-0.01em]">Oportunidades</h2>
-            <Link href="/dinheiro" className="text-sm font-medium text-acao hover:underline">
+            <Link href="/dinheiro?tab=analise" className="text-sm font-medium text-acao hover:underline">
               Ver em Dinheiro
             </Link>
           </div>
