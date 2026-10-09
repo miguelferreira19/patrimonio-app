@@ -1,13 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  CheckCircle2,
-  FileText,
-  Home,
-  ReceiptText,
-  TrendingUp,
-  TriangleAlert,
-} from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   ContractFormButton,
   DeleteContractButton,
@@ -17,16 +10,17 @@ import {
   PropertyFormButton,
   RentUpdateButton,
 } from "@/components/forms";
-import { Badge, buttonClass, Card, cn, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
-import { Celula, CelulaLegenda } from "@/components/faixa/celula";
+import { Badge, buttonClass, cn } from "@/components/ui";
+import { Carregar } from "@/components/documentos/carregar";
 import { Money } from "@/components/kit";
 import { monthCellStatus, type MonthCellData } from "@/lib/monthcell";
 import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacancyGaps } from "@/lib/calc";
 import { getSession } from "@/lib/data";
-import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, todayISO } from "@/lib/format";
+import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, nomeProprio, todayISO } from "@/lib/format";
 import { classifyUso } from "@/lib/irs";
 import { horizonteDaFonte, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import { chaveDoInquilino } from "@/lib/portfolio/inquilinos";
+import { chaveDoPredio, normalizarMorada, rotuloDaFracao } from "@/lib/portfolio/predios";
 import { ListaDocumentos, lerArquivo } from "@/components/documentos/lista";
 import { escopoSeguro } from "@/lib/documentos";
 import { codigosDeTerritorioEmUso, fetchGeoOptions } from "@/lib/portfolio/load";
@@ -126,25 +120,15 @@ function buildContractHistory(
   return { contract, years };
 }
 
-function YearBlock({ block }: { block: HistYearBlock }) {
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border border-regua p-2.5 sm:flex-row sm:items-center">
-      <div className="grid flex-1 grid-cols-6 gap-1 sm:grid-cols-12">
-        {block.months.map((cell) => (
-          <Celula key={cell.month} cell={cell} className="h-9" />
-        ))}
-      </div>
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-regua pt-2 text-xs text-tinta-2 sm:w-40 sm:justify-end sm:border-t-0 sm:border-l sm:pl-3 sm:pt-0">
-        <span className="font-medium tabular-nums text-tinta">{block.year}</span>
-        <Money value={block.totalReceived} escala="sm" tom="tinta-2" />
-        {block.monthsMissing > 0 && <Badge tone="perda">{block.monthsMissing} em falta</Badge>}
-      </div>
-    </div>
-  );
-}
-
-export default async function FracaoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FracaoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
+  const separador = (await searchParams).tab ?? "resumo";
   const { supabase, isAdmin } = await getSession();
 
   const [propQ, ownersQ, landlordsQ, contractsQ, geo] = await Promise.all([
@@ -301,535 +285,432 @@ export default async function FracaoPage({ params }: { params: Promise<{ id: str
   }
   const referenceRent = active?.rent ?? contracts[0]?.rent ?? null;
 
+  // ---------- V4 (REDESENHO.md §4.3): ficha em separadores ----------
+  const { chave } = chaveDoPredio(property.matriz_article, property.id);
+  const rotulo = rotuloDaFracao(property);
+  const morada = normalizarMorada(property.address);
+  const titulares = owners
+    .map((o) => `${landlordById.get(o.landlord_id)?.name ?? "?"} ${fmtNum(o.quota, 0)}%`)
+    .join(" + ");
+  const tab = TABS.some(([k]) => k === separador) ? separador : "resumo";
+  const historiaAtiva = histories[0];
+  const ultimosAnos = historiaAtiva ? historiaAtiva.years.slice(-2).reverse() : [];
+  const emFalta12 = historiaAtiva
+    ? historiaAtiva.years.flatMap((y) => y.months).filter((m) => m.status === "falta" && m.month >= window12Start).length
+    : 0;
+  const sobe =
+    active && rentEligibility?.eligible && (rentEligibility.suggestedRent ?? 0) > active.rent
+      ? rentEligibility
+      : null;
+
   return (
-    <div className="space-y-4">
-      {/* Cabeçalho */}
-      <div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          <Link href="/carteira" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
-            Frações
+    <div className="space-y-6">
+      <nav className="text-[13px] text-tinta-3">
+        <Link href="/imoveis" className="text-tinta-2 hover:text-tinta">
+          Imóveis
+        </Link>
+        {" / "}
+        <Link href={`/imoveis/${encodeURIComponent(chave)}`} className="text-tinta-2 hover:text-tinta">
+          {morada ?? "Prédio"}
+        </Link>
+        {" / "}
+        {rotulo}
+      </nav>
+
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">{rotulo}</h1>
+          <p className="mt-1.5 text-sm text-tinta-2">
+            {[morada, property.typology, property.area_m2 ? `${fmtNum(property.area_m2, 0)} m²` : null, titulares]
+              .filter(Boolean)
+              .join(" · ") || "Sem morada"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge tone={property.status === "vago" ? "atencao" : "neutro"}>
+            {property.status === "arrendado" ? "Arrendada" : property.status === "vago" ? "Vaga" : property.status}
+          </Badge>
+          {isAdmin && (
+            <>
+              <PropertyFormButton landlords={landlords} geoOptions={geoOptions} property={property} owners={owners} small />
+              <details className="relative">
+                <summary
+                  aria-label="Mais ações"
+                  className="grid size-9 cursor-pointer list-none place-items-center rounded-full border border-regua-forte bg-carta text-tinta-2 hover:bg-vellum"
+                >
+                  <MoreHorizontal size={16} />
+                </summary>
+                <div className="absolute right-0 z-30 mt-2 flex w-56 flex-col gap-1 rounded-xl border border-regua bg-elevado p-2 shadow-[0_16px_40px_-12px_rgba(15,21,23,0.28)]">
+                  {active && <EndContractButton contractId={active.id} />}
+                  <DeletePropertyButton id={property.id} />
+                </div>
+              </details>
+            </>
+          )}
+        </div>
+      </header>
+
+      <nav aria-label="Secções da fração" className="-mx-4 flex gap-1 overflow-x-auto border-b border-regua px-4 md:mx-0 md:px-0">
+        {TABS.map(([k, nome]) => (
+          <Link
+            key={k}
+            href={k === "resumo" ? `/fracoes/${property.id}` : `/fracoes/${property.id}?tab=${k}`}
+            aria-current={tab === k ? "page" : undefined}
+            className={cn(
+              "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+              tab === k ? "border-tinta text-tinta" : "border-transparent text-tinta-3 hover:text-tinta-2",
+            )}
+          >
+            {nome}
+            {k === "documentos" && docsDaFracao.length > 0 && (
+              <span className="ml-1 tabular-nums opacity-60">{docsDaFracao.length}</span>
+            )}
           </Link>
-          <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">/</span>
-          {property.name}
-        </p>
-        <PageHeader
-          className="mt-1"
-          title={property.name}
-          description={
-            [property.address, property.parish, property.municipality].filter(Boolean).join(" · ") ||
-            "Sem morada"
-          }
-          actions={
-            isAdmin && (
-              <div className="flex flex-wrap gap-2">
-                <PropertyFormButton
-                  landlords={landlords}
-                  geoOptions={geoOptions}
-                  property={property}
-                  owners={owners}
-                  small
-                />
-                <DeletePropertyButton id={property.id} />
-              </div>
-            )
-          }
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {property.status === "arrendado" ? (
-            <Badge tone="green">Arrendado</Badge>
-          ) : property.status === "vago" ? (
-            <Badge tone="amber">Vago</Badge>
-          ) : (
-            <Badge tone="zinc">Outro</Badge>
-          )}
-          {property.typology && <Badge tone="zinc">{property.typology}</Badge>}
-          {property.area_m2 && <Badge tone="zinc">{fmtNum(property.area_m2, 0)} m²</Badge>}
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-            Senhorios:{" "}
-            {owners
-              .map((o) => `${landlordById.get(o.landlord_id)?.name ?? "?"} (${fmtNum(o.quota, 0)}%)`)
-              .join(" + ") || "n/d"}
-          </span>
+        ))}
+      </nav>
+
+      {tab === "resumo" && (
+        <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+          <div className="space-y-5">
+            <Bloco titulo="Pagamentos" acao={historiaAtiva && <Link href={`/fracoes/${property.id}?tab=pagamentos`} className="text-sm font-medium text-acao hover:underline">Histórico completo</Link>}>
+              {ultimosAnos.length === 0 ? (
+                <p className="text-sm text-tinta-2">{active ? "Ainda sem pagamentos registados." : "Sem contrato ativo."}</p>
+              ) : (
+                <div className="space-y-4">
+                  {ultimosAnos.map((y) => (
+                    <LinhaDoTempo key={y.year} ano={y.year} meses={y.months} total={y.totalReceived} />
+                  ))}
+                </div>
+              )}
+            </Bloco>
+            <Bloco titulo="Contrato">
+              {active ? (
+                <dl className="grid grid-cols-2 gap-x-5 gap-y-4 text-sm sm:grid-cols-3">
+                  <Facto rotulo="Inquilino">
+                    <Link href={`/inquilinos/${encodeURIComponent(chaveDoInquilino(active))}`} className="hover:text-acao">
+                      {nomeProprio(active.tenant_name)}
+                    </Link>
+                  </Facto>
+                  <Facto rotulo="Renda">
+                    <Money value={active.rent} decimals={2} escala="lg" />
+                  </Facto>
+                  <Facto rotulo="Desde">{fmtDate(active.start_date)}</Facto>
+                  <Facto rotulo="Vence">dia {active.due_day}</Facto>
+                  {active.pf_contract_no && <Facto rotulo="Contrato no Portal"><span className="font-mono text-xs">{active.pf_contract_no}</span></Facto>}
+                  <Facto rotulo="Fim">
+                    {active.end_date ? fmtDate(active.end_date) : <span className="text-atencao">Sem data na base</span>}
+                  </Facto>
+                </dl>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-tinta-2">Fração sem contrato ativo.</p>
+                  {isAdmin && <ContractFormButton propertyId={property.id} />}
+                </div>
+              )}
+            </Bloco>
+          </div>
+
+          <aside className="space-y-4">
+            {sobe && active ? (
+              <ProximoPasso titulo="A renda pode subir">
+                <p>
+                  De <Money value={active.rent} decimals={2} escala="md" /> para{" "}
+                  <Money value={sobe.suggestedRent ?? 0} decimals={2} escala="md" /> desde {monthLabel(sobe.eligibleSince!)}. A carta
+                  tem de chegar 30 dias antes de a nova renda valer.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <a href={`/api/minuta/renda/${active.id}`} className={buttonClass({ size: "sm" })}>
+                    Carta em Word
+                  </a>
+                  {isAdmin && <RentUpdateButton contract={{ id: active.id, rent: active.rent }} suggestedRent={sobe.suggestedRent ?? undefined} />}
+                </div>
+              </ProximoPasso>
+            ) : active && emFalta12 > 0 ? (
+              <ProximoPasso titulo={`${emFalta12} ${emFalta12 === 1 ? "mês" : "meses"} por pagar`}>
+                <p>Nos últimos 12 meses. A interpelação é a carta que antecede qualquer passo formal.</p>
+                <a href={`/api/minuta/interpelacao/${active.id}`} className={buttonClass({ size: "sm", className: "mt-3" })}>
+                  Interpelação em Word
+                </a>
+              </ProximoPasso>
+            ) : null}
+
+            <Bloco titulo="Mercado">
+              {mv.benchmark ? (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <Facto rotulo="Renda/m²">{mv.rentPerM2 !== null ? `${fmtNum(mv.rentPerM2, 2)} €` : "n/d"}</Facto>
+                  <Facto rotulo={`Mediana INE ${mv.benchmark.period}`}>
+                    {mv.benchmarkRentM2 !== null ? `${fmtNum(mv.benchmarkRentM2, 2)} €` : "n/d"}
+                  </Facto>
+                  <Facto rotulo="Diferença"><DeviationBadge deviation={mv.deviation} /></Facto>
+                  <Facto rotulo="Yield bruto">{fmtPct(mv.grossYield, 1)}</Facto>
+                  <Facto rotulo="Valor estimado"><Money value={mv.estimatedValue} escala="md" /></Facto>
+                  <Facto rotulo="VPT"><Money value={property.vpt} escala="md" /></Facto>
+                </dl>
+              ) : (
+                <p className="text-sm text-tinta-2">
+                  {!property.dicofre
+                    ? "Sem freguesia na ficha: não há mediana do INE para comparar."
+                    : classifyUso(property.typology) !== "habitacao"
+                      ? "Sem comparação: as medianas do INE são de habitação."
+                      : !property.area_m2
+                        ? "Sem área na ficha, por isso não há €/m²."
+                        : "Sem medianas do INE para este concelho."}
+                </p>
+              )}
+            </Bloco>
+
+            <Bloco
+              titulo="Documentos"
+              acao={<Link href={`/fracoes/${property.id}?tab=documentos`} className="text-sm font-medium text-acao hover:underline">Todos</Link>}
+            >
+              {docsDaFracao.length === 0 ? (
+                <p className="text-sm text-tinta-2">Nada arquivado.</p>
+              ) : (
+                <ListaDocumentos docs={docsDaFracao.slice(0, 3)} isAdmin={false} />
+              )}
+            </Bloco>
+          </aside>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Contrato ativo */}
-        <Card
-          title="Contrato ativo"
-          actions={
-            isAdmin && (
-              <div className="flex flex-wrap gap-2">
-                {active && (
-                  <RentUpdateButton
-                    contract={{ id: active.id, rent: active.rent }}
-                    suggestedRent={rentEligibility?.eligible ? rentEligibility.suggestedRent ?? undefined : undefined}
-                  />
-                )}
-                {active && <ContractFormButton propertyId={property.id} contract={active} />}
-                {active && <EndContractButton contractId={active.id} />}
-                {!active && <ContractFormButton propertyId={property.id} />}
-              </div>
-            )
-          }
-        >
-          {active ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Inquilino</dt>
-                <dd className="font-medium">
-                  <Link
-                    href={`/inquilinos/${encodeURIComponent(chaveDoInquilino(active))}`}
-                    className="text-tinta hover:text-acao"
-                  >
-                    {active.tenant_name}
-                  </Link>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Renda mensal</dt>
-                <dd className="font-semibold tabular-nums text-teal-700 dark:text-teal-400">{fmtEur(active.rent, 2)}</dd>
-                {rentEligibility?.eligible && (
-                  <>
-                    <Badge tone="amber" className="mt-1">
-                      Atualizável desde {monthLabel(rentEligibility.eligibleSince!)}
-                      {rentEligibility.suggestedRent && ` · sugestão ${fmtEur(rentEligibility.suggestedRent, 2)}`}
-                    </Badge>
-                    <a
-                      href={`/api/minuta/renda/${active.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-xs font-medium text-teal-700 hover:underline dark:text-teal-400"
-                    >
-                      Carta em Word
-                    </a>
-                  </>
-                )}
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Início</dt>
-                <dd className="tabular-nums">{fmtDate(active.start_date)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Vencimento</dt>
-                <dd className="tabular-nums">dia {active.due_day}</dd>
-              </div>
-              {active.pf_contract_no && (
-                <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">Contrato Portal Finanças</dt>
-                  <dd className="font-mono text-xs">{active.pf_contract_no}</dd>
-                </div>
-              )}
-              {active.tenant_nif && (
-                <div>
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">NIF inquilino</dt>
-                  <dd className="font-mono text-xs">{active.tenant_nif}</dd>
-                </div>
-              )}
-            </dl>
-          ) : (
-            <EmptyState icon={Home}>Sem contrato ativo. Fração vaga.</EmptyState>
-          )}
-        </Card>
-
-        {/* Mercado e valor */}
-        <Card title="Mercado e valor" subtitle={mv.benchmark ? `INE ${mv.benchmark.period} · ${mv.benchmark.level === "concelho" ? "mediana do concelho" : "mediana da freguesia"}` : undefined}>
-          {mv.benchmark ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Renda atual €/m²</dt>
-                <dd className="font-medium tabular-nums">
-                  {mv.rentPerM2 !== null ? `${fmtNum(mv.rentPerM2, 2)} €` : "n/d"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Mediana mercado €/m²</dt>
-                <dd className="font-medium tabular-nums">
-                  {mv.benchmarkRentM2 !== null ? `${fmtNum(mv.benchmarkRentM2, 2)} €` : "n/d"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Desvio vs. mercado</dt>
-                <dd><DeviationBadge deviation={mv.deviation} /></dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Potencial por mês</dt>
-                <dd className="font-medium text-amber-700 tabular-nums dark:text-amber-400">
-                  {mv.gapEurMonth ? `+${fmtEur(mv.gapEurMonth)}` : "n/d"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Valor estimado (mediana venda)</dt>
-                <dd className="font-semibold tabular-nums">{fmtEur(mv.estimatedValue)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">VPT</dt>
-                <dd className="tabular-nums">
-                  {fmtEur(property.vpt)} {property.vpt_year ? `(${property.vpt_year})` : ""}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Yield bruto</dt>
-                <dd className="tabular-nums">{fmtPct(mv.grossYield, 1)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500 dark:text-zinc-400">Yield líquido (12m)</dt>
-                <dd className="tabular-nums">{fmtPct(netYield, 1)}</dd>
-              </div>
-            </dl>
-          ) : (
-            <EmptyState icon={TrendingUp}>
-              {/* A causa, e não sempre a mesma frase: "Casa" tem freguesia e tipologia "T?",
-                  e o aviso mandava preencher um DICOFRE que já lá estava. */}
-              {!property.dicofre
-                ? "Sem freguesia (DICOFRE) na ficha. Preenche-a a partir da caderneta predial."
-                : classifyUso(property.typology) !== "habitacao"
-                  ? "Sem comparação: a tipologia não é de habitação ou está por confirmar, e as medianas do INE são de alojamentos."
-                  : !property.area_m2
-                    ? "Sem área na ficha, por isso não há €/m² para comparar."
-                    : "Sem medianas do INE para este concelho. Importa-as na página Admin."}
-            </EmptyState>
-          )}
-          <p className="mt-3 text-[11px] leading-snug text-zinc-400 dark:text-zinc-500">
-            Estimativas com base nas medianas do INE do concelho (rendas de novos contratos e
-            valores de venda): são ordens de grandeza, não avaliações imobiliárias.
+      {tab === "pagamentos" && (
+        <div className="space-y-5">
+          <p className={cn("rounded-xl px-4 py-3 text-sm", missingOutside12 > 0 ? "bg-atencao-tenue text-atencao" : "bg-vellum text-tinta-2")}>
+            {missingOutside12 > 0
+              ? `${missingOutside12} ${missingOutside12 === 1 ? "mês em falta" : "meses em falta"} antes dos últimos 12 meses${referenceRent !== null ? ` (cerca de ${fmtEur(missingOutside12 * referenceRent)} à renda atual)` : ""}.`
+              : "Nenhum mês em falta antes dos últimos 12 meses."}
+            {cessadosOcultos > 0 && ` ${cessadosOcultos} ${cessadosOcultos === 1 ? "contrato terminado fica" : "contratos terminados ficam"} de fora; o histórico deles está na ficha do inquilino.`}
           </p>
-        </Card>
-      </div>
-
-      {/* Documentos desta fração. Ficam aqui, e não numa lista central: é aqui que se vem
-          procurar a caderneta predial ou o contrato de arrendamento desta casa. */}
-      <Card
-        title="Documentos"
-        subtitle="caderneta predial, contrato de arrendamento e o que mais estiver arquivado nesta fração"
-      >
-        {docsDaFracao.length === 0 ? (
-          <EmptyState icon={FileText}>
-            Nada arquivado nesta fração.
-            {isAdmin && " Arquiva a caderneta predial e o contrato na página Documentos."}
-          </EmptyState>
-        ) : (
-          <ListaDocumentos docs={docsDaFracao} isAdmin={isAdmin} />
-        )}
-      </Card>
-
-      {/* Histórico completo de pagamentos */}
-      <Card
-        title="Histórico de pagamentos"
-        subtitle={
-          cessadosOcultos > 0
-            ? `Um bloco por ano civil, desde o início do contrato ativo. ${cessadosOcultos} ${cessadosOcultos === 1 ? "contrato cessado fica" : "contratos cessados ficam"} de fora; o histórico deles está na ficha do arrendatário.`
-            : "Um bloco por ano civil, desde o início do contrato. Os pagamentos entram pelo import dos recibos do Portal."
-        }
-      >
-        <div
-          className={cn(
-            "mb-4 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm",
-            missingOutside12 > 0
-              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400"
-              : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400",
-          )}
-        >
-          {missingOutside12 > 0 ? (
-            <TriangleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+          {histories.length === 0 ? (
+            <p className="text-sm text-tinta-2">Sem contrato ativo.</p>
           ) : (
-            <CheckCircle2 size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+            histories.map((h) => (
+              <Bloco key={h.contract.id} titulo={histories.length > 1 ? `${nomeProprio(h.contract.tenant_name)} · desde ${fmtDate(h.contract.start_date)}` : "Ano a ano"}>
+                <div className="space-y-4">
+                  {h.years.slice().reverse().map((y) => (
+                    <LinhaDoTempo key={y.year} ano={y.year} meses={y.months} total={y.totalReceived} />
+                  ))}
+                </div>
+              </Bloco>
+            ))
           )}
-          <p>
-            {missingOutside12 > 0 ? (
-              <>
-                Meses em falta fora dos últimos 12 meses:{" "}
-                <strong className="tabular-nums">{missingOutside12}</strong>
-                {referenceRent !== null && (
-                  <>
-                    {" "}
-                    (~<span className="tabular-nums">{fmtEur(missingOutside12 * referenceRent)}</span> à renda
-                    atual)
-                  </>
-                )}
-                .
-              </>
+          <Bloco titulo="Recibos do Portal">
+            {receipts.length === 0 ? (
+              <p className="text-sm text-tinta-2">Sem recibos importados.</p>
             ) : (
-              "Meses em falta fora dos últimos 12 meses: nenhum."
+              <ul className="divide-y divide-regua">
+                {receipts.slice(0, 24).map((r) => (
+                  <li key={r.id} className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+                    <span className="font-mono text-xs text-tinta">{monthLabel(r.ref_month)}</span>
+                    <span className="hidden font-mono text-xs text-tinta-3 sm:inline">{r.receipt_number ?? ""}</span>
+                    <span className="text-xs text-tinta-3">{fmtDate(r.issue_date)}</span>
+                    <Money value={r.amount} decimals={2} escala="md" />
+                  </li>
+                ))}
+              </ul>
             )}
-          </p>
+          </Bloco>
         </div>
+      )}
 
-        {histories.length === 0 ? (
-          <EmptyState icon={Home}>
-            {contracts.length === 0
-              ? "Sem contratos nesta fração."
-              : "Sem contrato ativo. O histórico dos contratos cessados está na ficha do arrendatário."}
-          </EmptyState>
-        ) : (
-          <div className="space-y-6">
-            {histories.map((h) => (
-              <div key={h.contract.id}>
-                {histories.length > 1 && (
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                      {h.contract.tenant_name} · {fmtDate(h.contract.start_date)}
-                      {h.contract.end_date ? ` a ${fmtDate(h.contract.end_date)}` : " até hoje"}
-                    </p>
-                    {h.contract.status === "ativo" ? (
-                      <Badge tone="green">Ativo</Badge>
-                    ) : (
-                      <Badge tone="zinc">Cessado</Badge>
-                    )}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  {h.years
-                    .slice()
-                    .reverse()
-                    .map((yb) => (
-                      <YearBlock key={yb.year} block={yb} />
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {tab === "contrato" && (
+        <div className="space-y-5">
+          {active && isAdmin && (
+            <div className="flex flex-wrap gap-2">
+              <ContractFormButton propertyId={property.id} contract={active} label="Editar contrato" />
+              <RentUpdateButton contract={{ id: active.id, rent: active.rent }} suggestedRent={sobe?.suggestedRent ?? undefined} />
+              <Link href={`/arquivo?fracao=${property.id}`} className={buttonClass({ variant: "outline", size: "sm" })}>
+                Cartas e minutas
+              </Link>
+            </div>
+          )}
+          <Bloco titulo="Contratos desta fração">
+            {contracts.length === 0 ? (
+              <p className="text-sm text-tinta-2">Sem contratos.</p>
+            ) : (
+              <ul className="divide-y divide-regua">
+                {contracts.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <Link href={`/inquilinos/${encodeURIComponent(chaveDoInquilino(c))}`} className="font-medium text-tinta hover:text-acao">
+                        {nomeProprio(c.tenant_name)}
+                      </Link>
+                      <p className="text-xs text-tinta-3">
+                        {fmtDate(c.start_date)} a {c.end_date ? fmtDate(c.end_date) : "hoje"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Money value={c.rent} decimals={2} escala="md" />
+                      <Badge tone="neutro">{c.status === "ativo" ? "Ativo" : "Terminado"}</Badge>
+                      {isAdmin && <ContractFormButton propertyId={property.id} contract={c} label="Editar" />}
+                      {isAdmin && <DeleteContractButton id={c.id} />}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Bloco>
+          {rentUpdates.length > 0 && (
+            <Bloco titulo="Atualizações de renda">
+              <ul className="space-y-1.5 text-sm text-tinta-2">
+                {rentUpdates.map((u) => (
+                  <li key={u.id} className="tabular-nums">
+                    {fmtDate(u.effective_date)}: {fmtEur(u.old_rent, 2)} para {fmtEur(u.new_rent, 2)}{" "}
+                    <span className="text-xs text-tinta-3">({u.reason})</span>
+                  </li>
+                ))}
+              </ul>
+            </Bloco>
+          )}
+          {gaps.length > 0 && (
+            <Bloco titulo="Períodos sem inquilino">
+              <ul className="space-y-1.5 text-sm text-tinta-2">
+                {gaps.map((g) => (
+                  <li key={g.gapStart} className="tabular-nums">
+                    {fmtDate(g.gapStart)} a {g.gapEnd ? fmtDate(g.gapEnd) : "hoje"}{" "}
+                    <span className="text-xs text-tinta-3">({g.days} dias, cerca de {fmtEur(g.lostRent)} perdidos)</span>
+                  </li>
+                ))}
+              </ul>
+            </Bloco>
+          )}
+        </div>
+      )}
 
-        <CelulaLegenda
-          className="mt-4 border-t border-regua pt-3"
-          estados={["pago", "parcial", "falta", "fora", "futuro"]}
-        />
-      </Card>
+      {tab === "documentos" && (
+        <Bloco titulo="Documentos desta fração">
+          {isAdmin && property.matriz_article && (
+            <div className="mb-4">
+              <Carregar
+                fracoes={[{ matriz: property.matriz_article, label: rotulo }]}
+                destino={{ matriz: property.matriz_article, label: rotulo }}
+              />
+            </div>
+          )}
+          {docsDaFracao.length === 0 ? (
+            <p className="text-sm text-tinta-2">Nada arquivado nesta fração.</p>
+          ) : (
+            <ListaDocumentos docs={docsDaFracao} isAdmin={isAdmin} />
+          )}
+        </Bloco>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Despesas */}
-        <Card
-          title="Despesas recentes"
-          subtitle={`Últimos 12 meses: ${fmtEur(sum(expenses12.map((e) => e.amount)))}`}
-          actions={isAdmin && <ExpenseFormButton properties={[{ id: property.id, name: property.name }]} defaultPropertyId={property.id} />}
+      {tab === "despesas" && (
+        <Bloco
+          titulo="Despesas"
+          acao={isAdmin && <ExpenseFormButton properties={[{ id: property.id, name: rotulo }]} defaultPropertyId={property.id} />}
         >
+          <p className="mb-3 text-sm text-tinta-2">
+            Últimos 12 meses: <Money value={sum(expenses12.map((e) => e.amount))} escala="md" />
+            {netYield !== null && ` · yield líquido ${fmtPct(netYield, 1)}`}
+          </p>
           {expenses.length === 0 ? (
-            <EmptyState icon={ReceiptText}>Sem despesas registadas.</EmptyState>
+            <p className="text-sm text-tinta-2">Sem despesas registadas.</p>
           ) : (
-            <>
-              <div className="hidden md:block">
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Data</Th>
-                      <Th>Categoria</Th>
-                      {/* Só a partir de xl: em duas colunas a descrição empurrava o VALOR
-                          para trás de um scroll horizontal, e o valor é o que se procura. */}
-                      <Th className="hidden xl:table-cell">Descrição</Th>
-                      <Th className="text-right">Valor</Th>
-                      {isAdmin && <Th />}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expenses.slice(0, 12).map((e) => (
-                      <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                        <Td className="whitespace-nowrap tabular-nums">{fmtDate(e.expense_date)}</Td>
-                        <Td>{EXPENSE_CATEGORY_LABEL[e.category]}</Td>
-                        <Td className="hidden max-w-44 truncate xl:table-cell">{e.description ?? "n/d"}</Td>
-                        <Td className="text-right tabular-nums">{fmtEur(e.amount, 2)}</Td>
-                        {isAdmin && (
-                          <Td>
-                            <ExpenseFormButton
-                              properties={[{ id: property.id, name: property.name }]}
-                              expense={e}
-                            />
-                          </Td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-              <div className="space-y-2 md:hidden">
-                {expenses.slice(0, 12).map((e) => (
-                  <div key={e.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{fmtDate(e.expense_date)}</p>
-                      </div>
-                      <p className="shrink-0 tabular-nums font-semibold text-zinc-800 dark:text-zinc-200">{fmtEur(e.amount, 2)}</p>
-                    </div>
-                    {e.description && <p className="mt-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{e.description}</p>}
-                    {isAdmin && (
-                      <div className="mt-2 border-t border-zinc-100 pt-2 dark:border-zinc-800">
-                        <ExpenseFormButton
-                          properties={[{ id: property.id, name: property.name }]}
-                          expense={e}
-                        />
-                      </div>
-                    )}
+            <ul className="divide-y divide-regua">
+              {expenses.map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-tinta">{EXPENSE_CATEGORY_LABEL[e.category]}</p>
+                    <p className="truncate text-xs text-tinta-3">
+                      {fmtDate(e.expense_date)}
+                      {e.description ? ` · ${e.description}` : ""}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-
-        {/* Recibos */}
-        <Card title="Recibos (Portal das Finanças)" subtitle="Importados na página Admin">
-          {receipts.length === 0 ? (
-            <EmptyState icon={FileText}>Sem recibos importados para esta fração.</EmptyState>
-          ) : (
-            <>
-              <div className="hidden md:block">
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th className="sticky top-0 z-10 bg-carta">Mês</Th>
-                      <Th className="sticky top-0 z-10 bg-carta">Nº recibo</Th>
-                      <Th className="sticky top-0 z-10 bg-carta">Emitido</Th>
-                      <Th className="sticky top-0 z-10 bg-carta text-right">Valor</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {receipts.slice(0, 12).map((r) => (
-                      <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                        <Td className="font-mono">{monthLabel(r.ref_month)}</Td>
-                        <Td className="font-mono">{r.receipt_number ?? "n/d"}</Td>
-                        <Td className="tabular-nums">{fmtDate(r.issue_date)}</Td>
-                        <Td className="text-right tabular-nums">{fmtEur(r.amount, 2)}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-              <div className="space-y-2 md:hidden">
-                {receipts.slice(0, 12).map((r) => (
-                  <div key={r.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-mono text-sm font-medium text-zinc-800 dark:text-zinc-200">{monthLabel(r.ref_month)}</p>
-                      <p className="tabular-nums font-semibold text-zinc-800 dark:text-zinc-200">{fmtEur(r.amount, 2)}</p>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                      <span className="font-mono">{r.receipt_number ?? "n/d"}</span>
-                      <span className="tabular-nums">{fmtDate(r.issue_date)}</span>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <Money value={e.amount} decimals={2} escala="md" />
+                    {isAdmin && <ExpenseFormButton properties={[{ id: property.id, name: rotulo }]} expense={e} />}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-      </div>
-
-      {/* Histórico de contratos e rendas */}
-      <Card title="Histórico de contratos e atualizações de renda">
-        {contracts.length === 0 ? (
-          <EmptyState icon={Home}>Sem contratos.</EmptyState>
-        ) : (
-          <div className="space-y-3">
-            <div className="hidden md:block">
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>Inquilino</Th>
-                    <Th>Início</Th>
-                    <Th>Fim</Th>
-                    <Th className="text-right">Renda</Th>
-                    <Th>Estado</Th>
-                    {isAdmin && <Th />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {contracts.map((c) => (
-                    <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/60">
-                      <Td>
-                        <Link
-                          href={`/inquilinos/${encodeURIComponent(chaveDoInquilino(c))}`}
-                          className="hover:text-acao"
-                        >
-                          {c.tenant_name}
-                        </Link>
-                      </Td>
-                      <Td className="tabular-nums">{fmtDate(c.start_date)}</Td>
-                      <Td className="tabular-nums">{fmtDate(c.end_date)}</Td>
-                      <Td className="text-right tabular-nums">{fmtEur(c.rent, 2)}</Td>
-                      <Td>
-                        {c.status === "ativo" ? (
-                          <Badge tone="green">Ativo</Badge>
-                        ) : (
-                          <Badge tone="zinc">Cessado</Badge>
-                        )}
-                      </Td>
-                      {isAdmin && (
-                        <Td>
-                          <div className="flex gap-1">
-                            <ContractFormButton propertyId={property.id} contract={c} label="Editar" />
-                            <DeleteContractButton id={c.id} />
-                          </div>
-                        </Td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-            <div className="space-y-2 md:hidden">
-              {contracts.map((c) => (
-                <div key={c.id} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{c.tenant_name}</p>
-                    {c.status === "ativo" ? (
-                      <Badge tone="green">Ativo</Badge>
-                    ) : (
-                      <Badge tone="zinc">Cessado</Badge>
-                    )}
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span>
-                      Início <span className="tabular-nums text-zinc-700 dark:text-zinc-300">{fmtDate(c.start_date)}</span>
-                    </span>
-                    <span>
-                      Fim <span className="tabular-nums text-zinc-700 dark:text-zinc-300">{fmtDate(c.end_date)}</span>
-                    </span>
-                  </div>
-                  <p className="mt-1.5 tabular-nums font-semibold text-teal-700 dark:text-teal-400">{fmtEur(c.rent, 2)}</p>
-                  {isAdmin && (
-                    <div className="mt-2 flex gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
-                      <ContractFormButton propertyId={property.id} contract={c} label="Editar" />
-                      <DeleteContractButton id={c.id} />
-                    </div>
-                  )}
-                </div>
+                </li>
               ))}
+            </ul>
+          )}
+        </Bloco>
+      )}
+    </div>
+  );
+}
+
+const TABS: Array<[string, string]> = [
+  ["resumo", "Resumo"],
+  ["pagamentos", "Pagamentos"],
+  ["contrato", "Contrato"],
+  ["documentos", "Documentos"],
+  ["despesas", "Despesas"],
+];
+
+function Bloco({ titulo, acao, children }: { titulo: string; acao?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-regua bg-carta p-5 shadow-[0_1px_2px_rgba(15,21,23,0.04)]">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-semibold tracking-[-0.01em]">{titulo}</h2>
+        {acao}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Facto({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-tinta-3">{rotulo}</dt>
+      <dd className="mt-0.5 font-medium text-tinta">{children}</dd>
+    </div>
+  );
+}
+
+function ProximoPasso({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl bg-acao-tenue p-5 text-sm text-tinta-2">
+      <p className="text-xs font-medium uppercase tracking-[0.06em] text-acao">Próximo passo</p>
+      <h2 className="mt-1 text-base font-semibold text-tinta">{titulo}</h2>
+      <div className="mt-1.5 leading-relaxed">{children}</div>
+    </section>
+  );
+}
+
+const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** Um ano em 12 células: a altura é a fração da renda que entrou; o eixo vive FORA das
+ *  células (a faixa repetia o nome do mês dentro de cada uma). */
+function LinhaDoTempo({ ano, meses, total }: { ano: number; meses: MonthCellData[]; total: number }) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between text-xs">
+        <span className="font-semibold text-tinta-2">{ano}</span>
+        <Money value={total} escala="sm" tom="tinta-2" />
+      </div>
+      <div className="grid grid-cols-12 gap-1">
+        {meses.map((m) => {
+          const fr = m.expected > 0 ? Math.min(1, m.paid / m.expected) : 0;
+          return (
+            <div
+              key={m.month}
+              title={`${monthLabel(m.month)}: ${fmtEur(m.paid)}`}
+              className={cn(
+                "relative h-9 overflow-hidden rounded-[4px]",
+                m.status === "falta" && "bg-perda-tenue shadow-[inset_0_-3px_0_var(--color-perda)]",
+                m.status === "fora" && "bg-vellum",
+                m.status === "futuro" && "tecido-futuro",
+                (m.status === "pago" || m.status === "parcial") && "bg-vellum",
+              )}
+            >
+              {(m.status === "pago" || m.status === "parcial") && (
+                <span
+                  className={cn("absolute inset-x-0 bottom-0", m.status === "pago" ? "bg-tinta" : "bg-atencao")}
+                  style={{ height: `${Math.max(12, fr * 100)}%` }}
+                />
+              )}
             </div>
-            {gaps.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                  Períodos de vazio
-                </p>
-                <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {gaps.map((g) => (
-                    <li key={g.gapStart} className="tabular-nums">
-                      {fmtDate(g.gapStart)} → {g.gapEnd ? fmtDate(g.gapEnd) : "hoje (em aberto)"}{" "}
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                        ({g.days} dias · ~{fmtEur(g.lostRent)} perdidos)
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {rentUpdates.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                  Atualizações de renda
-                </p>
-                <ul className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {rentUpdates.map((u) => (
-                    <li key={u.id} className="tabular-nums">
-                      {fmtDate(u.effective_date)}: {fmtEur(u.old_rent, 2)} → {fmtEur(u.new_rent, 2)}{" "}
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">({u.reason})</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
+          );
+        })}
+      </div>
+      <div className="mt-1 grid grid-cols-12 gap-1 text-center text-[10px] text-tinta-3">
+        {MES_CURTO.map((m) => (
+          <span key={m}>{m}</span>
+        ))}
+      </div>
     </div>
   );
 }

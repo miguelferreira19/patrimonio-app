@@ -93,13 +93,16 @@ export function Modal({
 
   return (
     <div
-      className="animate-overlay-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-tinta/25 p-4 backdrop-blur-[2px] sm:items-center dark:bg-black/60"
+      className="animate-overlay-in fixed inset-0 z-50 flex justify-end bg-[rgba(15,21,23,0.35)]"
       onMouseDown={(e) => {
         // Fechar ao clicar fora, mas só quando o gesto COMEÇA no fundo — senão um
         // arrasto que termina fora do painel fecharia o modal a meio da seleção.
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      {/* V4 (REDESENHO.md §5.6): o modal passou a FOLHA. Abre à direita, com a altura toda,
+          e no telemóvel ocupa o ecrã: um formulário de fração com 15 campos num cartão
+          centrado obrigava a fazer scroll dentro de um scroll. Comportamento igual. */}
       <div
         ref={painel}
         role="dialog"
@@ -107,22 +110,22 @@ export function Modal({
         aria-label={typeof title === "string" ? title : undefined}
         tabIndex={-1}
         className={cn(
-          "animate-modal-in my-8 w-full rounded-xl border border-regua bg-elevado shadow-[0_24px_60px_-24px_rgba(30,28,25,0.35)] outline-none",
-          wide ? "max-w-3xl" : "max-w-lg",
+          "animate-sheet-in flex h-dvh w-full flex-col bg-carta shadow-[0_0_60px_-10px_rgba(15,21,23,0.35)] outline-none",
+          wide ? "max-w-3xl" : "max-w-[480px]",
         )}
       >
-        <header className="flex items-center justify-between border-b border-regua px-5 py-3.5">
-          <h3 className="text-sm font-medium text-tinta">{title}</h3>
+        <header className="flex shrink-0 items-center justify-between border-b border-regua px-5 py-4">
+          <h3 className="text-lg font-semibold tracking-[-0.01em] text-tinta">{title}</h3>
           <button
             onClick={onClose}
             data-modal-close=""
-            className="rounded-lg p-1 text-tinta-3 transition-colors hover:bg-vellum hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
+            className="grid size-8 place-items-center rounded-full text-tinta-2 transition-colors hover:bg-vellum hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
             aria-label="Fechar"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </header>
-        <div className="p-5">{children}</div>
+        <div className="flex-1 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );
