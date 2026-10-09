@@ -12,8 +12,10 @@ const COR: Record<EstadoMes, string> = {
   parcial: "bg-[linear-gradient(to_top,var(--color-atencao)_55%,var(--color-vellum)_55%)]",
   falta: "bg-perda",
   fora: "bg-vellum",
-  futuro: "tecido-futuro",
-  curso: "tecido-futuro ring-1 ring-inset ring-regua-forte",
+  // Hachura em ardósia CHEIA a 60%: a `tecido-futuro` da faixa (riscas em futuro-tenue)
+  // quase desaparecia sobre o cartão branco, e "por importar" é o estado da fonte parada.
+  futuro: "bg-[repeating-linear-gradient(-45deg,var(--color-futuro)_0_1.5px,transparent_1.5px_4px)] opacity-60",
+  curso: "bg-[repeating-linear-gradient(-45deg,var(--color-regua-forte)_0_1.5px,transparent_1.5px_4px)] ring-1 ring-inset ring-regua-forte",
 };
 
 const NOME: Record<EstadoMes, string> = {

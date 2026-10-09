@@ -167,7 +167,7 @@ export function Shell({
 function Marca() {
   return (
     <Link href="/" className="flex items-center gap-2.5 px-1.5">
-      <Image src="/logo.png" alt="" width={22} height={25} className="h-[24px] w-auto" />
+      <Image src="/logo.png" alt="" width={22} height={25} priority className="h-[24px] w-auto" />
       <span className="text-[17px] font-semibold tracking-[-0.01em] text-tinta">Património</span>
     </Link>
   );
