@@ -1,26 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { RegistarServiceWorker } from "@/components/pwa";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// V4 (REDESENHO.md §5.3): uma só família para tudo, a Inter, com pesos 400/500/600 e
+// números tabulares. A Geist Mono fica só para códigos (artigos matriciais, NIF, recibos).
+// A Newsreader saiu: dava à app a voz de jornal que a família não queria.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
-
-// V2: uma serifa só para texto que se LÊ (ledes, títulos do Ano, linha de dinheiro).
-// Nunca em chrome de UI — é o que separa "documento" de "dashboard". Dois pesos, latin,
-// só os caracteres que a app usa em títulos.
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  style: ["normal"],
 });
 
 export const metadata: Metadata = {
@@ -37,8 +30,8 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
   themeColor: [
     // V2: as cores do papel (--color-papel), não mais o zinc-50/950.
-    { media: "(prefers-color-scheme: light)", color: "#fbfaf8" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c0c0d" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f5f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1213" },
   ],
 };
 
@@ -46,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-PT">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} min-h-screen font-sans`}
+        className={`${inter.variable} ${geistMono.variable} min-h-screen font-sans`}
       >
         {children}
         <RegistarServiceWorker />

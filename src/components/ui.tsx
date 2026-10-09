@@ -63,7 +63,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-xl border border-regua bg-carta", className)}>
+    <section className={cn("rounded-2xl border border-regua bg-carta shadow-[0_1px_2px_rgba(15,21,23,0.04)]", className)}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-regua px-4 py-3">
           <div>
@@ -84,7 +84,7 @@ type ButtonSize = "sm" | "md";
 
 const VARIANTES: Record<ButtonVariant, string> = {
   // primary/danger são superfícies opacas com contraste próprio nos dois temas.
-  primary: "bg-teal-800 text-white hover:bg-teal-900",
+  primary: "bg-acao text-carta hover:bg-acao-forte",
   outline: "border border-regua-forte bg-carta text-tinta hover:bg-vellum",
   ghost: "text-tinta-2 hover:bg-vellum hover:text-tinta",
   danger: "bg-red-600 text-white hover:bg-red-700",
@@ -110,7 +110,7 @@ export function buttonClass({
   className?: string;
 } = {}) {
   return cn(
-    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-medium transition",
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition",
     "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
     "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
     TAMANHOS[size],
@@ -325,7 +325,7 @@ export function StatCard({
     amber: "bg-atencao-tenue text-atencao",
   };
   return (
-    <div className="h-full rounded-xl border border-regua bg-carta p-4 transition-colors duration-150 hover:border-regua-forte">
+    <div className="h-full rounded-2xl border border-regua bg-carta p-4 transition-colors duration-150 hover:border-regua-forte">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-tinta-3">{label}</p>
         {Icon && (

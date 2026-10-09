@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 /* ============================================================================
+   V4 · "BANCA CALMA" (REDESENHO.md §5, 2026-10-09) sobre a estrutura da V2.
+   Os NOMES semânticos (papel/carta/tinta/acao/...) e a regra de cor ficam; mudam os
+   valores (neutros frios, cartões brancos), a letra (só Inter) e a forma (cartões de
+   16 px, controlos em pílula). Histórico da V2: PLANO.md §10.
+
    V2 · SISTEMA VISUAL "PAPEL E TINTA"                        (PLANO.md §10)
 
    REGRA FUNDADORA
@@ -33,22 +38,22 @@
      Papéis herdados da V1 que TÊM de continuar a funcionar:
        50/100 superfícies claras · 200 hairlines · 400/500 texto ténue
        800/900 superfícies escuras · 900 texto principal claro · 950 rail/nav */
-  --color-zinc-50: #fbfaf8;
-  --color-zinc-100: #f4f2ed;
-  --color-zinc-200: #e8e5de;
-  --color-zinc-300: #d6d2c9;
+  --color-zinc-50: #f3f5f4;
+  --color-zinc-100: #eef1f0;
+  --color-zinc-200: #e2e6e4;
+  --color-zinc-300: #cfd5d2;
   /* 400 e 500 medidos no browser, não escolhidos a olho:
      500 é o texto ténue mais usado da app (78 usos) e tem de passar 4.5:1 sobre
      o papel — a #7e7a70 dava 4.10. 400 serve dois papéis em tensão (terciário no
      claro, secundário no escuro, 88 usos em `dark:`): a #aba69b dava 2.32 no
      claro, pior que a V1; este valor dá ~2.8 no claro e ~6.3 no escuro. */
-  --color-zinc-400: #9a958a;
-  --color-zinc-500: #75716a;
-  --color-zinc-600: #625e56;
-  --color-zinc-700: #4b4841;
-  --color-zinc-800: #302d28;
-  --color-zinc-900: #1e1c19;
-  --color-zinc-950: #100f0d;
+  --color-zinc-400: #8a9396;
+  --color-zinc-500: #657073;
+  --color-zinc-600: #4d575a;
+  --color-zinc-700: #3d4547;
+  --color-zinc-800: #262d2f;
+  --color-zinc-900: #0f1517;
+  --color-zinc-950: #0a0e0f;
 
   /* AÇÃO (era teal) — verde-cofre. Interativo E dinheiro por ganhar: são a
      mesma coisa, dinheiro que só existe se agires. Resolve a colisão da V1,
@@ -138,74 +143,74 @@
   color-scheme: light dark;
 
   /* superfície */
-  --s-papel: #fbfaf8;
+  --s-papel: #f3f5f4;
   --s-carta: #ffffff;
   --s-elevado: #ffffff;
-  --s-vellum: #efede6; /* fundo de "confirmado" */
+  --s-vellum: #eef1f0; /* fundo de "confirmado" */
 
   /* tinta */
-  --s-tinta: #1e1c19; /* texto principal, valores fechados — 16.3:1 */
-  --s-tinta-2: #625e56; /* secundário — 6.2:1 */
-  --s-tinta-3: #75716a; /* ténue, mas ainda legível — 4.6:1 */
-  --s-regua: rgba(30, 28, 25, 0.1); /* hairline: substitui sombras */
-  --s-regua-forte: rgba(30, 28, 25, 0.18);
+  --s-tinta: #0f1517; /* texto principal, valores fechados — 16.3:1 */
+  --s-tinta-2: #4d575a; /* secundário — 6.2:1 */
+  --s-tinta-3: #657073; /* ténue, mas ainda legível — 4.6:1 */
+  --s-regua: #e2e6e4; /* hairline: substitui sombras */
+  --s-regua-forte: #cfd5d2;
 
   /* significado */
-  --s-acao: #0d5a4e;
-  --s-acao-forte: #106453;
-  --s-acao-tenue: #e8f2ef;
-  --s-atencao: #7c500e;
-  --s-atencao-tenue: #fbf1e1;
-  --s-perda: #8b2723;
-  --s-perda-tenue: #fbedec;
-  --s-futuro: #4a5c78;
+  --s-acao: #0f6b5c;
+  --s-acao-forte: #0c5a4d;
+  --s-acao-tenue: #e2f1ed;
+  --s-atencao: #9a5a08;
+  --s-atencao-tenue: #fbf0df;
+  --s-perda: #b8322a;
+  --s-perda-tenue: #fbe9e7;
+  --s-futuro: #55657b;
   --s-futuro-tenue: #edf0f5;
 
   /* fim de tabela (Table edgeFade em ui.tsx usa style inline em hex, não segue
      classes `dark:` — tem de trocar de par pelo próprio browser) */
   --fade-surface: #ffffff;
-  --fade-edge: rgba(30, 28, 25, 0.16);
+  --fade-edge: rgba(15, 21, 23, 0.14);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --s-papel: #0c0c0d;
-    --s-carta: #141416;
-    --s-elevado: #1b1b1e;
-    --s-vellum: #26241f;
+    --s-papel: #0e1213;
+    --s-carta: #161b1c;
+    --s-elevado: #1d2324;
+    --s-vellum: #1d2324;
 
     /* no escuro a "tinta" é clara: é o mesmo papel invertido, não outra cor */
-    --s-tinta: #f2f0ea;
-    --s-tinta-2: #aba69b;
+    --s-tinta: #ecefee;
+    --s-tinta-2: #a3abad;
     /* medido no browser: a #7e7a70 dava 4.30:1 sobre o cartão escuro, abaixo de 4.5,
        e este token carrega texto de 11px (tira de cobertura, notas, placeholders). */
-    --s-tinta-3: #8b877d;
-    --s-regua: rgba(242, 240, 234, 0.1);
-    --s-regua-forte: rgba(242, 240, 234, 0.18);
+    --s-tinta-3: #8a9496;
+    --s-regua: #262d2f;
+    --s-regua-forte: #343c3e;
 
-    --s-acao: #4aa391;
-    --s-acao-forte: #74b3a5;
-    --s-acao-tenue: rgba(74, 163, 145, 0.14);
-    --s-atencao: #cd9433;
-    --s-atencao-tenue: rgba(205, 148, 51, 0.14);
-    --s-perda: #d0635b;
-    --s-perda-tenue: rgba(208, 99, 91, 0.14);
-    --s-futuro: #96a5bc;
-    --s-futuro-tenue: rgba(150, 165, 188, 0.14);
+    --s-acao: #3fb39b;
+    --s-acao-forte: #6cc6b2;
+    --s-acao-tenue: #12302a;
+    --s-atencao: #e0a34a;
+    --s-atencao-tenue: #2e2210;
+    --s-perda: #f0796e;
+    --s-perda-tenue: #33140f;
+    --s-futuro: #93a1b5;
+    --s-futuro-tenue: #1b2230;
 
-    --fade-surface: #141416;
-    --fade-edge: rgba(242, 240, 234, 0.14);
+    --fade-surface: #161b1c;
+    --fade-edge: rgba(236, 239, 238, 0.12);
   }
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo,
     Consolas, monospace;
   /* Serifa SÓ para texto que se lê: ledes, títulos do Ano, linha de dinheiro.
      Nunca em chrome de UI. */
-  --font-serif: var(--font-newsreader), ui-serif, Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-inter), ui-sans-serif, system-ui, sans-serif; /* V4: a serifa saiu; `font-serif` legado cai na Inter */
 
   --color-papel: var(--s-papel);
   --color-carta: var(--s-carta);

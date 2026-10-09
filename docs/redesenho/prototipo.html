@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Património · protótipo do redesenho</title>
+<!-- Protótipo ESTÁTICO do REDESENHO.md. Dados fictícios de propósito: este ficheiro vai para o
+     GitHub e não pode levar nomes de inquilinos nem moradas reais. Abre-se com duplo clique. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hedvig+Letters+Sans&family=Hedvig+Letters+Serif:opsz@12..24&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TRÊS DIREÇÕES, UMA MARCAÇÃO. Muda só o que está em :root[data-dir].
+   A  "Banca calma"         (Mercury, Monzo)       recomendada
+   B  "Editorial refinado"  (Wealthsimple, Midday) evolução do atual
+   C  "Centro de controlo"  (Mews, Airbnb)         mais expressiva
+   A semântica de cor é a MESMA nas três: atenção âmbar, perda vermelha,
+   desconhecido ardósia, ação = o acento. Não há verde de "ok".
+   ============================================================ */
+:root, :root[data-dir="A"] {
+  --bg: #f3f5f4; --surface: #ffffff; --surface-2: #eef1f0; --line: #e2e6e4; --line-2: #cfd5d2;
+  --ink: #0f1517; --ink-2: #545e61; --ink-3: #8a9396;
+  --accent: #0f6b5c; --accent-ink: #ffffff; --accent-soft: #e2f1ed;
+  --warn: #a5610a; --warn-soft: #fbf0df; --loss: #c2362b; --loss-soft: #fbe9e7;
+  --unknown: #66758a; --unknown-soft: #edf0f5;
+  --paid: #0f1517; --partial: #8a9396;
+  --font-ui: "Inter", system-ui, sans-serif; --font-display: "Inter", system-ui, sans-serif;
+  --display-weight: 600; --display-track: -0.02em; --ui-track: -0.005em;
+  --r-card: 16px; --r-ctl: 999px; --r-cell: 4px; --shadow-card: 0 1px 2px rgba(15,21,23,.05);
+  --tile-1: var(--surface); --tile-2: var(--surface); --tile-3: var(--surface); --tile-4: var(--surface);
+}
+:root[data-dir="B"] {
+  --bg: #f1efe9; --surface: #fbfaf7; --surface-2: #ece9e2; --line: #dcd8cf; --line-2: #c9c4b8;
+  --ink: #141414; --ink-2: #5f5d58; --ink-3: #8f8b83;
+  --accent: #18181b; --accent-ink: #ffffff; --accent-soft: #e6e3dc;
+  --paid: #141414;
+  --font-ui: "Hedvig Letters Sans", system-ui, sans-serif; --font-display: "Hedvig Letters Serif", Georgia, serif;
+  --display-weight: 400; --display-track: -0.025em; --ui-track: 0.02em;
+  --r-card: 8px; --r-ctl: 999px; --r-cell: 2px; --shadow-card: none;
+  --tile-1: var(--surface); --tile-2: var(--surface); --tile-3: var(--surface); --tile-4: var(--surface);
+}
+:root[data-dir="C"] {
+  --bg: #ffffff; --surface: #fffcf6; --surface-2: #f5f1e8; --line: #ebe6da; --line-2: #d6cfbf;
+  --ink: #000000; --ink-2: #3d3d3d; --ink-3: #8c8c8c;
+  --accent: #000000; --accent-ink: #ffffff; --accent-soft: #f1f9c8;
+  --paid: #000000;
+  --font-ui: "Inter", system-ui, sans-serif; --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --display-weight: 800; --display-track: -0.035em; --ui-track: -0.01em;
+  --r-card: 22px; --r-ctl: 999px; --r-cell: 5px; --shadow-card: none;
+  --tile-1: #e9f8ff; --tile-2: #fdeefa; --tile-3: #f3fbd4; --tile-4: #f1efe9;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #1b1d1e; color: var(--ink); font-family: var(--font-ui); letter-spacing: var(--ui-track);
+  -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; letter-spacing: inherit; }
+
+/* ---------- Barra de controlo do protótipo (não faz parte do produto) ---------- */
+.controlo { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  padding: 10px 16px; background: #111; color: #ddd; font: 13px/1.2 Inter, system-ui, sans-serif; letter-spacing: 0; }
+.controlo b { color: #fff; font-weight: 600; margin-right: 4px; }
+.grupo { display: flex; gap: 4px; align-items: center; }
+.grupo span { color: #8a8a8a; margin-right: 4px; }
+.grupo button { background: #222; border: 1px solid #333; border-radius: 999px; padding: 6px 12px; cursor: pointer; color: #ccc; }
+.grupo button[aria-pressed="true"] { background: #f2f2f2; color: #111; border-color: #f2f2f2; }
+.nota-dir { color: #9a9a9a; flex: 1 1 260px; }
+
+/* ---------- Palco: computador ou telemóvel ---------- */
+.palco { padding: 28px 16px 64px; display: flex; justify-content: center; overflow-x: auto; }
+/* O modo "Computador" simula um ecrã largo mesmo numa janela estreita: faz-se scroll. */
+[data-device="desktop"] .app { min-width: 1080px; }
+[data-device="desktop"] .palco { justify-content: flex-start; }
+@media (min-width: 1140px) { [data-device="desktop"] .palco { justify-content: center; } }
+.app { background: var(--bg); color: var(--ink); width: 100%; max-width: 1280px; min-height: 820px; border-radius: 14px;
+  overflow: hidden; display: grid; grid-template-columns: 232px 1fr; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+[data-device="mobile"] .app { max-width: 390px; height: 844px; min-height: 0; grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto; border-radius: 44px; border: 10px solid #000; }
+
+/* Navegação: lateral no computador, separadores em baixo no telemóvel. */
+.lateral { background: var(--surface); border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; }
+.marca { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; font-family: var(--font-display);
+  font-weight: var(--display-weight); letter-spacing: var(--display-track); font-size: 19px; }
+.marca i { width: 26px; height: 26px; border-radius: 8px; background: var(--accent); display: inline-block; }
+.pesquisa { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 14px; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-ctl); color: var(--ink-3); font-size: 13px; background: var(--bg); cursor: text; }
+.pesquisa kbd { font: 11px Inter, sans-serif; border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 5px; color: var(--ink-2); }
+.item-nav { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--ink-2);
+  font-size: 14px; font-weight: 500; cursor: pointer; border: 0; background: none; text-align: left; width: 100%; }
+.item-nav:hover { background: var(--surface-2); color: var(--ink); }
+.item-nav[aria-current="page"] { background: var(--accent-soft); color: var(--ink); }
+.item-nav .cont { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+.item-nav svg, .tab-nav svg { width: 18px; height: 18px; flex: none; }
+.lateral .rodape { margin-top: auto; font-size: 12px; color: var(--ink-3); padding: 0 10px; line-height: 1.5; }
+.inferior { display: none; }
+[data-device="mobile"] .lateral { display: none; }
+[data-device="mobile"] .inferior { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface);
+  border-top: 1px solid var(--line); padding: 8px 6px 22px; }
+.tab-nav { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 500; color: var(--ink-3);
+  border: 0; background: none; cursor: pointer; padding: 4px 0; }
+.tab-nav[aria-current="page"] { color: var(--ink); }
+.tab-nav[aria-current="page"] svg { color: var(--accent); }
+
+.conteudo { overflow: auto; padding: 32px 40px 48px; }
+[data-device="mobile"] .conteudo { padding: 18px 16px 24px; }
+.ecra { display: none; animation: entra .22s ease-out; }
+.ecra.ativo { display: block; }
+@keyframes entra { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ecra { animation: none; } }
+
+/* ---------- Tipografia ---------- */
+.sobre { font-size: 12px; font-weight: 500; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.titulo { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--display-track);
+  font-size: 30px; line-height: 1.12; margin: 6px 0 0; }
+[data-device="mobile"] .titulo { font-size: 24px; }
+.sub { color: var(--ink-2); font-size: 14px; margin: 6px 0 0; line-height: 1.45; }
+.h2 { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--display-track); font-size: 18px; margin: 0; }
+.cabecalho { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.euro { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.euro small { font-size: .62em; color: var(--ink-3); margin-left: .12em; font-weight: 500; }
+
+/* ---------- Superfícies e controlos ---------- */
+.cartao { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); }
+.pad { padding: 20px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--r-ctl); padding: 9px 16px; font-size: 14px; font-weight: 500;
+  border: 1px solid var(--line-2); background: var(--surface); cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn.primario { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primario:hover { filter: brightness(1.12); }
+.btn.peq { padding: 6px 12px; font-size: 13px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.etiqueta { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.etiqueta.atencao { background: var(--warn-soft); color: var(--warn); }
+.etiqueta.perda { background: var(--loss-soft); color: var(--loss); }
+.etiqueta.neutra { background: var(--surface-2); color: var(--ink-2); }
+.etiqueta.acao { background: var(--accent-soft); color: var(--accent); }
+:root[data-dir="B"] .etiqueta.acao, :root[data-dir="C"] .etiqueta.acao { color: var(--ink); }
+.etiqueta.futuro { background: var(--unknown-soft); color: var(--unknown); }
+.ponto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* ---------- HOJE ---------- */
+.mes { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+[data-device="mobile"] .mes { grid-template-columns: 1fr; gap: 14px; }
+.mes-num { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--display-track);
+  font-size: 44px; line-height: 1; margin: 12px 0 4px; }
+[data-device="mobile"] .mes-num { font-size: 36px; }
+.mes-de { color: var(--ink-2); font-size: 14px; }
+.barra { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-2); margin: 18px 0 10px; }
+.barra span { display: block; height: 100%; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.grafico { display: flex; align-items: flex-end; gap: 6px; height: 132px; margin-top: 14px; }
+.grafico .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.grafico .b { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--ink); opacity: .86; position: relative; }
+.grafico .b.abaixo { background: var(--warn); opacity: 1; }
+.grafico .b.curso { background: repeating-linear-gradient(135deg, var(--line-2) 0 4px, transparent 4px 8px); border: 1px dashed var(--ink-3); opacity: 1; }
+.grafico .m { font-size: 11px; color: var(--ink-3); }
+.grafico-nota { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+
+.tarefas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 20px; }
+[data-device="mobile"] .tarefas { grid-template-columns: 1fr; gap: 10px; }
+.tarefa { padding: 18px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+.tarefa:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.tarefa:nth-child(1) { background: var(--tile-1); } .tarefa:nth-child(2) { background: var(--tile-2); }
+.tarefa:nth-child(3) { background: var(--tile-3); } .tarefa:nth-child(4) { background: var(--tile-4); }
+.tarefa .top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.tarefa .qtd { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--display-track); font-size: 34px; line-height: 1; }
+.tarefa .nome { font-weight: 600; font-size: 15px; }
+.tarefa .porque { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+.tarefa .pe { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 6px; }
+
+.duas { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-top: 20px; }
+[data-device="mobile"] .duas { grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista li { display: flex; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.lista li:first-child { border-top: 0; }
+.data { width: 52px; flex: none; text-align: center; border-radius: 10px; background: var(--surface-2); padding: 6px 0; }
+.data b { display: block; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.data span { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; }
+.lista .o-que { flex: 1; min-width: 0; }
+.lista .o-que b { display: block; font-size: 14px; font-weight: 600; }
+.lista .o-que span { font-size: 13px; color: var(--ink-2); }
+.nota-saber { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-card);
+  background: var(--unknown-soft); color: var(--ink-2); font-size: 13px; line-height: 1.45; margin-top: 14px; }
+.nota-saber b { color: var(--ink); }
+
+/* ---------- IMÓVEIS ---------- */
+.filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; align-items: center; }
+.filtros .espaco { flex: 1; }
+.resumo-linha { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+[data-device="mobile"] .resumo-linha { grid-template-columns: repeat(2, 1fr); }
+.kpi { padding: 14px 16px; }
+.kpi .v { font-size: 22px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.kpi .d { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.predios { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+[data-device="mobile"] .predios { grid-template-columns: 1fr; gap: 12px; }
+.predio { overflow: hidden; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+.predio:hover { transform: translateY(-2px); border-color: var(--line-2); }
+.capa { height: 92px; position: relative; background: var(--surface-2); }
+.capa svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.capa .estado { position: absolute; top: 10px; right: 10px; }
+.predio .corpo { padding: 14px 16px 16px; }
+.predio .nome { font-weight: 600; font-size: 15px; }
+.predio .onde { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.predio .linha { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+.meses { display: flex; gap: 3px; }
+.meses i { width: 14px; height: 14px; border-radius: var(--r-cell); background: var(--paid); display: block; }
+.meses i.q { background: linear-gradient(to top, var(--paid) 55%, var(--surface-2) 55%); }
+.meses i.f { background: var(--loss); }
+.meses i.u { background: repeating-linear-gradient(135deg, var(--line-2) 0 3px, transparent 3px 6px); outline: 1px dashed var(--ink-3); outline-offset: -1px; }
+.meses i.x { background: var(--unknown-soft); outline: 1px solid var(--line-2); outline-offset: -1px; }
+.meses i.v { background: var(--surface-2); }
+.fracs { font-size: 12px; color: var(--ink-2); }
+
+/* ---------- FICHA ---------- */
+.migalhas { font-size: 13px; color: var(--ink-3); margin-bottom: 6px; }
+.migalhas a { color: var(--ink-2); text-decoration: none; }
+.separadores { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 6px 0 22px; overflow-x: auto; }
+.separadores button { border: 0; background: none; padding: 10px 12px; font-size: 14px; font-weight: 500; color: var(--ink-3); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.separadores button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.ficha-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+[data-device="mobile"] .ficha-grid { grid-template-columns: 1fr; gap: 14px; }
+.factos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 20px; margin: 0; }
+.factos dt { font-size: 12px; color: var(--ink-3); }
+.factos dd { margin: 3px 0 0; font-size: 15px; font-weight: 500; }
+.linha-tempo { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 14px; }
+.linha-tempo .c { height: 38px; border-radius: var(--r-cell); background: var(--surface-2); position: relative; overflow: hidden; }
+.linha-tempo .c span { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paid); }
+.linha-tempo .c.f { background: var(--loss-soft); box-shadow: inset 0 -3px 0 var(--loss); }
+.linha-tempo .c.u { background: repeating-linear-gradient(135deg, var(--line-2) 0 4px, transparent 4px 8px); }
+.eixo { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 6px; font-size: 11px; color: var(--ink-3); text-align: center; }
+.ano-label { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-top: 16px; }
+.menu-mais { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); cursor: pointer; font-size: 18px; line-height: 1; }
+.proximo { border-radius: var(--r-card); background: var(--accent-soft); padding: 16px; }
+:root[data-dir="C"] .proximo { background: var(--tile-3); }
+.proximo b { font-size: 14px; }
+.proximo p { font-size: 13px; color: var(--ink-2); margin: 6px 0 12px; line-height: 1.45; }
+.docs li { font-size: 14px; }
+.docs .ext { font: 600 10px Inter, sans-serif; letter-spacing: .04em; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); padding: 4px 6px; }
+</style>
+</head>
+<body>
+
+<div class="controlo" role="toolbar" aria-label="Controlo do protótipo">
+  <b>Protótipo</b>
+  <div class="grupo" data-grupo="dir"><span>Direção</span>
+    <button data-v="A" aria-pressed="true">A · Banca calma</button>
+    <button data-v="B" aria-pressed="false">B · Editorial</button>
+    <button data-v="C" aria-pressed="false">C · Centro de controlo</button>
+  </div>
+  <div class="grupo" data-grupo="device"><span>Ecrã</span>
+    <button data-v="desktop" aria-pressed="true">Computador</button>
+    <button data-v="mobile" aria-pressed="false">Telemóvel</button>
+  </div>
+  <span class="nota-dir" id="nota-dir"></span>
+</div>
+
+<div class="palco">
+  <div class="app" id="app">
+    <nav class="lateral" aria-label="Navegação principal">
+      <div class="marca"><i></i>Património</div>
+      <div class="pesquisa" role="search">Procurar… <kbd>Ctrl K</kbd></div>
+      <button class="item-nav" data-ir="hoje" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Hoje<span class="cont">4</span></button>
+      <button class="item-nav" data-ir="imoveis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/></svg>Imóveis<span class="cont">53</span></button>
+      <button class="item-nav" data-ir="ficha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V8"/></svg>Dinheiro</button>
+      <button class="item-nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v12H4z"/><path d="M4 7l2-3h12l2 3"/></svg>Arquivo</button>
+      <div class="rodape">Conhecido até out 2026<br>Recibos do avô só até jul</div>
+    </nav>
+
+    <main class="conteudo">
+      <!-- ===================== HOJE ===================== -->
+      <section class="ecra ativo" id="ecra-hoje" aria-label="Hoje">
+        <div class="cabecalho">
+          <div>
+            <div class="sobre">Quinta, 9 de outubro</div>
+            <h1 class="titulo">Bom dia. Faltam 33 rendas de outubro.</h1>
+            <p class="sub">É normal no dia 9: a maioria vence até dia 8 e chega com o recibo. Os atrasos a sério estão em baixo.</p>
+          </div>
+          <button class="btn">Pôr prazos no calendário</button>
+        </div>
+
+        <div class="mes">
+          <div class="cartao pad">
+            <div class="sobre">Outubro, em curso</div>
+            <div class="mes-num"><span class="euro">3 812<small>€</small></span></div>
+            <div class="mes-de num">de 15 241 € esperados · 9 de 42 contratos pagos</div>
+            <div class="barra" aria-hidden="true">
+              <span style="width:25%;background:var(--ink)"></span>
+              <span style="width:8%;background:var(--loss)"></span>
+              <span style="width:67%;background:var(--line-2)"></span>
+            </div>
+            <div class="legenda">
+              <span><i style="background:var(--ink)"></i>Recebido 3 812 €</span>
+              <span><i style="background:var(--loss)"></i>Em atraso 1 925 €</span>
+              <span><i style="background:var(--line-2)"></i>Ainda não venceu 9 504 €</span>
+            </div>
+          </div>
+          <div class="cartao pad">
+            <div class="cabecalho" style="margin:0"><div><div class="sobre">Últimos 12 meses</div>
+              <div style="font-size:14px;margin-top:6px" class="num"><b>139 432 €</b> <span style="color:var(--ink-3)">recebidos, −4% face ao ano anterior</span></div></div></div>
+            <div class="grafico" id="grafico"></div>
+            <div class="grafico-nota">Âmbar: meses abaixo do esperado. Riscado: mês em curso, ainda não conta.</div>
+          </div>
+        </div>
+
+        <div class="cabecalho" style="margin:30px 0 0"><h2 class="h2">Para fazer</h2><span class="sub" style="margin:0">4 tarefas · 12 059 € em jogo</span></div>
+        <div class="tarefas" id="tarefas"></div>
+
+        <div class="duas">
+          <div class="cartao pad">
+            <div class="cabecalho" style="margin-bottom:6px"><h2 class="h2">Próximos prazos</h2><span class="sub" style="margin:0">90 dias</span></div>
+            <ul class="lista" id="prazos"></ul>
+          </div>
+          <div>
+            <div class="cartao pad">
+              <h2 class="h2">Oportunidades</h2>
+              <p class="sub">Estratégia, não urgência. Vive em Dinheiro.</p>
+              <ul class="lista" style="margin-top:6px">
+                <li><div class="o-que"><b>Pagar menos IRS</b><span>11 contratos podem ter taxa reduzida</span></div><span class="euro num">6 773<small>€/ano</small></span></li>
+                <li><div class="o-que"><b>15 rendas abaixo do mercado</b><span>Mediana do INE do concelho</span></div><span class="euro num">46 833<small>€/ano</small></span></li>
+              </ul>
+            </div>
+            <div class="nota-saber"><span class="etiqueta futuro">Por saber</span><div><b>Recibos do avô parados desde julho.</b> 20 contratos ficam fora das contas até os herdeiros emitirem.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== IMÓVEIS ===================== -->
+      <section class="ecra" id="ecra-imoveis" aria-label="Imóveis">
+        <div class="cabecalho">
+          <div><div class="sobre">Carteira</div><h1 class="titulo">12 imóveis, 53 frações</h1>
+          <p class="sub">Agrupados pelo artigo matricial. Cada quadrado é um mês; o último, riscado, é o mês em curso.</p></div>
+          <button class="btn primario">+ Nova fração</button>
+        </div>
+        <div class="resumo-linha">
+          <div class="cartao kpi"><div class="sobre">Renda contratada</div><div class="v">15 241 €</div><div class="d">por mês</div></div>
+          <div class="cartao kpi"><div class="sobre">Ocupação</div><div class="v">42 de 53</div><div class="d">11 vagas, 8 são terrenos</div></div>
+          <div class="cartao kpi"><div class="sobre">Em atraso</div><div class="v" style="color:var(--loss)">1 925 €</div><div class="d">11 contratos</div></div>
+          <div class="cartao kpi"><div class="sobre">VPT</div><div class="v">2,57 M€</div><div class="d">valor patrimonial</div></div>
+        </div>
+        <div class="filtros" id="filtros">
+          <button class="chip" aria-pressed="true">Todos</button><button class="chip" aria-pressed="false">Com atraso · 4</button>
+          <button class="chip" aria-pressed="false">Com vagas · 3</button><button class="chip" aria-pressed="false">Renda atualizável · 7</button>
+          <span class="espaco"></span>
+          <button class="chip" aria-pressed="false">Senhorio: todos</button><button class="chip" aria-pressed="false">Ordenar: atraso</button>
+        </div>
+        <div class="predios" id="predios"></div>
+      </section>
+
+      <!-- ===================== FICHA ===================== -->
+      <section class="ecra" id="ecra-ficha" aria-label="Ficha da fração">
+        <div class="migalhas"><a href="#" data-ir="imoveis">Imóveis</a> / <a href="#">Rua das Camélias, 88</a> / 1.º Posterior</div>
+        <div class="cabecalho" style="margin-bottom:8px">
+          <div><h1 class="titulo">1.º Posterior</h1>
+          <p class="sub">Rua das Camélias, 88 · Viseu · T2 · 78 m² · Avô 50% + Avó 50%</p></div>
+          <div style="display:flex;gap:8px;align-items:center"><span class="etiqueta neutra"><span class="ponto"></span>Arrendada</span>
+            <button class="btn">Editar</button><button class="menu-mais" aria-label="Mais ações">…</button></div>
+        </div>
+        <div class="separadores" role="tablist">
+          <button role="tab" aria-selected="true">Resumo</button><button role="tab" aria-selected="false">Pagamentos</button>
+          <button role="tab" aria-selected="false">Contrato</button><button role="tab" aria-selected="false">Documentos · 3</button>
+          <button role="tab" aria-selected="false">Despesas</button>
+        </div>
+        <div class="ficha-grid">
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div class="cartao pad">
+              <div class="cabecalho" style="margin-bottom:8px"><h2 class="h2">Pagamentos</h2><span class="etiqueta neutra">Em dia</span></div>
+              <div class="ano-label">2026</div>
+              <div class="linha-tempo" id="lt-2026"></div>
+              <div class="eixo">${"jan fev mar abr mai jun jul ago set out nov dez"}</div>
+              <div class="ano-label">2025</div>
+              <div class="linha-tempo" id="lt-2025"></div>
+              <div class="eixo"></div>
+            </div>
+            <div class="cartao pad">
+              <h2 class="h2">Contrato</h2>
+              <dl class="factos" style="margin-top:14px">
+                <div><dt>Inquilina</dt><dd>Marta Oliveira</dd></div>
+                <div><dt>Renda</dt><dd class="num">450,00 €</dd></div>
+                <div><dt>Desde</dt><dd class="num">01/01/2024</dd></div>
+                <div><dt>Vence</dt><dd>dia 8</dd></div>
+                <div><dt>Contrato no Portal</dt><dd class="num">5847921</dd></div>
+                <div><dt>Fim</dt><dd style="color:var(--warn)">Sem data na base</dd></div>
+              </dl>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="proximo"><b>Próximo passo</b><p>A renda pode subir a 1 de janeiro para 459,72 €. A carta tem de sair até 2 de dezembro.</p>
+              <button class="btn primario peq">Gerar carta em Word</button></div>
+            <div class="cartao pad">
+              <h2 class="h2">Mercado</h2>
+              <dl class="factos" style="margin-top:12px">
+                <div><dt>Renda/m²</dt><dd class="num">5,77 €</dd></div>
+                <div><dt>Mediana INE</dt><dd class="num">6,72 €</dd></div>
+                <div><dt>Diferença</dt><dd style="color:var(--warn)">−14%</dd></div>
+                <div><dt>Yield bruto</dt><dd class="num">5,1%</dd></div>
+              </dl>
+            </div>
+            <div class="cartao pad docs">
+              <h2 class="h2">Documentos</h2>
+              <ul class="lista" style="margin-top:6px">
+                <li><span class="ext">PDF</span><div class="o-que"><b>Caderneta predial</b><span>129 kB · 30/07/2026</span></div></li>
+                <li><span class="ext">PDF</span><div class="o-que"><b>Contrato de arrendamento</b><span>1,2 MB · 02/01/2024</span></div></li>
+                <li><span class="ext">DOCX</span><div class="o-que"><b>Carta de atualização 2025</b><span>18 kB · 28/11/2025</span></div></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="inferior" aria-label="Navegação principal">
+      <button class="tab-nav" data-ir="hoje" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Hoje</button>
+      <button class="tab-nav" data-ir="imoveis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/></svg>Imóveis</button>
+      <button class="tab-nav" data-ir="ficha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 16V9M10 16V5M14 16v-6M18 16V8"/></svg>Dinheiro</button>
+      <button class="tab-nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v12H4z"/><path d="M4 7l2-3h12l2 3"/></svg>Arquivo</button>
+    </nav>
+  </div>
+</div>
+
+<script>
+// Dados FICTÍCIOS. A estrutura é a do snapshot real (lib/portfolio/snapshot.ts).
+const MESES = ["nov","dez","jan","fev","mar","abr","mai","jun","jul","ago","set","out"];
+const RECEBIDO = [13900,13600,14100,14000,14200,13300,13250,12900,12600,10800,4804,3812];
+const ESPERADO = 14700;
+
+const TAREFAS = [
+  { qtd: 20, nome: "Emitir recibos de outubro", porque: "No Portal das Finanças. Os contratos do avô ficam de fora até os herdeiros emitirem.", euros: "8 004 €", tag: ["acao","Este mês"], acao: "Abrir o Portal" },
+  { qtd: 11, nome: "Cobrar rendas em atraso", porque: "Os três maiores: Lote 2E (4 meses), Av. Nova loja (2), São Pedro r/c (2).", euros: "1 925 €", tag: ["perda","Risco"], acao: "Ver quem" },
+  { qtd: 3, nome: "Enviar cartas de atualização", porque: "Rendas que podem subir em janeiro. A carta tem de chegar 30 dias antes.", euros: "+580 €/ano", tag: ["atencao","Até 2 dez"], acao: "Gerar cartas" },
+  { qtd: 1, nome: "Confirmar um contrato", porque: "Lote 2E não tem recibos há 14 meses. Terminou, ou falta emitir?", euros: "3 960 €", tag: ["futuro","Por saber"], acao: "Ver fração" },
+];
+
+const PRAZOS = [
+  { d: "30", m: "nov", t: "IMI, última prestação", s: "Notas acima de 100 €. Confirmar na nota de cada senhorio." },
+  { d: "02", m: "dez", t: "Carta: Rua das Camélias, 1.º Post.", s: "450,00 € para 459,72 € a 1 de janeiro" },
+  { d: "31", m: "dez", t: "Despesas do ano fechadas", s: "Condomínio, IMI e seguros entram no Anexo F" },
+];
+
+// 12 imóveis: nome, local, frações, arrendadas, renda/mês, 6 meses (p pago, q parcial, f falta, u em curso, x por importar, v vago)
+const PREDIOS = [
+  ["Rua das Camélias, 88","Viseu",6,6,2140,"pppqpu","atraso"],
+  ["Quinta do Galo","Ranhados",3,3,1650,"ppppppu".slice(1),""],
+  ["Av. da Liberdade, 12","Viseu",4,3,1310,"ppfffu","atraso"],
+  ["Lote 2, Repeses","Repeses",2,2,1100,"ppppxx","saber"],
+  ["Rua de São Pedro, 5","Viseu",3,3,1240,"pppqfu","atraso"],
+  ["Bairro da Cruz, 14","Abraveses",2,1,600,"ppppvu","vaga"],
+  ["Loja Av. Nova","Viseu",1,1,250,"ppfffu","atraso"],
+  ["Largo do Rossio, 3","Viseu",5,5,1820,"ppppxx","saber"],
+  ["Rua Formosa, 40","Viseu",4,4,1520,"pppppu",""],
+  ["Casal da Ribeira","Fragosela",1,1,295,"pppppu",""],
+  ["Terreno da Ribeira","Fragosela",8,0,0,"vvvvvv","terreno"],
+  ["Garagens Rua Nova","Viseu",14,13,1316,"pppppu",""],
+];
+const ESTADO = {
+  atraso: ['perda','Com atraso'], saber: ['futuro','Recibos parados'], vaga: ['atencao','1 vaga'],
+  terreno: ['neutra','Terreno'], "": ['neutra','Em dia'],
+};
+
+const euro = n => n.toLocaleString("pt-PT").replace(/ /g, " ");
+
+function desenhar() {
+  const g = document.getElementById("grafico");
+  const max = Math.max(...RECEBIDO, ESPERADO);
+  g.innerHTML = RECEBIDO.map((v, i) => {
+    const ultimo = i === RECEBIDO.length - 1;
+    const cls = ultimo ? "curso" : v < ESPERADO * 0.9 ? "abaixo" : "";
+    const h = ultimo ? 100 : Math.max(6, (v / max) * 100);
+    return `<div class="col"><div class="b ${cls}" style="height:${h}%" title="${MESES[i]}: ${euro(v)} €"></div><span class="m">${MESES[i]}</span></div>`;
+  }).join("");
+
+  document.getElementById("tarefas").innerHTML = TAREFAS.map(t => `
+    <article class="cartao tarefa" tabindex="0">
+      <div class="top"><span class="qtd num">${t.qtd}</span><span class="etiqueta ${t.tag[0]}">${t.tag[1]}</span></div>
+      <div><div class="nome">${t.nome}</div><div class="porque">${t.porque}</div></div>
+      <div class="pe"><b class="euro num">${t.euros}</b><button class="btn peq">${t.acao}</button></div>
+    </article>`).join("");
+
+  document.getElementById("prazos").innerHTML = PRAZOS.map(p => `
+    <li><div class="data"><b>${p.d}</b><span>${p.m}</span></div>
+      <div class="o-que"><b>${p.t}</b><span>${p.s}</span></div></li>`).join("");
+
+  // Uma "capa" geométrica por imóvel: sem fotografias na base, o desenho do prédio dá
+  // identidade visual a cada cartão (número de pisos ~ número de frações).
+  document.getElementById("predios").innerHTML = PREDIOS.map(([nome, onde, n, arr, renda, meses, est], i) => {
+    // Fachada: pisos ~ frações, janelas em grelha, uma porta. Ao lado, um vizinho mais
+    // claro para dar contexto de rua. Determinístico pelo índice, para não mudar a cada render.
+    const pisos = Math.min(5, Math.max(1, Math.ceil(n / 2)));
+    const larg = 70 + (i % 3) * 18, x0 = 60 + (i % 4) * 40, alt = pisos * 14 + 8;
+    let blocos;
+    if (est === "terreno") {
+      blocos = `<path d="M0 66 Q70 44 140 60 T280 52 T340 58 V92 H0Z" fill="var(--line-2)"/>
+        <path d="M0 76 Q90 62 170 72 T340 68 V92 H0Z" fill="var(--line)"/>`;
+    } else {
+      const janelas = [];
+      for (let p = 0; p < pisos; p++)
+        for (let j = 0; j < Math.floor(larg / 18); j++)
+          janelas.push(`<rect x="${x0 + 8 + j * 18}" y="${84 - alt + 8 + p * 14}" width="9" height="7" rx="1" fill="var(--surface)" opacity=".9"/>`);
+      blocos = `<rect x="${x0 + larg + 6}" y="${84 - alt * 0.6}" width="${larg * 0.55}" height="${alt * 0.6}" fill="var(--line)" rx="2"/>
+        <rect x="${x0}" y="${84 - alt}" width="${larg}" height="${alt}" fill="var(--line-2)" rx="2"/>${janelas.join("")}
+        <rect x="0" y="84" width="340" height="8" fill="var(--line)"/>`;
+    }
+    const [cls, txt] = ESTADO[est];
+    return `
+    <article class="cartao predio" tabindex="0" data-ir="ficha">
+      <div class="capa"><svg viewBox="0 0 340 92" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${blocos}</svg>
+        <span class="estado etiqueta ${cls}"><span class="ponto"></span>${txt}</span></div>
+      <div class="corpo">
+        <div class="nome">${nome}</div><div class="onde">${onde} · ${n} ${n === 1 ? "fração" : "frações"}</div>
+        <div class="linha"><div class="meses" aria-label="Últimos 6 meses">${[...meses].map(m => `<i class="${m === "p" ? "" : m}"></i>`).join("")}</div>
+          <span class="euro num" style="font-weight:600">${renda ? euro(renda) + "<small>€/mês</small>" : "<span style='color:var(--ink-3);font-weight:400'>sem renda</span>"}</span></div>
+        <div class="fracs" style="margin-top:8px">${arr} de ${n} arrendadas</div>
+      </div>
+    </article>`;
+  }).join("");
+
+  // Linha de tempo da ficha: altura = fração da renda recebida; o eixo vive FORA das células.
+  const meses12 = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const a26 = [1,1,1,1,1,1,1,1,1,"u",null,null];
+  const a25 = [1,1,1,0.5,1,1,1,1,1,1,1,1];
+  const lt = (el, arr) => document.getElementById(el).innerHTML = arr.map(v =>
+    v === "u" ? `<div class="c u" title="em curso"></div>` : v === null ? `<div class="c"></div>` :
+    v === 0 ? `<div class="c f"></div>` : `<div class="c"><span style="height:${v * 100}%"></span></div>`).join("");
+  lt("lt-2026", a26); lt("lt-2025", a25);
+  document.querySelectorAll(".eixo").forEach(e => e.innerHTML = meses12.map(m => `<span>${m}</span>`).join(""));
+}
+
+const NOTAS = {
+  A: "Recomendada. Uma só sans (Inter) com pesos medidos, cartões brancos sobre fundo neutro, um acento verde-cofre só para a ação. Calma de banco digital.",
+  B: "Evolução do atual: serifa editorial nos títulos, sans espaçada, papel quente, tudo plano. Mais elegante, menos 'app'.",
+  C: "A mais expressiva: títulos pesados, cartões creme, mosaicos de cor por tipo de tarefa. Lê-se depressa no telemóvel, é a mais distante do atual.",
+};
+
+function ir(alvo) {
+  document.querySelectorAll(".ecra").forEach(s => s.classList.toggle("ativo", s.id === "ecra-" + alvo));
+  document.querySelectorAll("[data-ir]").forEach(b => {
+    if (b.matches(".item-nav, .tab-nav")) b.toggleAttribute("aria-current", b.dataset.ir === alvo);
+    if (b.getAttribute("aria-current") === "") b.setAttribute("aria-current", "page");
+  });
+  document.querySelector(".conteudo").scrollTop = 0;
+}
+
+document.addEventListener("click", e => {
+  const alvo = e.target.closest("[data-ir]");
+  if (alvo) { e.preventDefault(); ir(alvo.dataset.ir); return; }
+  const b = e.target.closest(".grupo button");
+  if (!b) return;
+  const grupo = b.parentElement.dataset.grupo;
+  b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  if (grupo === "dir") { document.documentElement.dataset.dir = b.dataset.v; document.getElementById("nota-dir").textContent = NOTAS[b.dataset.v]; }
+  if (grupo === "device") document.documentElement.dataset.device = b.dataset.v;
+});
+
+document.documentElement.dataset.dir = "A";
+document.documentElement.dataset.device = "desktop";
+document.getElementById("nota-dir").textContent = NOTAS.A;
+desenhar();
+</script>
+</body>
+</html>
