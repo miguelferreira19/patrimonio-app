@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "./ui";
+import { Pesquisa } from "./pesquisa";
 import { createClient } from "@/lib/supabase/client";
 import type { Role } from "@/lib/types";
 
@@ -92,7 +93,10 @@ export function Shell({
       {/* ---------- Computador: barra lateral ---------- */}
       <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col border-r border-regua bg-carta px-3.5 py-5 md:flex">
         <Marca />
-        <nav aria-label="Navegação principal" className="mt-6 flex flex-col gap-0.5">
+        <div className="mt-5">
+          <Pesquisa />
+        </div>
+        <nav aria-label="Navegação principal" className="mt-4 flex flex-col gap-0.5">
           {DESTINOS.map((d) => {
             const on = ativo(pathname, d);
             return (
@@ -119,7 +123,10 @@ export function Shell({
       {/* ---------- Telemóvel: cabeçalho fino ---------- */}
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-regua bg-papel/90 px-4 py-2.5 backdrop-blur-md md:hidden">
         <Marca />
-        <Conta role={role} email={email} pathname={pathname} lado="baixo" compacta />
+        <div className="flex items-center gap-2">
+          <Pesquisa compacta />
+          <Conta role={role} email={email} pathname={pathname} lado="baixo" compacta />
+        </div>
       </header>
 
       <main

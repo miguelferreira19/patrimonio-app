@@ -100,3 +100,30 @@ export function escopoSugerido(nome: string, matrizes: Array<string | null>): st
   }
   return melhor;
 }
+
+export type TipoDocumento = "caderneta" | "contrato" | "irs" | "carta" | "outro";
+
+export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
+  caderneta: "Caderneta",
+  contrato: "Contrato",
+  irs: "IRS",
+  carta: "Carta",
+  outro: "Outro",
+};
+
+/** O tipo de um documento, a julgar pelo nome (V4 F7, filtros do Arquivo). Sem tabela a
+ *  indexar o bucket, o nome é a única pista; o que não se reconhece é "outro". Uma
+ *  caderneta chama-se pelo próprio artigo (`182341-U-5077-A.pdf`), por isso um nome que É
+ *  um artigo matricial conta como caderneta. */
+export function tipoDoDocumento(nome: string): TipoDocumento {
+  const n = nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+  if (/caderneta/.test(n) || /^\d{6}-[ur]-\d+(-[a-z0-9]+)?\.[a-z]+$/.test(n)) return "caderneta";
+  if (/contrato|arrendamento/.test(n)) return "contrato";
+  // Fronteira à mão e não `\b`: o `_` de "IRS_PAI.pdf" conta como letra para o `\b`.
+  if (/(^|[^a-z])irs([^a-z]|$)|modelo.?3|anexo.?f|declaracao/.test(n)) return "irs";
+  if (/carta|minuta|interpela|oposicao|revogacao|cessao|atualizacao/.test(n)) return "carta";
+  return "outro";
+}

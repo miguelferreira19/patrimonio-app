@@ -2,7 +2,7 @@
 // O que está aqui é a convenção de nomes do bucket: se se partir, os documentos deixam de
 // aparecer na fração certa (ou pior, um upload rebenta com 400 e ninguém sabe porquê).
 import assert from "node:assert/strict";
-import { GERAL, caminho, comSufixo, escopoSugerido, nomeSeguro, partirCaminho } from "./documentos";
+import { GERAL, caminho, comSufixo, escopoSugerido, nomeSeguro, partirCaminho, tipoDoDocumento } from "./documentos";
 
 // A) Ida e volta: o que se escreve é o que se lê.
 {
@@ -62,4 +62,15 @@ import { GERAL, caminho, comSufixo, escopoSugerido, nomeSeguro, partirCaminho } 
   });
 }
 
-console.log("documentos: casos OK (A, B, C, D, E, F)");
+// G) Tipo pelo nome, para os filtros do Arquivo.
+{
+  assert.equal(tipoDoDocumento("182341-U-5077-A.pdf"), "caderneta");
+  assert.equal(tipoDoDocumento("Caderneta_predial.pdf"), "caderneta");
+  assert.equal(tipoDoDocumento("contrato-2.pdf"), "contrato");
+  assert.equal(tipoDoDocumento("IRS_PAI.pdf"), "irs");
+  assert.equal(tipoDoDocumento("Declaração anual.pdf"), "irs");
+  assert.equal(tipoDoDocumento("Carta de atualização 2025.docx"), "carta");
+  assert.equal(tipoDoDocumento("foto.jpg"), "outro");
+}
+
+console.log("documentos: casos OK (A, B, C, D, E, F, G)");
