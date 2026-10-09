@@ -12,6 +12,13 @@
 
 ## 0. Estado
 
+**2026-10-09 · atualização dos recibos do António:** recolha do Portal concluída;
+16 recibos novos desdobrados em 18 linhas mensais e 18 pagamentos. Import incremental
+com o gerador existente, simulado com rollback e verificado ao cêntimo antes do commit
+da transação. Imóveis, contratos, quotas e entradas anteriores preservados. Cópia local
+e relatório em `dados/_recolhas/2026-10-09/`. Produção autenticada confirma 11 de 21
+contratos com pagamento em outubro; os dados são dinâmicos e não exigiram novo deploy.
+
 **2026-10-09 · usabilidade e acabamento da V4:** plano e registo em `AUDITORIA_UX.md`.
 Ajuda global; acesso visível à verificação de dados e filtros de gravidade; atrasos e
 recibos parados com ligações diretas e filtro independente; pesquisa com recuperação e
