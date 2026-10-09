@@ -15,7 +15,14 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let error;
+    try {
+      ({ error } = await supabase.auth.signInWithPassword({ email, password }));
+    } catch {
+      setError("Não foi possível ligar. Verifica a ligação à Internet e tenta novamente.");
+      setLoading(false);
+      return;
+    }
     if (error) {
       setError(
         error.message === "Invalid login credentials"
@@ -49,7 +56,7 @@ export function LoginForm() {
           required
         />
       </Field>
-      {error && <p className="text-xs text-perda">{error}</p>}
+      {error && <p role="alert" className="text-sm text-perda">{error}</p>}
       <Button type="submit" disabled={loading} className="w-full">
         {loading ? "A entrar…" : "Entrar"}
       </Button>

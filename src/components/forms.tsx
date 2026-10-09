@@ -49,13 +49,18 @@ export function useAction() {
   async function run(p: Promise<ActionResult>, onOk?: () => void) {
     setPending(true);
     setError(null);
-    const res = await p;
-    setPending(false);
-    if (res.ok) {
-      onOk?.();
-      router.refresh();
-    } else {
-      setError(res.error);
+    try {
+      const res = await p;
+      if (res.ok) {
+        onOk?.();
+        router.refresh();
+      } else {
+        setError(res.error);
+      }
+    } catch {
+      setError("Não foi possível confirmar a gravação. Verifica os dados na página antes de tentar novamente.");
+    } finally {
+      setPending(false);
     }
   }
   return { pending, error, run, setError };
@@ -232,6 +237,7 @@ export function PropertyFormButton({
               {own.map((o, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Select
+                    aria-label={`Proprietário ${i + 1}`}
                     value={o.landlord_id}
                     onChange={(e) =>
                       setOwn((p) => p.map((x, j) => (j === i ? { ...x, landlord_id: e.target.value } : x)))
@@ -245,6 +251,7 @@ export function PropertyFormButton({
                     ))}
                   </Select>
                   <Input
+                    aria-label={`Quota do proprietário ${i + 1}, em percentagem`}
                     value={o.quota}
                     onChange={(e) =>
                       setOwn((p) => p.map((x, j) => (j === i ? { ...x, quota: e.target.value } : x)))
@@ -280,7 +287,7 @@ export function PropertyFormButton({
             <Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </Field>
 
-          {error && <p className="text-xs text-perda">{error}</p>}
+          {error && <p role="alert" className="text-xs text-perda">{error}</p>}
           <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
@@ -316,7 +323,7 @@ export function DeletePropertyButton({ id }: { id: string }) {
       >
         <Trash2 size={14} /> Apagar fração
       </Button>
-      {error && <p className="mt-1 text-xs text-perda">{error}</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-perda">{error}</p>}
     </div>
   );
 }
@@ -413,7 +420,7 @@ export function ContractFormButton({
           <Field label="Notas">
             <Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </Field>
-          {error && <p className="text-xs text-perda">{error}</p>}
+          {error && <p role="alert" className="text-xs text-perda">{error}</p>}
           <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
@@ -488,7 +495,7 @@ export function RentUpdateButton({
               <option value="outro">Outro</option>
             </Select>
           </Field>
-          {error && <p className="text-xs text-perda">{error}</p>}
+          {error && <p role="alert" className="text-xs text-perda">{error}</p>}
           <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
@@ -519,7 +526,7 @@ export function EndContractButton({ contractId }: { contractId: string }) {
       >
         Cessar contrato
       </Button>
-      {error && <p className="mt-1 text-xs text-perda">{error}</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-perda">{error}</p>}
     </div>
   );
 }
@@ -539,7 +546,7 @@ export function DeleteContractButton({ id }: { id: string }) {
       >
         <Trash2 size={14} />
       </Button>
-      {error && <p className="mt-1 text-xs text-perda">{error}</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-perda">{error}</p>}
     </div>
   );
 }
@@ -632,7 +639,7 @@ export function ExpenseFormButton({
           <Field label="Descrição">
             <Input value={f.description} onChange={(e) => set("description", e.target.value)} />
           </Field>
-          {error && <p className="text-xs text-perda">{error}</p>}
+          {error && <p role="alert" className="text-xs text-perda">{error}</p>}
           <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
@@ -707,7 +714,7 @@ export function LandlordFormButton({ landlord }: { landlord?: Landlord }) {
           <Field label="Notas">
             <Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={2} />
           </Field>
-          {error && <p className="text-xs text-perda">{error}</p>}
+          {error && <p role="alert" className="text-xs text-perda">{error}</p>}
           <div className="flex justify-end gap-2 border-t border-regua pt-4">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar

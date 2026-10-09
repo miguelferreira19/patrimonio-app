@@ -26,6 +26,7 @@ export const dynamic = "force-dynamic";
 const FILTROS: Array<[FiltroImoveis, string]> = [
   ["todos", "Todos"],
   ["atraso", "Com atraso"],
+  ["parados", "Recibos parados"],
   ["vagas", "Com vagas"],
   ["atualizavel", "Renda atualizável"],
 ];
@@ -50,10 +51,11 @@ export default async function Imoveis({
   const todos = resumirPredios(snap);
   const visiveis = filtrarPredios(todos, { filtro, senhorio, ordem });
   const contagem: Record<FiltroImoveis, number> = {
-    todos: todos.length,
-    atraso: filtrarPredios(todos, { filtro: "atraso" }).length,
-    vagas: filtrarPredios(todos, { filtro: "vagas" }).length,
-    atualizavel: filtrarPredios(todos, { filtro: "atualizavel" }).length,
+    todos: filtrarPredios(todos, { senhorio }).length,
+    atraso: filtrarPredios(todos, { filtro: "atraso", senhorio }).length,
+    parados: filtrarPredios(todos, { filtro: "parados", senhorio }).length,
+    vagas: filtrarPredios(todos, { filtro: "vagas", senhorio }).length,
+    atualizavel: filtrarPredios(todos, { filtro: "atualizavel", senhorio }).length,
   };
   const senhorios = Array.from(
     new Map(snap.ativos.flatMap((a) => a.titulares.map((t) => [t.landlord.id, t.landlord] as const))).values(),
@@ -92,7 +94,7 @@ export default async function Imoveis({
             <History size={15} strokeWidth={1.75} />
             Histórico mensal
           </Link>
-          <Link href="/mercado" className={buttonClass({ variant: "outline" })}>
+          <Link href="/dinheiro?tab=mercado" className={buttonClass({ variant: "outline" })}>
             <TrendingUp size={15} strokeWidth={1.75} />
             Mercado
           </Link>
@@ -116,6 +118,7 @@ export default async function Imoveis({
       </div>
 
       <div className="space-y-3">
+        <p className="text-sm text-tinta-2">{visiveis.length} de {todos.length} prédios · abre um cartão para ver as frações.{(filtro !== "todos" || senhorio) && <Link href="/imoveis" className="ml-2 font-medium text-acao underline">Limpar filtros</Link>}</p>
         <nav aria-label="Filtros" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
           {FILTROS.map(([k, rotulo]) => (
             <Pilula key={k} href={href({ f: k === "todos" ? undefined : k })} ativa={filtro === k}>
@@ -171,7 +174,7 @@ export default async function Imoveis({
 function Kpi({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota: string }) {
   return (
     <div className="rounded-2xl border border-regua bg-carta px-4 py-3.5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</p>
+      <p className="text-xs font-medium text-tinta-2">{rotulo}</p>
       <div className="mt-1.5">{valor}</div>
       <p className="mt-1 text-xs text-tinta-3">{nota}</p>
     </div>
@@ -184,7 +187,7 @@ function Pilula({ href, ativa, children }: { href: string; ativa: boolean; child
       href={href}
       aria-current={ativa ? "true" : undefined}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-150",
+        "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 md:min-h-9",
         ativa ? "border-tinta bg-tinta text-papel" : "border-regua bg-carta text-tinta-2 hover:border-regua-forte hover:text-tinta",
       )}
     >

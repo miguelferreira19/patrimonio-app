@@ -28,9 +28,11 @@ export interface CoberturaFactos {
 export function Cobertura({
   factos,
   className,
+  podeCorrigir = false,
 }: {
   factos: CoberturaFactos;
   className?: string;
+  podeCorrigir?: boolean;
 }) {
   const { fronteira, senhoriosModelados, senhoriosTotal, fichasIncompletas } = factos;
 
@@ -74,19 +76,19 @@ export function Cobertura({
       title:
         "Sem área, tipologia, freguesia ou VPT não há €/m² vs mercado, nem valor " +
         "estimado, nem elegibilidade à taxa reduzida do art. 72.º.",
-      href: "/saude",
+      href: podeCorrigir ? "/saude" : undefined,
     });
   }
 
   return (
-    <p
+    <div
       className={cn(
         "flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-tinta-3",
         className,
       )}
     >
       {itens.map((item, i) => (
-        <span key={item.texto} className="inline-flex items-center gap-2">
+        <div key={item.texto} className="inline-flex items-start gap-2">
           {i > 0 && <span aria-hidden="true">·</span>}
           {item.href ? (
             <Link
@@ -97,15 +99,10 @@ export function Cobertura({
               {item.texto}
             </Link>
           ) : (
-            <span
-              title={item.title}
-              className="cursor-help underline decoration-dotted decoration-1 underline-offset-2"
-            >
-              {item.texto}
-            </span>
+            <details className="relative"><summary className="cursor-pointer underline decoration-dotted decoration-1 underline-offset-2">{item.texto}</summary><p className="mt-2 max-w-[60ch] text-xs leading-relaxed text-tinta-2">{item.title}</p></details>
           )}
-        </span>
+        </div>
       ))}
-    </p>
+    </div>
   );
 }

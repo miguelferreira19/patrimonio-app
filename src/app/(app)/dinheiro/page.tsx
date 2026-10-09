@@ -33,7 +33,7 @@ export default async function Dinheiro({
           {tabs.map(([k, nome]) => (
             <Link
               key={k}
-              href={k === "irs" ? "/dinheiro" : `/dinheiro?tab=${k}`}
+              href={`/dinheiro?${new URLSearchParams({ ano, tab: k, ...(sp.senhorio ? { senhorio: sp.senhorio } : {}) })}`}
               aria-current={tab === k ? "page" : undefined}
               className={cn(
                 "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors duration-150",
@@ -44,9 +44,10 @@ export default async function Dinheiro({
             </Link>
           ))}
         </nav>
+        <p className="mt-3 text-sm text-tinta-2">{tab === "irs" ? "Recibos, despesas e estimativa de imposto por ano e senhorio." : tab === "analise" ? "Evolução, cenários futuros e oportunidades da carteira." : "Rendas e valores por metro quadrado comparados com o INE."}</p>
       </div>
       {tab === "irs" && (
-        <AnoPage params={Promise.resolve({ ano })} searchParams={Promise.resolve({ senhorio: sp.senhorio })} />
+        <AnoPage params={Promise.resolve({ ano })} searchParams={Promise.resolve({ senhorio: sp.senhorio, emDinheiro: "1" })} />
       )}
       {tab === "analise" && <AnalisePage />}
       {tab === "mercado" && <MercadoPage />}

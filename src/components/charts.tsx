@@ -151,7 +151,7 @@ function AcumuladoTooltip({ active, payload, label }: TooltipProps<number, strin
 export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
         <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
@@ -163,6 +163,7 @@ export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
         <ReferenceLine y={0} stroke={REGUA} />
         <Area
           dataKey="esteAno"
+          isAnimationActive={false}
           name="Este ano"
           type="monotone"
           stroke={TINTA}
@@ -175,6 +176,7 @@ export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
         />
         <Line
           dataKey="anoAnterior"
+          isAnimationActive={false}
           name="Ano anterior"
           type="monotone"
           stroke={TINTA_3}
@@ -207,7 +209,7 @@ export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
 export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
         <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
@@ -217,7 +219,7 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
           width={72}
         />
         <ReferenceLine y={0} stroke={REGUA} />
-        <Bar dataKey="recebido" name="Recebido" radius={[3, 3, 0, 0]} maxBarSize={38}>
+        <Bar dataKey="recebido" name="Recebido" isAnimationActive={false} radius={[3, 3, 0, 0]} maxBarSize={38}>
           {data.map((d) => (
             <Cell
               key={d.month}
@@ -228,6 +230,7 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
         </Bar>
         <Line
           dataKey="esperado"
+          isAnimationActive={false}
           name="Esperado"
           type="monotone"
           stroke={TINTA_3}
@@ -295,7 +298,7 @@ function ProjecaoTooltip({ active, payload, label }: TooltipProps<number, string
 export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
         <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} interval="preserveStartEnd" />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
@@ -316,6 +319,7 @@ export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
         />
         <Line
           dataKey="contratado"
+          isAnimationActive={false}
           name="Contratado"
           type="monotone"
           stroke={TINTA_3}
@@ -326,6 +330,7 @@ export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
         />
         <Line
           dataKey="esperado"
+          isAnimationActive={false}
           name="Esperado"
           type="monotone"
           stroke={TINTA}

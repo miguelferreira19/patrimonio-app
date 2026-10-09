@@ -12,6 +12,15 @@
 
 ## 0. Estado
 
+**2026-10-09 · usabilidade e acabamento da V4:** plano e registo em `AUDITORIA_UX.md`.
+Ajuda global; acesso visível à verificação de dados e filtros de gravidade; atrasos e
+recibos parados com ligações diretas e filtro independente; pesquisa com recuperação e
+teclado no telemóvel; Arquivo com contagem filtrada, limpar filtros e abertura explícita;
+contexto de ano/senhorio preservado em Dinheiro; IRS com hierarquia numérica consistente.
+As primitivas corrigem etiquetas de campos, foco, áreas de toque, títulos de folhas,
+estados de erro, movimento e impressão. Marca vetorial em `public/marca.svg`, PNG
+regeneráveis por `node scripts/gerar-icons.cjs`. Sem alteração de schema ou import.
+
 **Em produção:** https://patrimonio-app-beryl.vercel.app · repo https://github.com/miguelferreira19/patrimonio-app
 (privado) · Supabase `iidvzcgtfbpzhjbsrqql` (UE) · deploy manual `npx vercel@latest deploy --prod --yes`.
 

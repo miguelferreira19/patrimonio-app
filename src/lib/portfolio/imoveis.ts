@@ -29,6 +29,8 @@ export interface ResumoPredio {
   /** Ids dos senhorios titulares de alguma fração (filtro por senhorio). */
   senhorios: string[];
   atualizaveis: number;
+  /** Independente do estado principal: pode haver atraso e fonte parada. */
+  recibosParados: boolean;
 }
 
 export const MESES_NO_CARTAO = 6;
@@ -98,11 +100,12 @@ export function resumirPredios(snap: Entrada): ResumoPredio[] {
       atualizaveis: comContrato.filter(
         (f) => f.rendaAtualizavel?.eligible && (f.rendaAtualizavel.suggestedRent ?? 0) > f.activeContract!.rent,
       ).length,
+      recibosParados: parado,
     };
   });
 }
 
-export type FiltroImoveis = "todos" | "atraso" | "vagas" | "atualizavel";
+export type FiltroImoveis = "todos" | "atraso" | "parados" | "vagas" | "atualizavel";
 export type OrdemImoveis = "estado" | "renda" | "nome";
 
 const PESO: Record<EstadoPredio, number> = { atraso: 0, parado: 1, vaga: 2, em_dia: 3, terreno: 4, vendido: 5 };
@@ -114,6 +117,7 @@ export function filtrarPredios(
   const out = lista.filter((p) => {
     if (senhorio && !p.senhorios.includes(senhorio)) return false;
     if (filtro === "atraso") return p.divida > 0;
+    if (filtro === "parados") return p.recibosParados;
     if (filtro === "vagas") return p.correntes > p.arrendadas;
     if (filtro === "atualizavel") return p.atualizaveis > 0;
     return true;

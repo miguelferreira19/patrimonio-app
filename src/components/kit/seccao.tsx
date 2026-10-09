@@ -32,10 +32,10 @@ export function Seccao({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={cn("scroll-mt-6", className)}>
+    <section id={id} className={cn("scroll-mt-24", className)}>
       <header className="mb-3 border-b border-regua pb-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">
+          <h2 className="text-base font-semibold tracking-[-0.01em] text-tinta">
             {titulo}
           </h2>
           {valor}

@@ -35,7 +35,7 @@ type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 export type PropriedadeDoAno = Pick<
   Property,
-  "id" | "name" | "matriz_article" | "typology" | "vpt" | "status"
+  "id" | "name" | "address" | "matriz_article" | "typology" | "vpt" | "status"
 >;
 
 export interface ContratoElegivel {
@@ -81,7 +81,7 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
   const [landlordsQ, ownersQ, propsQ, contractsQ, receiptsQ, expensesQ] = await Promise.all([
     supabase.from("landlords").select("id,name").order("name"),
     supabase.from("property_owners").select("*"),
-    supabase.from("properties").select("id,name,matriz_article,typology,vpt,status"),
+    supabase.from("properties").select("id,name,address,matriz_article,typology,vpt,status"),
     supabase.from("contracts").select("*"),
     // Recibos do ano por DATA DE EMISSÃO: é o critério do Anexo F (regime de caixa), e é
     // o mesmo que o /irs usava — não mudar para ref_month sem mudar a declaração.

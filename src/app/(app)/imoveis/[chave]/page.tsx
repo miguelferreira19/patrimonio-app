@@ -26,7 +26,7 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
 
   return (
     <div className="space-y-6">
-      <nav className="text-[13px] text-tinta-3">
+      <nav aria-label="Localização" className="text-[13px] text-tinta-3">
         <Link href="/imoveis" className="text-tinta-2 hover:text-tinta">
           Imóveis
         </Link>{" "}
@@ -90,7 +90,7 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
                       <Money value={c.rent} escala="md" />
                     </span>
                   ) : (
-                    <Badge tone={f.corrente ? "atencao" : "neutro"}>{f.corrente ? "Vaga" : "Terreno"}</Badge>
+                    <Badge tone={f.corrente ? "atencao" : "neutro"}>{f.corrente ? "Vaga" : f.property.status === "vendido" ? "Vendida" : f.property.status === "terreno" ? "Terreno" : "Fora da carteira"}</Badge>
                   )}
                 </div>
                 <ChevronRight size={16} className="shrink-0 text-tinta-3" aria-hidden="true" />

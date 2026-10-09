@@ -108,9 +108,10 @@ export function Carregar({
       <div className="flex flex-wrap items-center gap-2">
         {!destino && (
           <Select
+            aria-label="Destino dos documentos a carregar"
             value={escopoFixo}
             onChange={(e) => setEscopoFixo(e.target.value)}
-            className="h-8 min-w-0 flex-1 text-xs"
+            className="min-w-0 flex-1"
           >
             <option value="">Adivinhar a fração pelo nome do ficheiro</option>
             <option value={GERAL}>Geral (carteira toda)</option>

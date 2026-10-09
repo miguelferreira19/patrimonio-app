@@ -5,6 +5,7 @@
 // voltar aos três números que não batiam certo.
 
 import { Money } from "@/components/kit";
+import Link from "next/link";
 import { mesPorExtenso } from "@/lib/format";
 import type { ResumoDoMes } from "@/lib/portfolio/mes";
 
@@ -12,7 +13,7 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
   const base = r.esperado || 1;
   const pRecebido = Math.min(100, (r.recebido / base) * 100);
   return (
-    <section className="rounded-2xl border border-regua bg-carta p-5 shadow-[0_1px_2px_rgba(15,21,23,0.04)] md:p-6">
+    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
       <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">
         {mesPorExtenso(r.mes)}, em curso
       </p>
@@ -38,24 +39,28 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
       {(r.atraso.valor > 0 || r.porSaber.contratos > 0) && (
         <div className="mt-5 space-y-1.5 border-t border-regua pt-4 text-[13px]">
           {r.atraso.valor > 0 && (
-            <p className="flex items-baseline justify-between gap-3">
-              <span className="text-tinta-2">
+            <Link href="/imoveis?f=atraso" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
+              <span className="text-tinta-2 underline decoration-dotted underline-offset-4">
                 Em atraso de meses anteriores · {r.atraso.contratos}{" "}
                 {r.atraso.contratos === 1 ? "contrato" : "contratos"}
               </span>
               <Money value={r.atraso.valor} escala="sm" tom="perda" />
-            </p>
+            </Link>
           )}
           {r.porSaber.contratos > 0 && (
-            <p className="flex items-baseline justify-between gap-3">
-              <span className="text-tinta-2">
+            <Link href="/imoveis?f=parados" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
+              <span className="text-tinta-2 underline decoration-dotted underline-offset-4">
                 Por saber · {r.porSaber.contratos} contratos com os recibos parados
               </span>
               <Money value={r.porSaber.valor} escala="sm" tom="futuro" />
-            </p>
+            </Link>
           )}
         </div>
       )}
+      <details className="mt-4 text-xs leading-relaxed text-tinta-2">
+        <summary className="cursor-pointer py-2 font-medium">Como ler estes valores</summary>
+        <p className="mt-1">Recebido é o valor líquido registado nos recibos importados. O esperado usa a renda de referência dos contratos com dados disponíveis. «Por receber» não confirma um atraso. Os contratos com recibos parados ficam na linha «Por saber».</p>
+      </details>
     </section>
   );
 }

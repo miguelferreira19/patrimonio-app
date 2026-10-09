@@ -36,7 +36,7 @@ export function Lede({
         className,
       )}
     >
-      <div>
+      <div className="min-w-0 flex-1">
         {eyebrow && (
           <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-acao">{eyebrow}</p>
         )}
@@ -44,7 +44,7 @@ export function Lede({
           className={cn(
             "text-tinta",
             hero
-              ? "mt-1.5 font-serif text-[28px] font-normal leading-[1.15] tracking-[-0.01em] md:text-[32px]"
+              ? "mt-1.5 text-2xl font-semibold leading-[1.2] tracking-[-0.02em] md:text-[30px]"
               : "text-xl font-semibold tracking-tight md:text-2xl",
           )}
         >
@@ -54,7 +54,7 @@ export function Lede({
           <p
             className={cn(
               "mt-2 text-tinta-2",
-              hero ? "max-w-[62ch] text-base leading-relaxed text-pretty" : "text-sm",
+              hero ? "max-w-[65ch] text-sm leading-relaxed text-pretty" : "text-sm",
             )}
           >
             {children}

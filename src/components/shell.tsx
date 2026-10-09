@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { cn } from "./ui";
 import { Pesquisa } from "./pesquisa";
+import { Ajuda } from "./ajuda";
 import { createClient } from "@/lib/supabase/client";
 import type { Role } from "@/lib/types";
 
@@ -48,13 +49,13 @@ const DESTINOS: Destino[] = [
     href: "/imoveis",
     label: "Imóveis",
     icon: Building2,
-    dono: ["/imoveis", "/carteira", "/fracoes", "/mercado", "/inquilinos"],
+    dono: ["/imoveis", "/carteira", "/fracoes", "/inquilinos"],
   },
   {
     href: "/dinheiro",
     label: "Dinheiro",
     icon: Wallet,
-    dono: ["/dinheiro", "/ano", "/analise", "/irs"],
+    dono: ["/dinheiro", "/ano", "/analise", "/irs", "/mercado", "/despesas"],
   },
   { href: "/arquivo", label: "Arquivo", icon: FolderOpen, dono: ["/arquivo", "/documentos", "/carta"] },
 ];
@@ -91,7 +92,7 @@ export function Shell({
       </a>
 
       {/* ---------- Computador: barra lateral ---------- */}
-      <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col border-r border-regua bg-carta px-3.5 py-5 md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-regua bg-carta px-3.5 py-5 md:flex">
         <Marca />
         <div className="mt-5">
           <Pesquisa />
@@ -115,15 +116,18 @@ export function Shell({
             );
           })}
         </nav>
-        <div className="mt-auto">
+        <div className="mt-auto space-y-3 pt-6">
+          {role === "admin" && <Link href="/saude" aria-current={pathname === "/saude" ? "page" : undefined} className="flex min-h-11 items-center gap-2.5 rounded-[10px] px-2.5 text-sm text-tinta-2 hover:bg-vellum"><Stethoscope size={18} aria-hidden="true" />Verificar dados</Link>}
+          <div className="px-2.5"><Ajuda admin={role === "admin"} /></div>
           <Conta role={role} email={email} pathname={pathname} lado="cima" />
         </div>
       </aside>
 
       {/* ---------- Telemóvel: cabeçalho fino ---------- */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-regua bg-papel/90 px-4 py-2.5 backdrop-blur-md md:hidden">
+      <header data-print="none" className="sticky top-0 z-40 flex items-center justify-between border-b border-regua bg-papel/90 px-4 py-2.5 backdrop-blur-md md:hidden">
         <Marca />
         <div className="flex items-center gap-2">
+          <Ajuda admin={role === "admin"} />
           <Pesquisa compacta />
           <Conta role={role} email={email} pathname={pathname} lado="baixo" compacta />
         </div>
@@ -134,7 +138,7 @@ export function Shell({
         tabIndex={-1}
         className="mx-auto w-full min-w-0 max-w-[1280px] px-4 pb-28 pt-5 md:px-10 md:pb-16 md:pt-9"
       >
-        {children}
+        <div key={pathname} className="animate-page-in">{children}</div>
       </main>
 
       {/* ---------- Telemóvel: separadores em baixo ---------- */}
@@ -167,7 +171,7 @@ export function Shell({
 function Marca() {
   return (
     <Link href="/" className="flex items-center gap-2.5 px-1.5">
-      <Image src="/logo.png" alt="" width={22} height={25} priority className="h-[24px] w-auto" />
+      <Image src="/marca.svg" alt="" width={32} height={32} priority className="size-8" />
       <span className="text-[17px] font-semibold tracking-[-0.01em] text-tinta">Património</span>
     </Link>
   );
@@ -221,10 +225,10 @@ function Conta({
       <button
         onClick={() => setAberto((v) => !v)}
         aria-expanded={aberto}
-        aria-haspopup="menu"
+        aria-label={role === "admin" ? "Conta e administração" : "A minha conta"}
         className={cn(
           "flex w-full items-center gap-2.5 rounded-[10px] text-left text-sm text-tinta-2 transition-colors duration-150 hover:bg-vellum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao",
-          compacta ? "p-1" : "px-2.5 py-2",
+          compacta ? "size-11 justify-center p-1" : "px-2.5 py-2",
         )}
       >
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-vellum text-xs font-semibold text-tinta">
@@ -239,7 +243,7 @@ function Conta({
       </button>
       {aberto && (
         <div
-          role="menu"
+          aria-label="Opções da conta"
           className={cn(
             "absolute z-50 w-60 overflow-hidden rounded-xl border border-regua bg-elevado shadow-[0_16px_40px_-12px_rgba(15,21,23,0.28)] animate-menu",
             lado === "cima" ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2",
@@ -251,7 +255,6 @@ function Conta({
               <Link
                 key={href}
                 href={href}
-                role="menuitem"
                 className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-tinta-2 transition-colors duration-100 hover:bg-vellum hover:text-tinta"
               >
                 <Icon size={15} strokeWidth={1.75} className="shrink-0 opacity-70" />
@@ -260,7 +263,6 @@ function Conta({
             ))}
           <button
             onClick={sair}
-            role="menuitem"
             className="flex w-full items-center gap-2.5 border-t border-regua px-3 py-2 text-[13px] text-tinta-2 transition-colors duration-100 hover:bg-perda-tenue hover:text-perda"
           >
             <LogOut size={15} strokeWidth={1.75} className="shrink-0 opacity-70" />

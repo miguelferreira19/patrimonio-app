@@ -21,12 +21,12 @@ import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
 import { Folha } from "@/components/folha";
 import { CartaoMes } from "@/components/hoje/cartao-mes";
 import { Cobertura, Confianca, Money } from "@/components/kit";
-import { Badge, buttonClass } from "@/components/ui";
+import { Badge, buttonClass, Table, Th, Td } from "@/components/ui";
 import { getSession } from "@/lib/data";
 import { fmtEur, fmtPct, mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
 import { mesAbaixo } from "@/lib/monthcell";
 import { getAgenda, getSnapshotComRaw, type Snapshot } from "@/lib/portfolio";
-import { construirFila, type Insight } from "@/lib/portfolio/insights";
+import { construirFila, emAtrasoDaCarteira, type Insight } from "@/lib/portfolio/insights";
 import { resumoDoSnapshot } from "@/lib/portfolio/mes";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
 
@@ -83,7 +83,7 @@ export default async function Hoje() {
 
       <Agenda {...agenda} />
 
-      <Cobertura factos={snap.cobertura} />
+      <Cobertura factos={snap.cobertura} podeCorrigir={isAdmin} />
     </div>
   );
 }
@@ -109,20 +109,20 @@ function Fluxo({ snap }: { snap: Snapshot }) {
   const paradas = snap.fontes.filter((f) => f.parada && f.contratos > 0);
 
   return (
-    <section className="rounded-2xl border border-regua bg-carta p-5 shadow-[0_1px_2px_rgba(15,21,23,0.04)] md:p-6">
+    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Meses fechados</p>
         <p className="text-sm text-tinta-2">
-          <Money value={total} escala="md" /> em {dados.length} meses
+          <Money value={total} escala="md" /> registados em {dados.length} meses
         </p>
       </div>
-      <div className="mt-2">{dados.length > 0 && <FluxoMensalChart data={dados} />}</div>
+      <div className="mt-2">{dados.length > 0 ? <FluxoMensalChart data={dados} /> : <p className="py-10 text-center text-sm text-tinta-2">Ainda não há meses fechados com recibos importados.</p>}</div>
       <p className="mt-1 text-xs text-tinta-3">
         Tracejado: a renda esperada.{" "}
         {falhados === 0 ? "Nenhum mês abaixo dela." : `${falhados} ${falhados === 1 ? "mês abaixo" : "meses abaixo"}, a âmbar.`}
-        {paradas.length > 0 &&
-          ` Depois de ${monthLabel(paradas[0].horizonte)} faltam os recibos de ${paradas.map((f) => f.landlord.name).join(" e ")}.`}
       </p>
+      {paradas.length > 0 && <p className="mt-3 rounded-lg bg-futuro-tenue px-3 py-2 text-xs leading-relaxed text-futuro">Cobertura incompleta: {paradas.map((f) => `${f.landlord.name} só até ${monthLabel(f.horizonte)}`).join("; ")}. Uma descida pode refletir recibos por importar. <Link href="/imoveis?f=parados" className="font-semibold underline underline-offset-2">Ver imóveis</Link></p>}
+      {dados.length > 0 && <details className="mt-3 text-xs text-tinta-2"><summary className="cursor-pointer py-2 font-medium">Ver valores mês a mês</summary><Table><thead><tr><Th>Mês</Th><Th className="text-right">Recebido</Th><Th className="text-right">Esperado</Th></tr></thead><tbody>{dados.map((d) => <tr key={d.month}><Td>{monthLabel(d.month)}</Td><Td className="text-right"><Money value={d.recebido} escala="sm" tom={mesAbaixo(d) ? "atencao" : "tinta"} />{mesAbaixo(d) && <span className="sr-only">, abaixo do esperado</span>}</Td><Td className="text-right"><Money value={d.esperado} escala="sm" tom="tinta-2" /></Td></tr>)}</tbody></Table><Link href="/carteira" className="mt-2 inline-flex min-h-11 items-center font-medium text-acao underline">Consultar o histórico por fração</Link></details>}
     </section>
   );
 }
@@ -142,7 +142,6 @@ function Tarefas({ snap }: { snap: Snapshot }) {
   const fila = construirFila(snap);
   const tarefas = fila.itens.filter((i) => i.grupo !== "poupar");
   const oportunidades = fila.itens.filter((i) => i.grupo === "poupar");
-  const emJogo = tarefas.reduce((s, i) => s + i.euros, 0);
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -151,7 +150,7 @@ function Tarefas({ snap }: { snap: Snapshot }) {
           <h2 className="text-lg font-semibold tracking-[-0.01em]">Para fazer</h2>
           {tarefas.length > 0 && (
             <p className="text-sm text-tinta-2">
-              {tarefas.length} {tarefas.length === 1 ? "tarefa" : "tarefas"} · <Money value={emJogo} escala="md" tom="tinta-2" /> em jogo
+              {tarefas.length} {tarefas.length === 1 ? "tarefa" : "tarefas"} por prioridade
             </p>
           )}
         </div>
@@ -217,9 +216,9 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
   const et = ETIQUETA[item.grupo];
   const recibos = item.kind === "recibo_por_emitir" ? snap.recibosPorEmitir : null;
   return (
-    <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5 shadow-[0_1px_2px_rgba(15,21,23,0.04)] transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-regua-forte">
+    <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5">
       <div className="flex items-start justify-between gap-3">
-        <Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "perda" : "tinta"} />
+        <div><Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "perda" : "tinta"} /><p className="mt-1 text-xs text-tinta-3">{item.grupo === "saber" ? "Valor por confirmar" : item.kind === "recibo_por_emitir" ? "Renda bruta a documentar" : item.kind === "atraso" ? "Perda esperada" : "Impacto estimado"}</p></div>
         <Badge tone={et.tom}>{et.texto}</Badge>
       </div>
       <div>
@@ -265,8 +264,8 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
           ),
         )}
         <details className="group ml-auto text-xs">
-          <summary className="cursor-pointer list-none select-none rounded-full px-2 py-1 text-tinta-3 hover:bg-vellum hover:text-tinta-2">
-            Mais
+          <summary className="cursor-pointer select-none rounded-full px-2 py-2 text-tinta-2 hover:bg-vellum hover:text-tinta">
+            Detalhes e opções
           </summary>
           <div className="mt-2 space-y-2">
             {item.conta && (
@@ -289,8 +288,9 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
 // ============================================================
 
 function Atrasados({ snap }: { snap: Snapshot }) {
+  const ids = new Set(emAtrasoDaCarteira(snap).map((r) => r.propertyId));
   const atrasados = snap.correntes
-    .filter((a) => (a.arrears?.streak ?? 0) > 0)
+    .filter((a) => ids.has(a.property.id))
     .sort((a, b) => (b.arrears?.debt ?? 0) - (a.arrears?.debt ?? 0));
   return (
     <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">

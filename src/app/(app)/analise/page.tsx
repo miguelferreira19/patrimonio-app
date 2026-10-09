@@ -13,6 +13,7 @@
 
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { nomeDaFracao } from "@/lib/portfolio/predios";
 import { ProjecaoChart, type ProjecaoDatum } from "@/components/charts";
 import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
 import { buttonClass } from "@/components/ui";
@@ -56,7 +57,7 @@ export default async function AnalisePage() {
     hoje: today,
   });
 
-  const nomePorFracao = new Map(raw.properties.map((p) => [p.id, p.name]));
+  const nomePorFracao = new Map(raw.properties.map((p) => [p.id, nomeDaFracao(p)]));
 
   const projData: ProjecaoDatum[] = projecao.map((m) => ({
     label: monthLabel(m.mes, m.mes.slice(5, 7) === "01"),

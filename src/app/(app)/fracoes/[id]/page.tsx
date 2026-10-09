@@ -305,7 +305,7 @@ export default async function FracaoPage({
 
   return (
     <div className="space-y-6">
-      <nav className="text-[13px] text-tinta-3">
+      <nav aria-label="Localização" className="text-[13px] text-tinta-3">
         <Link href="/imoveis" className="text-tinta-2 hover:text-tinta">
           Imóveis
         </Link>

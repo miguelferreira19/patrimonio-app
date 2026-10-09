@@ -63,7 +63,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-regua bg-carta shadow-[0_1px_2px_rgba(15,21,23,0.04)]", className)}>
+    <section className={cn("rounded-2xl border border-regua bg-carta", className)}>
       {(title || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-regua px-4 py-3">
           <div>
@@ -91,8 +91,8 @@ const VARIANTES: Record<ButtonVariant, string> = {
 };
 
 const TAMANHOS: Record<ButtonSize, string> = {
-  sm: "h-8 px-2.5 text-xs",
-  md: "h-9 px-3.5 text-sm",
+  sm: "min-h-11 px-3 text-xs md:min-h-8",
+  md: "min-h-11 px-3.5 text-sm md:min-h-9",
 };
 
 /** Classes de botão, para os casos em que o elemento NÃO pode ser um <button>:
@@ -110,7 +110,7 @@ export function buttonClass({
   className?: string;
 } = {}) {
   return cn(
-    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition",
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150",
     "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
     "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
     TAMANHOS[size],
@@ -154,23 +154,23 @@ const controlClass =
   "disabled:bg-vellum disabled:text-tinta-3";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cn(controlClass, "h-9", props.className)} />;
+  return <input {...props} className={cn(controlClass, "h-11 text-base md:h-9 md:text-sm", props.className)} />;
 }
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cn(controlClass, "h-9", props.className)} />;
+  return <select {...props} className={cn(controlClass, "h-11 text-base md:h-9 md:text-sm", props.className)} />;
 }
 
 export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={cn(controlClass, "py-2", props.className)} />;
+  return <textarea {...props} className={cn(controlClass, "py-2 text-base md:text-sm", props.className)} />;
 }
 
 export function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
-    <div>
-      <Label>{label}</Label>
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-tinta">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 

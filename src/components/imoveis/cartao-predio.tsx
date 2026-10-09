@@ -26,7 +26,7 @@ export function CartaoPredio({ p }: { p: ResumoPredio }) {
   return (
     <Link
       href={destinoDoPredio(p)}
-      className="group block overflow-hidden rounded-2xl border border-regua bg-carta shadow-[0_1px_2px_rgba(15,21,23,0.04)] transition-[border-color,transform] duration-150 hover:-translate-y-0.5 hover:border-regua-forte focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
+      className="group block overflow-hidden rounded-2xl border border-regua bg-carta transition-[border-color,transform] duration-150 hover:border-regua-forte active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
     >
       <div className="relative h-[88px] bg-vellum">
         <Fachada chave={p.chave} fracoes={n} terreno={p.tipo === "terrenos" || p.estado === "terreno"} />

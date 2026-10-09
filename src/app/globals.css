@@ -260,11 +260,29 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+html { scrollbar-gutter: stable; }
+body:has(dialog[open]) { overflow: hidden; }
+::selection { background: var(--s-acao-tenue); color: var(--s-tinta); }
+input, textarea { caret-color: var(--s-acao); }
+a { text-underline-offset: 3px; }
+nav.overflow-x-auto { overflow-y: hidden; }
+:where(a, button, summary, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--s-acao);
+  outline-offset: 3px;
+}
+:where(h1, h2, h3) { text-wrap: balance; }
+:where(dialog, [role="dialog"]) { scrollbar-width: thin; scrollbar-color: var(--s-regua-forte) transparent; }
+main { scroll-margin-top: 80px; }
+@media (hover: none) {
+  :where(a, button, summary) { -webkit-tap-highlight-color: transparent; }
+  :where(nav a, nav button, summary) { min-height: 44px; }
+}
+
 /* O € e os cêntimos de uma figura monetária: a magnitude tem de se ler
    primeiro. Usado pelo componente <Money> (kit/money.tsx). */
 .money-minor {
   font-size: 0.72em;
-  opacity: 0.55;
+  opacity: 0.85;
   font-feature-settings: "tnum";
 }
 
@@ -381,6 +399,12 @@ body {
   animation: menu-in var(--t-fast) var(--e-out);
 }
 
+@keyframes page-in {
+  from { transform: translateY(4px); }
+  to { transform: none; }
+}
+.animate-page-in { animation: page-in var(--t-base) var(--e-out); }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-modal-in,
@@ -389,6 +413,7 @@ body {
   .animate-menu {
     animation: none;
   }
+  .animate-page-in { animation: none; }
   /* Mudanças de estado ficam instantâneas em vez de transitadas. */
   *,
   *::before,
@@ -406,12 +431,16 @@ body {
    ============================================================ */
 @media print {
   :root {
-    --cor-papel: #ffffff;
-    --cor-carta: #ffffff;
-    --cor-elevado: #ffffff;
-    --cor-tinta: #000000;
-    --cor-tinta-2: #333333;
-    --cor-tinta-3: #555555;
+    color-scheme: light;
+    --s-papel: #ffffff;
+    --s-carta: #ffffff;
+    --s-elevado: #ffffff;
+    --s-vellum: #f2f2f2;
+    --s-tinta: #000000;
+    --s-tinta-2: #333333;
+    --s-tinta-3: #555555;
+    --s-regua: #dddddd;
+    --s-regua-forte: #bbbbbb;
   }
 
   nav,

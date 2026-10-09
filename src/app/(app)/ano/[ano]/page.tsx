@@ -19,6 +19,7 @@ import { Badge, buttonClass, EmptyState, Table, Td, Th } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { AIMI_THRESHOLD_COUPLE, AIMI_THRESHOLD_SINGLE } from "@/lib/irs";
 import { fmtEur, fmtPct } from "@/lib/format";
+import { nomeDaFracao } from "@/lib/portfolio/predios";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function AnoPage({
   searchParams,
 }: {
   params: Promise<{ ano: string }>;
-  searchParams: Promise<{ senhorio?: string }>;
+  searchParams: Promise<{ senhorio?: string; emDinheiro?: string }>;
 }) {
   const [{ ano: anoParam }, sp, { isAdmin }] = await Promise.all([
     params,
@@ -35,6 +36,7 @@ export default async function AnoPage({
     getSession(),
   ]);
   const dados = await carregarAno(parseInt(anoParam, 10));
+  const emDinheiro = sp.emDinheiro === "1";
 
   if (dados.senhorios.length === 0) {
     return (
@@ -49,7 +51,10 @@ export default async function AnoPage({
     dados.porSenhorio.find((s) => s.landlord.id === sp.senhorio) ?? dados.porSenhorio[0];
   const { fy, aimi, anexoF, elegiveisArt72, poupancaArt72 } = escolhido;
 
-  const nomePorFracao = new Map(dados.propriedades.map((p) => [p.id, p.name]));
+  const nomePorFracao = new Map(dados.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
+  const destino = (ano: number, senhorio?: string) => emDinheiro
+    ? `/dinheiro?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`
+    : `/ano/${ano}${senhorio ? `?senhorio=${senhorio}` : ""}`;
   const poupancaRegime = Math.abs(fy.autonomousTax - fy.englobedTax);
   const sobra = fy.netIncome - fy.bestTax;
 
@@ -77,13 +82,7 @@ export default async function AnoPage({
   return (
     <div className="space-y-6">
       <Lede
-        eyebrow={`IRS ${dados.ano}`}
-        title={
-          <>
-            {escolhido.landlord.name} recebeu <Money value={fy.grossRent} tom="tinta" /> e fica com{" "}
-            <Money value={sobra} tom="tinta" /> depois do imposto.
-          </>
-        }
+        title={`IRS ${dados.ano} · ${escolhido.landlord.name}`}
         actions={
           <a
             href={`/api/irs?landlord=${escolhido.landlord.id}&year=${dados.ano}`}
@@ -99,6 +98,12 @@ export default async function AnoPage({
           : `Não houve retenção na fonte. O regime mais barato é ${fy.bestRegime === "autonoma" ? "a taxa autónoma" : "o englobamento"}, por ${fmtEur(poupancaRegime)}.`}
       </Lede>
 
+      <dl className="grid gap-4 rounded-2xl border border-regua bg-carta p-5 sm:grid-cols-3">
+        <div><dt className="text-sm text-tinta-2">Rendas ilíquidas</dt><dd className="mt-2"><Money value={fy.grossRent} escala="xl" /></dd><p className="mt-2 text-xs text-tinta-3">Recibos emitidos em {dados.ano}</p></div>
+        <div><dt className="text-sm text-tinta-2">Imposto estimado</dt><dd className="mt-2"><Money value={fy.bestTax} escala="xl" /></dd><p className="mt-2 text-xs text-tinta-3">{fy.bestRegime === "autonoma" ? "Taxa autónoma" : "Englobamento"} · antes de abater a retenção</p></div>
+        <div><dt className="text-sm text-tinta-2">Depois do imposto</dt><dd className="mt-2"><Money value={sobra} escala="xl" /></dd><p className="mt-2 text-xs text-tinta-3">Com as despesas dedutíveis registadas</p></div>
+      </dl>
+
       {/* Seletores: ano e senhorio, ambos como links. Fora da impressão: em papel são
           botões mortos, e o ano já está no cabeçalho do documento. */}
       <div
@@ -109,7 +114,7 @@ export default async function AnoPage({
           {dados.anos.map((a) => (
             <Link
               key={a}
-              href={`/ano/${a}${sp.senhorio ? `?senhorio=${sp.senhorio}` : ""}`}
+              href={destino(a, sp.senhorio)}
               aria-current={a === dados.ano ? "page" : undefined}
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs tabular-nums transition-colors",
@@ -129,7 +134,7 @@ export default async function AnoPage({
               {dados.porSenhorio.map((s) => (
                 <Link
                   key={s.landlord.id}
-                  href={`/ano/${dados.ano}?senhorio=${s.landlord.id}`}
+                  href={destino(dados.ano, s.landlord.id)}
                   aria-current={s.landlord.id === escolhido.landlord.id ? "page" : undefined}
                   className={cn(
                     "rounded-full px-2.5 py-1 text-xs transition-colors",

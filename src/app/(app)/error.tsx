@@ -32,9 +32,8 @@ export default function Erro({
       </p>
       <h1 className="mt-2 font-serif text-3xl text-tinta">Esta página não carregou.</h1>
       <p className="mt-3 text-sm leading-relaxed text-tinta-2">
-        A ligação à base de dados falhou a meio. A app preferiu parar a mostrar números
-        incompletos: uma carteira meio lida parece verdadeira e não é. Normalmente basta tentar
-        de novo.
+        Não foi possível apresentar os dados desta página. Tenta novamente. Se o problema
+        persistir, guarda a referência abaixo para o administrador verificar.
       </p>
       {/* Em produção o Next esconde a mensagem e dá só o digest, que é o que se procura
           nos logs da Vercel. */}

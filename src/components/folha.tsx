@@ -8,7 +8,7 @@
 //
 // O conteúdo (`children`) vem renderizado do servidor: a folha só o mostra.
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { X } from "lucide-react";
 import { buttonClass, type ButtonVariant } from "./ui";
 
@@ -26,6 +26,7 @@ export function Folha({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const tituloId = useId();
   return (
     <>
       <button type="button" onClick={() => ref.current?.showModal()} className={buttonClass({ variant: variante, size: "sm" })}>
@@ -33,6 +34,10 @@ export function Folha({
       </button>
       <dialog
         ref={ref}
+        aria-labelledby={tituloId}
+        onClickCapture={(e) => {
+          if ((e.target as HTMLElement).closest('a[href]')) ref.current?.close();
+        }}
         // Clicar no fundo fecha: o alvo do clique é o próprio <dialog> só fora do painel.
         onClick={(e) => e.target === ref.current && ref.current?.close()}
         className="m-0 ml-auto h-dvh max-h-dvh w-full max-w-[440px] bg-carta p-0 text-tinta shadow-[0_0_60px_-10px_rgba(15,21,23,0.35)] backdrop:bg-[rgba(15,21,23,0.35)] open:animate-sheet-in"
@@ -40,19 +45,19 @@ export function Folha({
         <div className="flex h-full flex-col">
           <header className="flex items-start justify-between gap-4 border-b border-regua px-5 py-4">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold tracking-[-0.01em]">{titulo}</h2>
+              <h2 id={tituloId} className="text-lg font-semibold tracking-[-0.01em]">{titulo}</h2>
               {subtitulo && <p className="mt-0.5 text-sm text-tinta-2">{subtitulo}</p>}
             </div>
             <button
               type="button"
               onClick={() => ref.current?.close()}
               aria-label="Fechar"
-              className="grid size-8 shrink-0 place-items-center rounded-full text-tinta-2 hover:bg-vellum hover:text-tinta"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-tinta-2 hover:bg-vellum hover:text-tinta"
             >
               <X size={18} />
             </button>
           </header>
-          <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
         </div>
       </dialog>
     </>

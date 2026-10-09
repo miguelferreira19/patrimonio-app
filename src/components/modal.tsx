@@ -6,7 +6,7 @@
 // passarem `icon={LucideIcon}` — foi o hotfix de 2026-07-20, ver CLAUDE.md.
 // O ui.tsx re-exporta este componente, por isso os importadores não mudam.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ReactNode } from "react";
@@ -28,6 +28,7 @@ export function Modal({
   wide?: boolean;
 }) {
   const painel = useRef<HTMLDivElement>(null);
+  const tituloId = useId();
   const focoAnterior = useRef<HTMLElement | null>(null);
 
   // Esc para fechar + trava de scroll do fundo + devolver o foco a quem abriu.
@@ -107,7 +108,7 @@ export function Modal({
         ref={painel}
         role="dialog"
         aria-modal="true"
-        aria-label={typeof title === "string" ? title : undefined}
+        aria-labelledby={tituloId}
         tabIndex={-1}
         className={cn(
           "animate-sheet-in flex h-dvh w-full flex-col bg-carta shadow-[0_0_60px_-10px_rgba(15,21,23,0.35)] outline-none",
@@ -115,17 +116,17 @@ export function Modal({
         )}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-regua px-5 py-4">
-          <h3 className="text-lg font-semibold tracking-[-0.01em] text-tinta">{title}</h3>
+          <h2 id={tituloId} className="text-lg font-semibold tracking-[-0.01em] text-tinta">{title}</h2>
           <button
             onClick={onClose}
             data-modal-close=""
-            className="grid size-8 place-items-center rounded-full text-tinta-2 transition-colors hover:bg-vellum hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
+            className="grid size-11 shrink-0 place-items-center rounded-full text-tinta-2 transition-colors hover:bg-vellum hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
             aria-label="Fechar"
           >
             <X size={18} />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-[max(20px,env(safe-area-inset-bottom))]">{children}</div>
       </div>
     </div>
   );

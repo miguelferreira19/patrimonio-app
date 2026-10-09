@@ -7,6 +7,7 @@
 export default function Loading() {
   return (
     <div className="space-y-10" aria-busy="true" aria-label="A carregar">
+      <p role="status" className="sr-only">A carregar a página e os dados da carteira.</p>
       <div className="space-y-3">
         <div className="h-10 w-56 rounded-lg bg-vellum" />
         <div className="h-4 w-80 max-w-full rounded-lg bg-vellum" />

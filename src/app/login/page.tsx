@@ -26,7 +26,7 @@ export default async function LoginPage() {
       <div className="login-glow relative hidden w-[45%] flex-col overflow-hidden p-10 lg:flex">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3fb39b]/15">
-            <Image src="/logo.png" alt="" width={24} height={27} className="h-6 w-auto" />
+            <Image src="/marca.svg" alt="" width={32} height={32} className="size-8" />
           </span>
           <span className="text-lg font-semibold text-white">Património</span>
         </div>

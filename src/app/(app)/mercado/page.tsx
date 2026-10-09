@@ -17,6 +17,7 @@
 //    comparação sem significado.
 
 import Link from "next/link";
+import { nomeDaFracao } from "@/lib/portfolio/predios";
 import { Building2 } from "lucide-react";
 import { EmptyState } from "@/components/ui";
 import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
@@ -135,7 +136,7 @@ export default async function MercadoPage() {
                     href={`/fracoes/${property.id}`}
                     className="text-[15px] font-medium text-tinta transition-colors duration-150 hover:text-acao"
                   >
-                    {property.name}
+                    {nomeDaFracao(property)}
                   </Link>
                   <p className="mt-0.5 text-xs text-tinta-3">
                     {property.parish ?? "freguesia por preencher"}

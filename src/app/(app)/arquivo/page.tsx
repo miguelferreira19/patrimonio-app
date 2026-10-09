@@ -49,14 +49,14 @@ export default async function Arquivo({ searchParams }: { searchParams: Promise<
     <div className="space-y-6">
       <header>
         <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Arquivo</p>
-        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">{itens.length} documentos</h1>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">{arquivo.erro ? "Documentos indisponíveis" : `${itens.length} documentos`}</h1>
         <p className="mt-1.5 text-sm text-tinta-2">
           Cadernetas, contratos, cartas e declarações. As cartas novas geram-se na ficha de cada fração, no separador Contrato.
         </p>
       </header>
       {arquivo.erro ? (
         <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">
-          O arquivo ainda não está criado no Supabase (bloco "V3 · DOCUMENTOS" do schema).
+          Não foi possível carregar o arquivo. Atualiza a página para tentar novamente.{isAdmin && " Se o problema persistir, confirma o acesso ao arquivo na administração do Supabase."}
         </p>
       ) : (
         <>

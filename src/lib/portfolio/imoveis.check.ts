@@ -58,5 +58,7 @@ assert.deepEqual(filtrarPredios(predios, { senhorio: "L2" }).map((p) => p.chave)
 const porEstado = filtrarPredios(predios, {}).map((p) => p.estado);
 assert.deepEqual(porEstado, ["atraso", "parado", "em_dia", "terreno"], "atraso primeiro, terrenos no fim");
 assert.equal(filtrarPredios(predios, { ordem: "renda" })[0].chave, "1-U-10");
+assert.deepEqual(filtrarPredios(predios, { filtro: "parados" }).map((p) => p.chave), ["1-U-30"]);
+assert.equal(filtrarPredios([{ ...p10, recibosParados: true }], { filtro: "parados" }).length, 1, "atraso não esconde uma fonte parada");
 
 console.log("imoveis.check.ts: OK (A, B, C)");

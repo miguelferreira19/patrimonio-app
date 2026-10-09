@@ -169,6 +169,11 @@ desse ficheiro antes de mexer em cor: explica a estratégia inteira.
   longas abrem em `components/folha.tsx` (`<dialog>` nativo).
 - **Pesquisa global**: `/api/pesquisa` devolve o índice uma vez; `procurar()` (pesquisa.ts) filtra
   no browser. Números curtos casam a palavra inteira.
+- **Acabamento de 2026-10-09**: `AUDITORIA_UX.md` contém o plano e a validação. Ajuda no
+  invólucro; «Verificar dados» abre `/saude` (admin), com `?gravidade=erro|aviso|info`.
+  `/imoveis?f=parados` encontra fontes paradas mesmo que o prédio também tenha atraso.
+  Marca corrente: `public/marca.svg`; regenerar os ícones com `node scripts/gerar-icons.cjs`.
+  `Field` associa a etiqueta por envolvimento; não pôr vários campos dentro do mesmo `Field`.
 
 ## Regras da remodelação de 2026-10-03 (ver RELATORIO_FINAL.md)
 - **Leituras nunca engolem erros.** `linhas()`/`linha()` de `lib/supabase/dados.ts` lançam com o
