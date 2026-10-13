@@ -11,7 +11,9 @@
 
 import type { Contract, Property } from "../types";
 import type { Ativo, Snapshot } from "./snapshot";
-import type { ArrearsRow } from "../arrears";
+import { DEBT_CAP_MONTHS, type ArrearsRow } from "../arrears";
+import { addMonthsKey } from "../format";
+import { emAtrasoDaCarteira } from "./insights";
 import type { PerdaContrato } from "./risk";
 
 /** Chave de agrupamento de um arrendatário. `nif:` é estável; `nome:` é o melhor esforço. */
@@ -106,7 +108,11 @@ export function fichasDeInquilinos(snap: Snapshot): FichaInquilino[] {
       recebido12m: contratos.reduce((acc, c) => acc + (recebidoPorContrato.get(c.contract.id) ?? 0), 0),
       desde: datas.length > 0 ? datas.sort()[0] : null,
       severidade,
-      divida: ativos.reduce((acc, c) => acc + (c.arrears?.debt ?? 0), 0),
+      // Sem os de ritmo próprio, como em emAtrasoDaCarteira: o mesmo número da Cobranças.
+      divida: ativos.reduce(
+        (acc, c) => acc + (c.arrears && c.arrears.severity !== "ritmo_proprio" ? c.arrears.debt : 0),
+        0,
+      ),
       pPagar:
         pesoTotal > 0
           ? comRisco.reduce((acc, c) => acc + c.risco!.p.p * c.contract.rent, 0) / pesoTotal
@@ -119,6 +125,65 @@ export function fichasDeInquilinos(snap: Snapshot): FichaInquilino[] {
 
 export function fichaDoInquilino(snap: Snapshot, chave: string): FichaInquilino | undefined {
   return fichasDeInquilinos(snap).find((f) => f.chave === chave);
+}
+
+export interface ContratoEmAtraso {
+  contract: Contract;
+  property: Property;
+  meses: number;
+  divida: number;
+  /** Primeiro mês por pagar ("YYYY-MM-01"). */
+  desde: string;
+  /** Último mês totalmente pago; null se nunca houve um. */
+  ultimoPago: string | null;
+}
+
+export interface Devedor {
+  chave: string;
+  nome: string;
+  porNome: boolean;
+  divida: number;
+  /** O mês por pagar mais antigo, entre os contratos dele. */
+  desde: string;
+  contratos: ContratoEmAtraso[];
+}
+
+/** Quem deve, agrupado por inquilino, do maior valor para o menor (PLANO_CLAREZA.md 1.4).
+ *  Parte de `emAtrasoDaCarteira`, a MESMA lista do Hoje e dos Imóveis, por isso o total é
+ *  igual em todo o lado. */
+export function devedores(snap: Pick<Snapshot, "arrears" | "ativos">): Devedor[] {
+  const porContrato = new Map(
+    snap.ativos.flatMap((a) => (a.activeContract ? [[a.activeContract.id, a] as const] : [])),
+  );
+  const porChave = new Map<string, Devedor>();
+  for (const r of emAtrasoDaCarteira(snap)) {
+    const a = porContrato.get(r.contractId);
+    if (!a?.activeContract) continue;
+    const c = a.activeContract;
+    // `months24` acaba no último mês devido DESTE contrato (a fronteira da fonte dele).
+    const fim = r.months24[r.months24.length - 1].month;
+    const meses = Math.min(r.streak, DEBT_CAP_MONTHS);
+    const linha: ContratoEmAtraso = {
+      contract: c,
+      property: a.property,
+      meses,
+      divida: r.debt,
+      desde: addMonthsKey(fim, -(meses - 1)),
+      ultimoPago: r.lastPaidMonth,
+    };
+    const chave = chaveDoInquilino(c);
+    const d = porChave.get(chave);
+    if (d) {
+      d.divida += linha.divida;
+      d.contratos.push(linha);
+      if (linha.desde < d.desde) d.desde = linha.desde;
+    } else {
+      porChave.set(chave, { chave, nome: c.tenant_name, porNome: chave.startsWith("nome:"), divida: linha.divida, desde: linha.desde, contratos: [linha] });
+    }
+  }
+  return Array.from(porChave.values())
+    .map((d) => ({ ...d, contratos: d.contratos.sort((x, y) => y.divida - x.divida) }))
+    .sort((a, b) => b.divida - a.divida);
 }
 
 function linhaDoContrato(a: Ativo, c: Contract): ContratoDoInquilino {

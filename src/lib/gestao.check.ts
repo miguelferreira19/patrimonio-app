@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { monthStatement, parseAllocations, shareOf, scopedExpense, receiptCandidates, declaredContractDates } from "./gestao";
+import { monthStatement, parseAllocations, shareOf, scopedExpense, receiptCandidates, declaredContractDates, pagamentosManuais, comPagamentosManuais } from "./gestao";
 import type { Contract, Expense, Landlord, Receipt } from "./types";
 import type { PaymentMovement } from "./gestao";
 
@@ -7,17 +7,46 @@ const contract: Contract = { id: "c", property_id: "p", tenant_name: "A", tenant
 const receipt: Receipt = { id: "r", landlord_id: "l", property_id: "p", contract_id: "c", pf_contract_no: "1", receipt_number: "1/1", ref_month: "2026-10-01", period_start: "2026-10-01", period_end: "2026-10-31", amount: 600, withholding: 150, issue_date: "2026-10-01", source: "portal" };
 const movement: PaymentMovement = { id: "m", contract_id: "c", amount: 450, received_date: "2026-10-02", method: "transferencia", reference: "ABC", proof_path: null, notes: null, voided: false, void_reason: null, request_id: "q", created_at: "", created_by: null };
 const base = { contract, month: "2026-10-01", today: "2026-10-09", horizon: "2026-10-01", receipts: [receipt], updates: [], movements: [], allocations: [], confirmations: [] };
+// Recibo emitido = pago (PLANO_CLAREZA.md §3); antes era "pagamento por confirmar" em todas
+// as 42 rendas, porque ninguém regista movimentos à mão.
 const documentary = monthStatement(base);
-assert.equal(documentary.status, "por_confirmar"); assert.equal(documentary.expected, 450); assert.equal(documentary.documented, 450); assert.equal(documentary.confirmed, 0);
+assert.equal(documentary.status, "pago"); assert.equal(documentary.expected, 450); assert.equal(documentary.documented, 450); assert.equal(documentary.confirmed, 0);
 const confirmed = monthStatement({ ...base, movements: [movement], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 450 }] });
-assert.equal(confirmed.status, "confirmado"); assert.equal(confirmed.recorded, 450); // Não 900: recibo + pagamento não duplicam.
-const partial = monthStatement({ ...base, movements: [{ ...movement, amount: 100 }], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 100 }] });
-assert.equal(partial.status, "parcial"); assert.equal(partial.recorded, 100); assert.equal(partial.confirmedBalance, null);
-const balance = monthStatement({ ...base, movements: [{ ...movement, amount: 100 }], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 100 }], confirmations: [{ contract_id: "c", ref_month: "2026-10-01", expected_amount: 450, note: "Extrato conferido", confirmed_at: "2026-10-09", confirmed_by: "u" }] });
-assert.equal(balance.status, "saldo_vencido_confirmado"); assert.equal(balance.confirmedBalance, 350);
-assert.equal(monthStatement({ ...base, receipts: [], horizon: "2026-07-01" }).status, "dados_por_importar");
-assert.equal(monthStatement({ ...base, receipts: [], month: "2026-11-01" }).status, "nao_vencido");
-assert.equal(monthStatement({ ...base, contract: { ...contract, status: "cessado", end_date: "2026-09-30" } }).status, "sem_contrato");
+assert.equal(confirmed.status, "pago"); assert.equal(confirmed.recorded, 450); // Não 900: recibo + pagamento não duplicam.
+const novembro = { ...base, today: "2026-11-09" };
+const partial = monthStatement({ ...novembro, movements: [{ ...movement, amount: 100 }], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 100 }] });
+assert.equal(partial.status, "atraso"); assert.equal(partial.recorded, 100); assert.equal(partial.confirmedBalance, null);
+assert.equal(monthStatement({ ...base, movements: [{ ...movement, amount: 100 }], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 100 }] }).status, "por_receber", "o mês em curso nunca é atraso");
+const balance = monthStatement({ ...novembro, movements: [{ ...movement, amount: 100 }], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 100 }], confirmations: [{ contract_id: "c", ref_month: "2026-10-01", expected_amount: 450, note: "Extrato conferido", confirmed_at: "2026-10-09", confirmed_by: "u" }] });
+assert.equal(balance.status, "atraso"); assert.equal(balance.confirmedBalance, 350);
+assert.equal(monthStatement({ ...novembro, receipts: [], horizon: "2026-07-01" }).status, "sem_info", "fonte parada: não se sabe");
+assert.equal(monthStatement({ ...novembro, receipts: [], horizon: "2026-10-01" }).status, "atraso", "fonte ativa e mês fechado sem recibo");
+assert.equal(monthStatement({ ...base, receipts: [], month: "2026-11-01" }).status, "por_receber");
+assert.equal(monthStatement({ ...base, contract: { ...contract, status: "cessado", end_date: "2026-09-30" } }).status, "fora");
+
+// Pagamentos registados à mão substituem o recibo do mesmo contrato-mês, nunca se somam.
+{
+  const manuais = pagamentosManuais(
+    [{ id: "m1", contract_id: "c", voided: false }, { id: "m2", contract_id: "c", voided: true }],
+    [
+      { movement_id: "m1", ref_month: "2026-09-01", amount: 450 },
+      { movement_id: "m1", ref_month: "2026-08-01", amount: 200 },
+      { movement_id: "m2", ref_month: "2026-07-01", amount: 450 },
+    ],
+  );
+  assert.equal(manuais.size, 2, "o movimento anulado não conta");
+  const recibos = [
+    { contract_id: "c", ref_month: "2026-09-01", amount: 450 },
+    { contract_id: "c", ref_month: "2026-07-01", amount: 450 },
+  ];
+  const juntos = comPagamentosManuais(recibos, manuais, (m) => m);
+  const setembro = juntos.filter((p) => p.ref_month === "2026-09-01");
+  assert.equal(setembro.length, 1, "setembro não duplica");
+  assert.equal(setembro[0].amount, 450);
+  assert.equal(juntos.find((p) => p.ref_month === "2026-08-01")?.amount, 200, "agosto entra pelo registo à mão");
+  assert.equal(juntos.find((p) => p.ref_month === "2026-07-01")?.amount, 450, "julho fica com o recibo");
+  assert.equal(comPagamentosManuais(recibos, new Map(), (m) => m), recibos, "sem registos não mexe");
+}
 assert.equal(monthStatement({ ...base, movements: [{ ...movement, voided: true }], allocations: [{ movement_id: "m", ref_month: "2026-10-01", amount: 450 }] }).confirmed, 0);
 assert.deepEqual(parseAllocations("2026-10 = 0,10\n2026-11 = 0,20", 0.3).map((p) => p.amount), [0.1, 0.2]);
 assert.throws(() => parseAllocations("2026-10 = 300\n2026-10 = 300", 600));

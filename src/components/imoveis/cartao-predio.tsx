@@ -7,12 +7,12 @@ import { Fachada } from "./fachada";
 import { Meses } from "./meses";
 
 const ESTADO: Record<EstadoPredio, { tom: "perda" | "futuro" | "atencao" | "neutro"; texto: string }> = {
-  atraso: { tom: "atencao", texto: "Saldos a verificar" },
-  parado: { tom: "futuro", texto: "Recibos parados" },
+  atraso: { tom: "atencao", texto: "Em atraso" },
+  parado: { tom: "futuro", texto: "Sem informação" },
   vaga: { tom: "atencao", texto: "Com vaga" },
   terreno: { tom: "neutro", texto: "Terreno" },
   vendido: { tom: "neutro", texto: "Vendido" },
-  em_dia: { tom: "neutro", texto: "Registos completos" },
+  em_dia: { tom: "neutro", texto: "Em dia" },
 };
 
 /** Para onde leva o cartão: um prédio de uma fração salta direto para a ficha. */
@@ -50,7 +50,7 @@ export function CartaoPredio({ p, back, scopeLabel }: { p: ResumoPredio; back?: 
         <div className="mt-3.5 flex items-center justify-between gap-3">
           {p.correntes > 0 ? <Meses meses={p.meses} /> : <span className="text-xs text-tinta-3">Sem arrendamento</span>}
           {p.divida > 0 ? (
-            <span className="text-right"><Money value={p.divida} escala="md" tom="atencao" /><span className="mt-1 block text-[10px] text-tinta-2">Saldo inferido</span></span>
+            <span className="text-right"><Money value={p.divida} escala="md" tom="atencao" /><span className="mt-1 block text-[10px] text-tinta-2">em atraso</span></span>
           ) : p.renda > 0 ? (
             <span className="text-sm">
               <Money value={p.renda} escala="md" />

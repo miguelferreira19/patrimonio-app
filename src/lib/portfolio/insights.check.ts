@@ -124,21 +124,17 @@ const fila = construirFila(snap);
 {
   const atrasos = fila.itens.filter((i) => i.kind === "atraso");
   assert.equal(atrasos.length, 1, "dois contratos em atraso, UM item na fila");
-  // Fase 4: o valor da fila passou a ser a PERDA ESPERADA. Nunca acima da dívida
-  // ingénua (2x250 + 3x300 = 1400) e, nos fixtures, estritamente abaixo — os inquilinos
-  // têm histórico de liquidação, logo p̂ desconta.
-  assert.ok(atrasos[0].euros > 0, "há perda esperada");
-  assert.ok(atrasos[0].euros <= 500 + 900, "perda esperada nunca acima da dívida ingénua");
-  assert.ok(atrasos[0].conta?.includes("cura"), "a conta mostra a formula da perda esperada");
-  assert.ok(
-    /soma crua dos meses em falta daria/.test(atrasos[0].conta ?? ""),
-    "e a estimativa ingenua ao lado",
-  );
+  // PLANO_CLAREZA.md 1.6: o valor é a DÍVIDA, o mesmo número do cartão do mês e da
+  // Cobranças. Era a perda esperada, um terceiro número para a mesma pergunta.
+  const divida = snap.arrears.rows
+    .filter((r) => r.debt > 0 && r.severity !== "ritmo_proprio")
+    .reduce((a, r) => a + r.debt, 0);
+  assert.ok(divida > 0);
+  assert.equal(atrasos[0].euros, divida, "o mesmo valor que o 'em atraso' do Hoje");
   assert.ok(atrasos[0].porque.includes("Repeses"), "nomeia os maiores");
-
   assert.ok(
-    atrasos[0].acoes.some((a) => a.href.startsWith("/imoveis?f=atraso")),
-    "leva ao detalhe (lente Risco)",
+    atrasos[0].acoes.some((a) => a.href === "/cobrancas"),
+    "leva à lista de quem deve",
   );
 }
 

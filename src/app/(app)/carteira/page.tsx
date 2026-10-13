@@ -116,7 +116,7 @@ export default async function CarteiraPage({
           ) : undefined
         }
       >
-        {heroi.legenda} Valores por inteiro; registos de recibos sujeitos a confirmação dos pagamentos.
+        {heroi.legenda} Valores por inteiro; um recibo emitido conta como renda paga.
       </Lede>
 
       {/* Os números que a frase-título carregava, agora em voz baixa: confere-se aqui em
@@ -246,7 +246,7 @@ function linhaDe(a: Ativo, lente: Lente, janela: number): LinhaFaixa {
         valor: arr?.expectedRent ?? c?.rent ?? null,
         nota:
           arr && arr.debt > 0
-            ? `${meses} ${meses === 1 ? "mês" : "meses"} · ${fmtEur(arr.debt)} em falta`
+            ? `${meses} ${meses === 1 ? "mês" : "meses"} · ${fmtEur(arr.debt)} em atraso`
             : c
               ? "em dia"
               : "vago",

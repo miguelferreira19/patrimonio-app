@@ -19,12 +19,12 @@ const COR: Record<EstadoMes, string> = {
 };
 
 const NOME: Record<EstadoMes, string> = {
-  pago: "registo completo",
-  parcial: "parcial",
-  falta: "por verificar",
+  pago: "pago",
+  parcial: "pago em parte",
+  falta: "em atraso",
   fora: "sem contrato",
-  futuro: "por importar",
-  curso: "em curso",
+  futuro: "sem informação",
+  curso: "mês em curso",
 };
 
 export function Meses({ meses, className }: { meses: EstadoMes[]; className?: string }) {

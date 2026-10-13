@@ -37,7 +37,7 @@ export function Agenda({
       ) : (
         <ul className="mt-2 divide-y divide-regua">
           {prazos.map((p) => (
-            <li key={p.id} className="flex items-center gap-4 py-3">
+            <li key={p.id} title={p.detalhe} className="flex items-center gap-4 py-3">
               <span
                 className={`grid w-12 shrink-0 place-items-center rounded-xl py-1.5 text-center ${p.data === hoje ? "bg-atencao-tenue text-atencao" : "bg-vellum text-tinta"}`}
               >
@@ -52,7 +52,6 @@ export function Agenda({
                 ) : (
                   <p className="text-[15px] font-medium text-tinta">{p.titulo}</p>
                 )}
-                <p className="mt-0.5 line-clamp-2 text-[13px] text-tinta-2">{p.detalhe}</p>
               </div>
               {p.euros !== null && (
                 <span className="hidden shrink-0 text-sm sm:block">
@@ -66,7 +65,7 @@ export function Agenda({
       )}
       {contratosSemFim > 0 && (
         <p className="mt-2 text-xs text-tinta-3">
-          {contratosSemFim} contratos ativos têm prazos por confirmar e não geram datas de fim na agenda.
+          {contratosSemFim} contratos sem data de fim registada.
         </p>
       )}
     </section>

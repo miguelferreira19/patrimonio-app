@@ -118,10 +118,17 @@ function Fluxo({ snap }: { snap: Snapshot }) {
       </div>
       <div className="mt-2">{dados.length > 0 ? <FluxoMensalChart data={dados} /> : <p className="py-10 text-center text-sm text-tinta-2">Ainda não há meses fechados com recibos importados.</p>}</div>
       <p className="mt-1 text-xs text-tinta-3">
-        Tracejado: a renda esperada.{" "}
-        {falhados === 0 ? "Nenhum mês abaixo dela." : `${falhados} ${falhados === 1 ? "mês abaixo" : "meses abaixo"}, a âmbar.`}
+        Tracejado: renda esperada{falhados > 0 ? ` · ${falhados} ${falhados === 1 ? "mês abaixo" : "meses abaixo"}` : ""}
       </p>
-      {paradas.length > 0 && <p className="mt-3 rounded-lg bg-futuro-tenue px-3 py-2 text-xs leading-relaxed text-futuro">Cobertura incompleta: {paradas.map((f) => `${f.landlord.name} só até ${monthLabel(f.horizonte)}`).join("; ")}. Uma descida pode refletir recibos por importar. <Link href="/imoveis?f=parados" className="font-semibold underline underline-offset-2">Ver imóveis</Link></p>}
+      {paradas.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {paradas.map((f) => (
+            <Link key={f.landlord.id} href="/cobrancas#sem-informacao">
+              <Badge tone="futuro">Recibos de {nomeProprio(f.landlord.name)} só até {monthLabel(f.horizonte)}</Badge>
+            </Link>
+          ))}
+        </div>
+      )}
       {dados.length > 0 && <details className="mt-3 text-xs text-tinta-2"><summary className="cursor-pointer py-2 font-medium">Ver valores mês a mês</summary><Table><thead><tr><Th>Mês</Th><Th className="text-right">Recebido</Th><Th className="text-right">Esperado</Th></tr></thead><tbody>{dados.map((d) => <tr key={d.month}><Td>{monthLabel(d.month)}</Td><Td className="text-right"><Money value={d.recebido} escala="sm" tom={mesAbaixo(d) ? "atencao" : "tinta"} />{mesAbaixo(d) && <span className="sr-only">, abaixo do esperado</span>}</Td><Td className="text-right"><Money value={d.esperado} escala="sm" tom="tinta-2" /></Td></tr>)}</tbody></Table><Link href="/carteira" className="mt-2 inline-flex min-h-11 items-center font-medium text-acao underline">Consultar o histórico por fração</Link></details>}
     </section>
   );
@@ -134,7 +141,7 @@ function Fluxo({ snap }: { snap: Snapshot }) {
 const ETIQUETA: Record<Insight["grupo"], { tom: "acao" | "perda" | "futuro" | "atencao"; texto: string }> = {
   fazer: { tom: "acao", texto: "Este mês" },
   risco: { tom: "atencao", texto: "Risco" },
-  saber: { tom: "futuro", texto: "Por saber" },
+  saber: { tom: "futuro", texto: "Sem informação" },
   poupar: { tom: "atencao", texto: "Oportunidade" },
 };
 
@@ -195,7 +202,6 @@ function Tarefas({ snap }: { snap: Snapshot }) {
               Ver em Dinheiro
             </Link>
           </div>
-          <p className="mt-0.5 text-sm text-tinta-2">Mudam o rendimento do ano. Não têm prazo.</p>
           <ul className="mt-3 divide-y divide-regua">
             {oportunidades.slice(0, 3).map((i) => (
               <li key={i.kind} className="flex items-baseline justify-between gap-4 py-3">
@@ -218,13 +224,10 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
   return (
     <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5">
       <div className="flex items-start justify-between gap-3">
-        <div><Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "atencao" : "tinta"} /><p className="mt-1 text-xs text-tinta-3">{item.grupo === "saber" ? "Valor por confirmar" : item.kind === "recibo_por_emitir" ? "Renda bruta a documentar" : item.kind === "atraso" ? "Impacto estimado · recibos" : "Impacto estimado"}</p></div>
+        <div><Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "atencao" : "tinta"} /><p className="mt-1 text-xs text-tinta-3">{item.grupo === "saber" ? "Renda sem informação" : item.kind === "recibo_por_emitir" ? "Renda bruta a documentar" : item.kind === "atraso" ? "Em atraso" : "Impacto estimado"}</p></div>
         <Badge tone={et.tom}>{et.texto}</Badge>
       </div>
-      <div>
-        <p className="text-[15px] font-semibold leading-snug text-tinta">{item.titulo}</p>
-        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-tinta-2">{item.porque}</p>
-      </div>
+      <p className="text-[15px] font-semibold leading-snug text-tinta">{item.titulo}</p>
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
         {recibos && recibos.length > 0 && (
           <Folha
@@ -265,9 +268,10 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
         )}
         <details className="group ml-auto text-xs">
           <summary className="cursor-pointer select-none rounded-full px-2 py-2 text-tinta-2 hover:bg-vellum hover:text-tinta">
-            Detalhes e opções
+            Detalhes
           </summary>
           <div className="mt-2 space-y-2">
+            <p className="leading-relaxed text-tinta-2">{item.porque}</p>
             {item.conta && (
               <p className="text-tinta-3">
                 {item.conta} <Confianca nivel={item.confianca} conta={item.conta} />
@@ -307,7 +311,7 @@ function Atrasados({ snap }: { snap: Snapshot }) {
                 </Link>
                 <p className="truncate text-sm text-tinta-2">
                   {nomeProprio(a.activeContract?.tenant_name)}
-                  {a.arrears && `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} sem pagar`}
+                  {a.arrears && `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} em atraso`}
                 </p>
               </div>
               <Money value={a.arrears?.debt ?? 0} tom="atencao" className="shrink-0" />
@@ -317,7 +321,8 @@ function Atrasados({ snap }: { snap: Snapshot }) {
       )}
       {atrasados.length > 0 && (
         <p className="mt-2 text-xs text-tinta-3">
-          {fmtPct(atrasados.length / Math.max(1, snap.correntes.length), 0)} das frações com algum mês por pagar.
+          {fmtPct(atrasados.length / Math.max(1, snap.correntes.length), 0)} das frações com algum mês por pagar.{" "}
+          <Link href="/cobrancas" className="font-medium text-acao underline underline-offset-2">Ver em Cobranças</Link>
         </p>
       )}
     </section>

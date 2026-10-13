@@ -12,8 +12,6 @@ import { addMonthsKey, lastMonthsKeys, monthKeyFromDate } from "./format";
 import type { Contract, Payment } from "./types";
 
 // ---------- Parâmetros da metodologia ----------
-/** Carência sobre o dia 1: um mês só conta como "devido" a partir deste dia. */
-export const GRACE_DAYS = 8;
 /** Tecto de meses usados na dívida estimada e no streak sem histórico (evita números absurdos). */
 export const DEBT_CAP_MONTHS = 24;
 /** Janela para detetar cadência própria (ex.: pagamento trimestral). */
@@ -147,12 +145,16 @@ function median(values: number[]): number | null {
 }
 
 /**
- * Último mês devido pelo CALENDÁRIO: o mês corrente se hoje está a mais de GRACE_DAYS dias
- * do dia 1 (i.e. getDate() > GRACE_DAYS), senão o mês anterior (ainda em carência).
+ * Último mês devido pelo CALENDÁRIO: sempre o mês ANTERIOR ao corrente. O mês em curso é
+ * "por receber" até fechar (PLANO_CLAREZA.md §3).
+ *
+ * Era o mês corrente a partir do dia 9 (carência de 8 dias). Mas os recibos só entram nas
+ * recolhas dos dias 15 e último: um recibo emitido a dia 5 e ainda por importar fazia do
+ * mês uma dívida. A 13/10/2026, 5 dos 11 contratos "em atraso" eram só o recibo de outubro
+ * por emitir, e o mesmo dinheiro aparecia também como "por receber" no cartão do mês.
  */
 export function lastDueMonthKey(today: Date): string {
-  const current = monthKeyFromDate(today);
-  return today.getDate() > GRACE_DAYS ? current : addMonthsKey(current, -1);
+  return addMonthsKey(monthKeyFromDate(today), -1);
 }
 
 /**

@@ -38,12 +38,47 @@ export interface MonthCellData {
 }
 
 export const MONTH_CELL_LABEL: Record<MonthCellStatus, string> = {
-  pago: "Recebido registado",
-  parcial: "Registo parcial",
-  falta: "Por verificar",
+  pago: "Pago",
+  parcial: "Pago em parte",
+  falta: "Em atraso",
   fora: "Sem contrato",
-  futuro: "Por importar",
+  futuro: "Sem informação",
 };
+
+/** O estado de um mês na linguagem da família (PLANO_CLAREZA.md §3). É o que TODAS as
+ *  páginas dizem; `MonthCellStatus` fica só para desenhar a célula da faixa, onde o
+ *  parcial tem altura própria. Um recibo emitido conta como pago: nesta família quem
+ *  emite o recibo é o senhorio, quando recebe. */
+export type EstadoMes = "pago" | "atraso" | "por_receber" | "sem_info" | "fora";
+
+export const ESTADO_MES_LABEL: Record<EstadoMes, string> = {
+  pago: "Pago",
+  atraso: "Em atraso",
+  por_receber: "Por receber",
+  sem_info: "Sem informação",
+  fora: "Sem contrato",
+};
+
+/** `vencido`: o mês já terminou (o corrente é sempre "por receber"). `conhecido`: há
+ *  recibos da fonte para este mês; sem eles (fonte parada, por importar) não se sabe. */
+export function estadoDoMes({
+  paid,
+  expected,
+  activeInMonth,
+  vencido,
+  conhecido,
+}: {
+  paid: number;
+  expected: number;
+  activeInMonth: boolean;
+  vencido: boolean;
+  conhecido: boolean;
+}): EstadoMes {
+  if (!activeInMonth) return "fora";
+  if (isMonthSettled(paid, expected)) return "pago";
+  if (!vencido) return "por_receber";
+  return conhecido ? "atraso" : "sem_info";
+}
 
 /** Fração da renda que entrou, 0 a 1. É o que a célula desenha como ALTURA: a barra
  *  não é decoração, é o valor (PLANO.md §5). */
@@ -58,15 +93,15 @@ export function monthCellTitle(cell: MonthCellData): string {
   const label = monthLabel(cell.month);
   switch (cell.status) {
     case "pago":
-      return `${label}: recebido registado (${fmtEur(cell.paid, 2)}), sujeito a confirmação do movimento`;
+      return `${label}: pago (${fmtEur(cell.paid, 2)})`;
     case "parcial":
-      return `${label}: parcial, recebido ${fmtEur(cell.paid, 2)} de ${fmtEur(cell.expected, 2)} (faltam ${fmtEur(cell.expected - cell.paid, 2)})`;
+      return `${label}: em atraso, pago em parte: ${fmtEur(cell.paid, 2)} de ${fmtEur(cell.expected, 2)} (faltam ${fmtEur(cell.expected - cell.paid, 2)})`;
     case "falta":
-      return `${label}: pagamento por verificar (referência ${fmtEur(cell.expected, 2)}); ausência de recibo não comprova dívida`;
+      return `${label}: em atraso (renda habitual ${fmtEur(cell.expected, 2)})`;
     case "fora":
       return `${label}: fora do período do contrato`;
     default:
-      return `${label}: ainda não importado. A app não sabe se foi pago.`;
+      return `${label}: sem informação. Os recibos deste mês ainda não chegaram à app.`;
   }
 }
 

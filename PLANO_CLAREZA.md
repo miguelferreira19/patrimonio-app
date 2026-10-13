@@ -13,7 +13,9 @@
    segunda máquina de estados. Como ninguém regista pagamentos à mão (0 entre jan 2025 e out 2026),
    as 42 rendas do mês aparecem "Pagamento por confirmar" e a dívida "verificada" é sempre 0 €.
 3. **Os devedores estão calculados, mas não há uma lista deles.** 10 277 € em 11 contratos, com
-   9 nomes diferentes em 5 sítios. A página Cobranças, por defeito, nem os mostra.
+   9 nomes diferentes em 5 sítios. A página Cobranças, por defeito, nem os mostra. *(Corrigido na
+   Fase 1: o valor certo é 7 162 € em 6 contratos. Os 10 277 € incluíam outubro, contado como
+   atraso a partir do dia 9, antes da recolha dos recibos.)*
 4. **A rentabilidade por imóvel não existe como vista.** As despesas que lhe serviriam de base estão
    distorcidas: obras pontuais projetadas como recorrentes, e uma dupla contagem no IMI.
 5. **O maior problema da carteira não é de software.** Os 21 contratos do avô estão sem recibos
@@ -189,6 +191,8 @@ a ação seguinte.
 6. **Nenhuma entrada de menu vazia.**
 7. **Não há V6 visual.** O sistema "banca calma" fica. Este plano muda informação e fluxo, não estética.
 8. **Estimativas nunca se somam a medições.**
+9. **Visual antes de prosa** (pedido do utilizador, 13/10): caixas, barras, tiras de meses e
+   etiquetas. Frases explicativas só dentro de "Detalhes", nunca na face da página.
 
 ### Glossário único (o que a família vê)
 
@@ -227,7 +231,9 @@ Tamanhos: **P** ≈ 1 sessão, **M** ≈ 2, **G** ≈ 3–4. Cada fase termina c
 deploy, commit e push (regra do CLAUDE.md), e com o critério de aceitação verificado em
 produção, autenticado.
 
-### Fase 0 · Pôr a casa em ordem (P)
+### Fase 0 · Pôr a casa em ordem (P) · FEITA a 13/10
+
+> Commits `a9525ef` (V5 tal como estava em produção) e `2bc6b80` (este plano).
 
 - **0.1** Commitar a V5 tal como está em produção (`git add -A`, commit, push). É a base de
   reversão de tudo o que vem a seguir. *Precisa do teu OK.*
@@ -237,7 +243,20 @@ produção, autenticado.
 
 **Aceitação:** `git status` limpo, e o GitHub igual a produção.
 
-### Fase 1 · Atrasos e devedores (G). Resolve a queixa n.º 1
+### Fase 1 · Atrasos e devedores (G). Resolve a queixa n.º 1 · FEITA a 13/10
+
+> **Resultado.** Em atraso: 7 162 € em 6 contratos (eram 10 277 € em 11). O mesmo valor no Hoje,
+> na Cobranças, em Imóveis, na ficha da fração e na do inquilino. Para além do previsto:
+> - **O mês corrente nunca é atraso** (`lastDueMonthKey` passou a ser sempre o mês anterior; caso B5
+>   no `arrears.check.ts`). A carência de 8 dias fazia de outubro uma dívida a 13/10: 5 dos 11
+>   contratos eram só o recibo de outubro por emitir, contado também como "por receber".
+> - O contrato fantasma (lote 2e) saiu do "por receber" e dos "recibos por emitir".
+> - Cobranças em formato visual: 3 caixas, uma barra por devedor e uma tira dos últimos 12 meses.
+>   Prosa do Hoje (cartões e prazos) recolhida em "Detalhes".
+> - Ficha da fração: faixa "Em atraso" no topo; corrigido o transbordo horizontal da grelha.
+>
+> **Ficou por fazer:** a ficha da fração ainda lê os pagamentos sem os registos manuais (há 0
+> registos hoje); passa a ler pelo snapshot na Fase 7.
 
 - **1.1 Um só estado de mês.** Uma função em `monthcell.ts` devolve o estado do glossário
   (Pago / Em atraso / Por receber / Sem informação). `monthStatement` (`gestao.ts`) passa a
@@ -268,25 +287,25 @@ produção, autenticado.
 Cobranças, Imóveis e nas fichas (baseline: 10 277 € / 11 contratos, se ninguém pagar entretanto).
 Nenhum mês com recibo diz "por confirmar".
 
-### Fase 2 · Herança do avô (M). O maior buraco de informação
+### Fase 2 · Herança do avô (P). Revista a 13/10
 
-- **2.1 Uma fonte em herança não é uma fonte parada.** Migração aditiva: `landlords.situacao`
-  ('ativo' | 'heranca') e `landlords.rotulo` (nome a mostrar, ex. "Avô Miguel", sem tocar no
-  nome que o import usa). Colar no SQL Editor, como manda o CLAUDE.md.
-- **2.2 Mapa de recebimentos** em `/cobrancas/heranca`: os 21 contratos × meses desde julho. Cada
-  célula mostra o valor registado ou "sem informação". Inclui uma ação em lote, "registar o mês
-  para os que pagaram a renda certa", que corre sobre a RPC transacional e idempotente da V5.
-  Um a um seriam mais de 60 formulários.
-- **2.3 Exportar o mapa para Excel** (o `xlsx` já está instalado, `spreadsheet.ts`), como base
-  para os recibos retroativos e para o Anexo F de 2026.
-- **2.4 Prazos da sucessão na agenda:** Modelo 1 do IS (31/10, ou 30/12 com prorrogação), IMI
-  de novembro, decisão do AIMI (março de 2027), IRS de 2026 (abril a junho de 2027). Entram como
-  tarefas com data (dados, não código), e `agenda.ts` passa a incluir as tarefas abertas com prazo.
-- **2.5 Check:** quando os herdeiros emitirem com o NIF da herança, os recibos retroativos
-  coincidem com os movimentos registados e não duplicam (regra 1.3).
+**Mudou com a tua resposta:** a herança já tem NIF; falta o código de acesso ao Portal. Os recibos
+em falta vão ser emitidos com efeito retroativo pela pessoa que já emite os do António e do Ilídio,
+e não há extratos. O mapa manual de recebimentos (2.2 e 2.3 da versão anterior) deixa de ser
+preciso: os recibos retroativos entram pela recolha automática e os meses "sem informação" passam
+a pagos sozinhos.
 
-**Aceitação:** a família consegue dizer, para cada contrato do avô, que meses entraram desde
-julho; o Excel sai num clique; o prazo de 31/10 aparece no Hoje.
+Quando chegar o código do Portal:
+- **2.1 Recolha:** criar a pasta da herança em `dados/` e as credenciais em `dados/.env` (ação tua);
+  validar com `python scripts/importar_recibos_automatico.py <Pasta> --validar` antes de gravar.
+- **2.2 Associar contratos:** se o Portal der números de contrato novos à herança, os recibos
+  entram sem contrato. Associá-los em `/saude/recibos` (já existe, com pré-visualização).
+- **2.3 Nome a mostrar:** a fonte aparece como "Miguel"; passar a "Herança de Miguel" (rótulo de
+  apresentação, sem mexer no nome que o import usa).
+- **2.4 Check:** recibo retroativo de um mês "sem informação" → pago; nada duplica.
+
+**Aceitação:** depois da primeira recolha da herança, "Sem informação" baixa de 21 contratos para
+zero e qualquer atraso real desses inquilinos aparece na Cobranças.
 
 ### Fase 3 · Rentabilidade (G). Resolve a queixa n.º 3
 
@@ -385,18 +404,18 @@ aparecem com nome e há quanto tempo estão vagos.
 | 7 | 7 · Limpeza | manutenção futura | M | baixo | 1–5 |
 | contínua | 6 · Dados | qualidade dos números | n/a | n/a | n/a |
 
-A 2.4 (prazos da sucessão na agenda) pode e deve sair logo a seguir à Fase 0: é pequena e o
-prazo é a 31/10.
+Estado a 13/10: Fases 0 e 1 feitas. A Fase 2 espera o código do Portal da herança. A seguir:
+Fase 3 (rentabilidade).
 
-## 7. Decisões que preciso de ti
+## 7. Decisões (respondidas a 13/10)
 
-1. **Recibo = pago por defeito?** Recomendo que sim. Sem isso, a Fase 1 não resolve nada.
-2. **5 destinos** como no §4?
-3. **Os familiares sem administração veem nomes e valores de devedores?** Hoje já veem, no bloco
-   "Quem está em atraso".
-4. **Quem regista os recebimentos da herança**, e há acesso aos extratos desde julho?
-5. **Commit da V5 agora** (Fase 0.1)?
-6. **Tirar o "âmbito" das páginas da família** e deixá-lo só em Impostos?
+1. Recibo = pago por defeito: **sim**.
+2. 5 destinos: **sim**.
+3. Familiares sem administração veem devedores: **sim**.
+4. Recebimentos da herança: quem emite os recibos do António e do Ilídio; **sem extratos**; a herança
+   já tem NIF, falta o código do Portal para emitir os recibos em falta (ver Fase 2 revista).
+5. Commit da V5: **sim** (feito).
+6. Tirar o "âmbito" das páginas da família: **sim** (Fase 5).
 
 ## 8. Como saber que ficou melhor
 

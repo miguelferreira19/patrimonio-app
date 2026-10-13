@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 const FILTROS: Array<[FiltroImoveis, string]> = [
   ["todos", "Todos"],
   ["atraso", "Com atraso"],
-  ["parados", "Recibos parados"],
+  ["parados", "Sem informação"],
   ["vagas", "Com vagas"],
   ["atualizavel", "Renda atualizável"],
 ];
@@ -125,7 +125,7 @@ export default async function Imoveis({
           nota={`${correntes - arrendadas} por arrendar${terrenos > 0 ? ` · ${terrenos} terrenos e vendidos à parte` : ""}`}
         />
         <Kpi
-          rotulo="Saldo inferido a verificar"
+          rotulo="Em atraso"
           valor={<Money value={divida} escala="xl" tom={divida > 0 ? "atencao" : "tinta"} />}
           nota={`${atraso.length} ${atraso.length === 1 ? "contrato" : "contratos"}`}
         />
@@ -177,7 +177,7 @@ export default async function Imoveis({
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
           {visiveis.map((p) => (
             <li key={p.chave} className="min-w-0">
-              <CartaoPredio p={p} back={currentUrl} scopeLabel={AMBITO_LABEL[scope]} />
+              <CartaoPredio p={p} back={currentUrl} scopeLabel={scope === "inteiro" ? undefined : AMBITO_LABEL[scope]} />
             </li>
           ))}
         </ul>

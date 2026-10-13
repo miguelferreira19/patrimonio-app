@@ -26,8 +26,10 @@ import type {
   UpdateCoefficient,
 } from "../types";
 import { linhas } from "../supabase/dados";
+import { comPagamentosManuais, pagamentosManuais, type PaymentAllocation, type PaymentMovement } from "../gestao";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+type Movimento = Pick<PaymentMovement, "id" | "contract_id" | "voided">;
 
 /** As colunas que o histórico precisa: `contract_id`, `ref_month` e `amount` para
  *  `computeArrears`, a renda de referência e a fronteira de dados (`ArrearsPaymentInput`);
@@ -160,6 +162,8 @@ export async function loadRaw(
     orphanQ,
     receiptsRecentesQ,
     insightStateQ,
+    movimentos,
+    alocacoes,
   ] = await Promise.all([
     supabase.from("properties").select("*"),
     supabase.from("contracts").select("*"),
@@ -200,7 +204,33 @@ export async function loadRaw(
       },
     ),
     supabase.from("insight_state").select("*"),
+    // Pagamentos registados à mão (V5). Poucas linhas, mas paginadas pela regra das 1000.
+    comHistorico
+      ? paginateAll(async (from, to) =>
+          linhas<Movimento>(
+            await supabase.from("payment_movements").select("id,contract_id,voided").order("id").range(from, to),
+            "payment_movements",
+          ),
+        )
+      : Promise.resolve([] as Movimento[]),
+    comHistorico
+      ? paginateAll(async (from, to) =>
+          linhas<PaymentAllocation>(
+            await supabase
+              .from("payment_allocations")
+              .select("movement_id,ref_month,amount")
+              .order("movement_id")
+              .order("ref_month")
+              .range(from, to),
+            "payment_allocations",
+          ),
+        )
+      : Promise.resolve([] as PaymentAllocation[]),
   ]);
+
+  // Um pagamento registado à mão substitui o recibo do mesmo contrato-mês ANTES de qualquer
+  // cálculo: assim atrasos, faixa e mês em curso dizem todos o mesmo (PLANO_CLAREZA.md 1.3).
+  const manuais = pagamentosManuais(movimentos, alocacoes);
 
   const properties = linhas<Property>(propertiesQ, "properties");
 
@@ -218,8 +248,15 @@ export async function loadRaw(
     owners: linhas<PropertyOwner>(ownersQ, "property_owners"),
     landlords: linhas<Landlord>(landlordsQ, "landlords"),
     benchmarks: linhas<MarketBenchmark>(benchmarksQ, "market_benchmarks"),
-    payments,
-    paymentsRecentes: paymentsRecentesQ,
+    payments: comPagamentosManuais(payments, manuais, (m) => ({ ...m, received_date: null })),
+    paymentsRecentes: comPagamentosManuais(paymentsRecentesQ, manuais, (m) => ({
+      ...m,
+      id: `manual:${m.contract_id}:${m.ref_month}`,
+      received_date: null,
+      method: "outro",
+      source: "manual",
+      notes: null,
+    })),
     expenses,
     rentUpdates: linhas<RentUpdate>(rentUpdatesQ, "rent_updates"),
     coefficients: linhas<UpdateCoefficient>(coefficientsQ, "update_coefficients"),

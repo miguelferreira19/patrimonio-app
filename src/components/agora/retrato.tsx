@@ -17,9 +17,13 @@ import { cn } from "@/lib/cn";
 import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 import type { Snapshot } from "@/lib/portfolio";
 import { anoContraAnterior } from "@/lib/portfolio/renda";
+import { emAtrasoDaCarteira } from "@/lib/portfolio/insights";
 
 export function Retrato({ snap, className }: { snap: Snapshot; className?: string }) {
-  const emAtraso = snap.arrears.summary.contractsInArrears;
+  // A MESMA lista do Hoje e da Cobranças (sem os contratos parados há mais de um ano).
+  const atrasados = emAtrasoDaCarteira(snap);
+  const emAtraso = atrasados.length;
+  const divida = atrasados.reduce((a, r) => a + r.debt, 0);
   const arrendadas = snap.correntes.filter((a) => a.activeContract).length;
   // O ano até ao mês que todas as fontes já conhecem, contra o mesmo período do ano
   // anterior. Substitui "entrou este mês": a 3 do mês esse número era quase zero e não
@@ -66,11 +70,11 @@ export function Retrato({ snap, className }: { snap: Snapshot; className?: strin
         valor={<Figure value={fmtPct(snap.ocupacao.taxa, 0)} escala="lg" />}
       />
       <Numero
-        label="Saldo a verificar"
+        label="Em atraso"
         nota={
           emAtraso === 0
-            ? "nenhum saldo inferido pendente"
-            : `${fmtEur(snap.risco.esperada)} de impacto estatístico estimado`
+            ? "ninguém em atraso"
+            : `${fmtEur(divida)} de meses anteriores`
         }
         valor={
           <Figure

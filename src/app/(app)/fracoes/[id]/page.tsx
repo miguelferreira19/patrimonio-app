@@ -20,7 +20,7 @@ import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacan
 import { getSession } from "@/lib/data";
 import { addMonthsKey, fmtDate, fmtEur, fmtNum, fmtPct, lastMonthsKeys, monthLabel, nomeProprio, todayISO } from "@/lib/format";
 import { classifyUso } from "@/lib/irs";
-import { horizonteDaFonte, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
+import { computeArrearsRow, DEBT_CAP_MONTHS, horizonteDaFonte, lastDueMonthKey, referenceRent, toMonthKey } from "@/lib/arrears";
 import { chaveDoInquilino } from "@/lib/portfolio/inquilinos";
 import { chaveDoPredio, normalizarMorada, rotuloDaFracao } from "@/lib/portfolio/predios";
 import { ListaDocumentos, lerArquivo } from "@/components/documentos/lista";
@@ -279,6 +279,12 @@ export default async function FracaoPage({
   );
   const cessadosOcultos = contracts.length - contratosAtivos.length;
 
+  // O atraso do contrato ativo, pela MESMA função e fronteira do snapshot (arrears.ts): o
+  // valor que aparece aqui é o da Cobranças e do Hoje. A ficha não o dizia (PLANO_CLAREZA.md).
+  const linhaAtraso = active ? computeArrearsRow(active, paymentsByContract.get(active.id) ?? [], lastDue) : null;
+  const emAtraso = linhaAtraso && linhaAtraso.debt > 0 && linhaAtraso.severity !== "ritmo_proprio" ? linhaAtraso : null;
+  const mesesEmAtraso = emAtraso ? Math.min(emAtraso.streak, DEBT_CAP_MONTHS) : 0;
+
   const window12Start = addMonthsKey(lastDue, -11);
   let missingOutside12 = 0;
   for (const h of histories) {
@@ -355,6 +361,22 @@ export default async function FracaoPage({
         </div>
       </header>
 
+      {emAtraso && (
+        <Link
+          href="/cobrancas#em-atraso"
+          className="flex flex-wrap items-baseline justify-between gap-3 rounded-2xl border border-atencao/30 bg-atencao-tenue px-5 py-4"
+        >
+          <span className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold text-atencao">Em atraso</span>
+            <Badge tone={mesesEmAtraso >= 3 ? "perda" : "atencao"}>
+              {mesesEmAtraso} {mesesEmAtraso === 1 ? "mês" : "meses"}
+            </Badge>
+            <span className="text-tinta-3">desde {monthLabel(addMonthsKey(lastDue, -(mesesEmAtraso - 1)))}</span>
+          </span>
+          <Money value={emAtraso.debt} escala="lg" tom="atencao" />
+        </Link>
+      )}
+
       <div className="flex flex-wrap gap-2"><Link href={`/cobrancas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Pagamentos e saldos</Link><Link href={`/manutencao?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Manutenção</Link><Link href={`/vagas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Disponibilidade</Link></div>
       {isAdmin && <QuotaEvidence property={property} owners={owners.map((o) => ({ id: o.landlord_id, label: `${landlords.find((l) => l.id === o.landlord_id)?.name ?? "Proprietário"} · ${o.quota}%`, confirmed: o.quota_confirmed === true }))} />}
       <nav aria-label="Secções da fração" className="-mx-4 flex gap-1 overflow-x-auto border-b border-regua px-4 md:mx-0 md:px-0">
@@ -377,7 +399,7 @@ export default async function FracaoPage({
       </nav>
 
       {tab === "resumo" && (
-        <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
           <div className="space-y-5">
             <Bloco titulo="Pagamentos" acao={historiaAtiva && <Link href={tabHref("pagamentos")} className="text-sm font-medium text-acao hover:underline">Histórico completo</Link>}>
               {ultimosAnos.length === 0 ? (

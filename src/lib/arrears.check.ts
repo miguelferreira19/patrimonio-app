@@ -8,6 +8,7 @@ import {
   computeArrearsRow,
   horizonteDaFonte,
   horizontePorContrato,
+  lastDueMonthKey,
   referenceRent,
   type ArrearsPaymentInput,
 } from "./arrears";
@@ -104,7 +105,7 @@ function row(rent: number, start: string, payments: ArrearsPaymentInput[]) {
 // continua. Com a fronteira global (setembro, dada pelo António) os inquilinos do avô
 // apareciam com agosto e setembro em atraso. Cada contrato passa a parar na fonte dele.
 {
-  const hoje = new Date(2026, 9, 3); // 3 out: ainda em carência, último devido = setembro
+  const hoje = new Date(2026, 9, 3); // 3 out: último devido = setembro
   const recibos = [
     { contract_id: "avo", landlord_id: "AVO", issue_date: "2026-07-02" },
     { contract_id: "pai", landlord_id: "PAI", issue_date: "2026-09-01" },
@@ -132,6 +133,28 @@ function row(rent: number, start: string, payments: ArrearsPaymentInput[]) {
   assert.equal(com.rows.find((r) => r.contractId === "avo")!.streak, 0, "o avô fica em dia até à fonte dele");
   assert.equal(com.rows.find((r) => r.contractId === "pai")!.streak, 0);
   assert.equal(com.rows.find((r) => r.contractId === "pai2")!.streak, 4, "quem parou mesmo continua apanhado");
+}
+
+// B5) O mês corrente nunca é atraso (PLANO_CLAREZA.md §3). A 13/10/2026 o António já tinha
+// emitido recibos de outubro, a fronteira dele era outubro, e 5 dos 11 "em atraso" eram só o
+// recibo de outubro ainda por emitir: o mesmo dinheiro contava como atraso e como "por receber".
+{
+  const hoje = new Date(2026, 9, 13);
+  assert.equal(lastDueMonthKey(hoje), "2026-09-01", "o último mês devido é o anterior");
+  assert.equal(lastDueMonthKey(new Date(2026, 9, 31)), "2026-09-01", "mesmo no último dia");
+  const recibos = [
+    { contract_id: "pago", landlord_id: "PAI", issue_date: "2026-10-05" },
+    { contract_id: "falta", landlord_id: "PAI", issue_date: "2026-09-02" },
+  ];
+  const { porContrato } = horizontePorContrato(recibos, hoje);
+  const ct = (id: string) => ({ id, rent: 300, start_date: "2020-01-01", property_id: `p${id}`, tenant_name: id, pf_contract_no: null });
+  const pays: ArrearsPaymentInput[] = [
+    ...monthly(300, "2026-10-01", 24).map((p) => ({ ...p, contract_id: "pago" })),
+    ...monthly(300, "2026-09-01", 24).map((p) => ({ ...p, contract_id: "falta" })),
+  ];
+  const { rows } = computeArrears([ct("pago"), ct("falta")], pays, hoje, porContrato);
+  assert.equal(rows.find((r) => r.contractId === "falta")!.streak, 0, "outubro ainda não é atraso");
+  assert.equal(rows.find((r) => r.contractId === "falta")!.debt, 0);
 }
 
 // C) Mês parcial não conta duas vezes: o streak já o conta como mês inteiro em falta,
@@ -192,7 +215,7 @@ void (async () => {
   assert.equal(got2.length, 2000);
   assert.equal(calls, 3, "2 páginas cheias + 1 vazia");
 
-  console.log("arrears: casos OK (A, B, B2, B3, B4, C, D, E, F, G, H)");
+  console.log("arrears: casos OK (A, B, B2, B3, B4, B5, C, D, E, F, G, H)");
 })().catch((e) => {
   console.error(e);
   process.exitCode = 1;

@@ -1,6 +1,7 @@
 // Self-check de inquilinos.ts. Corre com `npm run check`.
 import assert from "node:assert/strict";
-import { chaveDoInquilino, fichaDoInquilino, fichasDeInquilinos } from "./inquilinos";
+import { chaveDoInquilino, devedores, fichaDoInquilino, fichasDeInquilinos } from "./inquilinos";
+import { addMonthsKey } from "../format";
 import type { Ativo, Snapshot } from "./snapshot";
 import type { ArrearsRow } from "../arrears";
 import type { Contract, Payment, Property } from "../types";
@@ -127,4 +128,38 @@ function snapshot(ativos: Ativo[], pagamentosRecentes: Payment[] = []): Snapshot
   assert.equal(fichas[0].nome, "Carla", "ordenado pela renda ativa");
 }
 
-console.log("inquilinos.check.ts: OK (A, B, C)");
+// D — devedores: agrupa por inquilino a MESMA lista do Hoje (emAtrasoDaCarteira). Fica de
+// fora quem tem ritmo próprio (paga ao trimestre) e quem está em dia.
+{
+  const meses24 = (fim: string) =>
+    Array.from({ length: 24 }, (_, i) => ({ month: addMonthsKey(fim, i - 23), status: "pago", paid: 0, deficit: 0 }));
+  const row = (over: Partial<ArrearsRow> & { contractId: string }) =>
+    arrears({ months24: meses24("2026-09-01"), severity: "critico", ...over } as Partial<ArrearsRow> & { contractId: string });
+  const a1 = contract({ id: "a1", property_id: "p1", tenant_nif: "700", tenant_name: "Amin", rent: 438 });
+  const a2 = contract({ id: "a2", property_id: "p2", tenant_nif: "700", tenant_name: "Amin", rent: 331 });
+  const b = contract({ id: "b", property_id: "p3", tenant_name: "Casa", rent: 295 });
+  const t = contract({ id: "t", property_id: "p4", tenant_name: "Trimestral", rent: 900 });
+  const linhas = [
+    row({ contractId: "a1", propertyId: "p1", streak: 5, debt: 5 * 438, lastPaidMonth: "2026-04-01" }),
+    row({ contractId: "a2", propertyId: "p2", streak: 1, debt: 331, lastPaidMonth: "2026-08-01" }),
+    row({ contractId: "b", propertyId: "p3", streak: 4, debt: 4 * 295, lastPaidMonth: "2026-05-01" }),
+    row({ contractId: "t", propertyId: "p4", streak: 2, debt: 1800, severity: "ritmo_proprio" }),
+  ];
+  const lista = devedores({
+    arrears: { rows: linhas, summary: {} as Snapshot["arrears"]["summary"] },
+    ativos: [
+      ativo({ property: property("p1"), contracts: [a1] }),
+      ativo({ property: property("p2"), contracts: [a2] }),
+      ativo({ property: property("p3"), contracts: [b] }),
+      ativo({ property: property("p4"), contracts: [t] }),
+    ],
+  });
+  assert.equal(lista.length, 2, "o trimestral não é devedor");
+  assert.equal(lista[0].nome, "Amin", "o maior valor primeiro");
+  assert.equal(lista[0].divida, 5 * 438 + 331, "um inquilino, dois contratos");
+  assert.equal(lista[0].desde, "2026-05-01", "o mês por pagar mais antigo");
+  assert.equal(lista[0].contratos[0].contract.id, "a1");
+  assert.equal(lista[1].contratos[0].desde, "2026-06-01");
+}
+
+console.log("inquilinos.check.ts: OK (A, B, C, D)");

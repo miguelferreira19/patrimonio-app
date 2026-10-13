@@ -23,7 +23,7 @@ export async function operationalData(q: OperationalQuery) {
     if (q.q && !`${nomeDaFracao(property)} ${contract.tenant_name} ${contract.tenant_nif ?? ""} ${property.matriz_article}`.toLocaleLowerCase("pt-PT").includes(q.q.toLocaleLowerCase("pt-PT"))) return [];
     return period.months.flatMap((month) => {
       const statement = monthStatement({ contract, month, today: snap.hoje, horizon: horizons.get(contract.id) ?? null, updates: raw.rentUpdates, receipts, ...management });
-      if (statement.status === "sem_contrato" && !statement.documented && !statement.confirmed) return [];
+      if (statement.status === "fora" && !statement.documented && !statement.confirmed) return [];
       if (q.estado && statement.status !== q.estado) return [];
       return [{ contract, property, share, statement, next: management.cases.find((c) => c.contract_id === contract.id && c.status !== "concluido") }];
     });

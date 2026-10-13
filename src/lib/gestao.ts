@@ -1,5 +1,6 @@
 import { contractActiveInMonth } from "./calc";
 import { endOfMonthISO } from "./format";
+import { estadoDoMes, type EstadoMes } from "./monthcell";
 import { parseAmount } from "./parse";
 import { eData, exigir, eNumero } from "./validar";
 import type { Contract, Expense, Landlord, PaymentMethod, PropertyOwner, Receipt, RentUpdate } from "./types";
@@ -7,11 +8,6 @@ import type { Contract, Expense, Landlord, PaymentMethod, PropertyOwner, Receipt
 export type Ambito = "inteiro" | "carteira" | "proprietario";
 export const AMBITO_LABEL: Record<Ambito, string> = {
   inteiro: "Imóvel por inteiro", carteira: "Parte dos proprietários da carteira", proprietario: "Parte do proprietário selecionado",
-};
-export type PaymentState = "confirmado" | "parcial" | "por_confirmar" | "dados_por_importar" | "saldo_vencido_confirmado" | "nao_vencido" | "sem_contrato";
-export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
-  confirmado: "Pagamento confirmado", parcial: "Pagamento parcial", por_confirmar: "Pagamento por confirmar",
-  dados_por_importar: "Dados por importar", saldo_vencido_confirmado: "Saldo vencido confirmado", nao_vencido: "Período ainda não vencido", sem_contrato: "Período sem contrato",
 };
 export type CaseKind = "cobranca" | "tarefa" | "manutencao" | "vaga";
 export type CaseStatus = "aberto" | "em_curso" | "adiado" | "concluido";
@@ -36,7 +32,7 @@ export interface ManagementEvent { id: string; case_id: string; kind: "nota" | "
 export interface OperationHistory { id: number; entity_table: string; entity_id: string; action: string; before_data: Record<string, unknown> | null; after_data: Record<string, unknown> | null; note: string | null; created_at: string }
 export interface MonthStatement {
   month: string; contracted: number; expected: number; confirmed: number; documented: number; recorded: number;
-  pending: number; confirmedBalance: number | null; credit: number; status: PaymentState;
+  pending: number; confirmedBalance: number | null; credit: number; status: EstadoMes;
   receiptState: "emitido" | "por_emitir" | "por_importar"; origin: string; coverage: string | null;
   rentInferred: boolean; partialMonth: boolean; confirmation: PeriodConfirmation | null;
 }
@@ -108,20 +104,56 @@ export function monthStatement(input: {
   const pending = Math.max(0, cents(expected) - cents(recorded)) / 100;
   const due = `${month.slice(0, 8)}${String(Math.min(contract.due_day, Number(endOfMonthISO(month).slice(8, 10)))).padStart(2, "0")}`;
   const balance = confirmation && due <= today ? Math.max(0, cents(expected) - cents(confirmed)) / 100 : null;
-  let status: PaymentState = "por_confirmar";
-  if (!active && !confirmation) status = "sem_contrato";
-  else if (balance !== null && balance > 0) status = "saldo_vencido_confirmado";
-  else if (parts.length && cents(confirmed) >= cents(expected)) status = "confirmado";
-  else if (parts.length) status = "parcial";
-  else if (due > today) status = "nao_vencido";
-  else if (!docs.length && (!horizon || month > horizon)) status = "dados_por_importar";
+  // O mesmo estado de todas as páginas (monthcell.ts): recibo emitido = pago, o mês em
+  // curso é "por receber", e sem recibos da fonte não se sabe.
+  const status = estadoDoMes({
+    paid: recorded,
+    expected,
+    activeInMonth: active || confirmation !== null,
+    vencido: month.slice(0, 7) < today.slice(0, 7),
+    conhecido: docs.length > 0 || parts.length > 0 || (horizon !== null && month <= horizon),
+  });
   return { month, contracted: rent.rent, expected, confirmed, documented, recorded, pending, confirmedBalance: balance,
     credit: Math.max(0, cents(confirmed) - cents(expected)) / 100, status,
     receiptState: docs.length ? "emitido" : (!horizon || month > horizon) ? "por_importar" : "por_emitir",
-    origin: parts.length ? "Movimento confirmado pelo administrador" : docs.length ? "Inferido dos recibos; pagamento por confirmar" : "Sem confirmação de pagamento",
+    origin: parts.length ? "Pagamento registado à mão" : docs.length ? "Recibo emitido" : "Sem recibo",
     coverage: horizon, rentInferred: rent.inferred,
     partialMonth: Boolean((contract.start_date && contract.start_date > month && contract.start_date <= endOfMonthISO(month)) || (contract.end_date && contract.end_date >= month && contract.end_date < endOfMonthISO(month))), confirmation };
 }
+/** Pagamento registado à mão, somado por contrato-mês. Chave `${contract_id}|${ref_month}`. */
+export type PagamentoManual = { contract_id: string; ref_month: string; amount: number };
+
+/** Os pagamentos registados à mão (movimentos não anulados), por contrato-mês. */
+export function pagamentosManuais(
+  movements: Array<Pick<PaymentMovement, "id" | "contract_id" | "voided">>,
+  allocations: PaymentAllocation[],
+): Map<string, PagamentoManual> {
+  const contrato = new Map(movements.filter((m) => !m.voided).map((m) => [m.id, m.contract_id]));
+  const out = new Map<string, PagamentoManual>();
+  for (const a of allocations) {
+    const contract_id = contrato.get(a.movement_id);
+    if (!contract_id) continue;
+    const ref_month = `${a.ref_month.slice(0, 7)}-01`;
+    const k = `${contract_id}|${ref_month}`;
+    const antes = out.get(k)?.amount ?? 0;
+    out.set(k, { contract_id, ref_month, amount: (cents(antes) + cents(Number(a.amount))) / 100 });
+  }
+  return out;
+}
+
+/** Junta os pagamentos registados à mão aos que vêm dos recibos. No mesmo contrato-mês o
+ *  registado SUBSTITUI o recibo, nunca se soma (a regra da V5): é o que faz um "pagou sem
+ *  recibo" sair dos atrasos, e um recibo emitido depois não o conta duas vezes. */
+export function comPagamentosManuais<P extends { contract_id: string; ref_month: string }>(
+  rows: P[],
+  manuais: Map<string, PagamentoManual>,
+  novo: (m: PagamentoManual) => P,
+): P[] {
+  if (manuais.size === 0) return rows;
+  const chave = (p: P) => `${p.contract_id}|${p.ref_month.slice(0, 7)}-01`;
+  return [...rows.filter((p) => !manuais.has(chave(p))), ...Array.from(manuais.values(), novo)];
+}
+
 export function receiptCandidates(receipt: Receipt, contracts: Contract[]): Array<{ contract: Contract; reason: string }> {
   const exact = receipt.pf_contract_no ? contracts.filter((c) => c.pf_contract_no === receipt.pf_contract_no) : [];
   if (exact.length) return exact.map((contract) => ({ contract, reason: "Número de contrato igual ao do recibo" }));

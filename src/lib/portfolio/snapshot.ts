@@ -444,9 +444,10 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
   });
 
   // ---------- Fontes dos recibos ----------
-  // Parada = a última emissão ficou dois meses ou mais atrás do último mês devido. Um mês
-  // de atraso é o ritmo normal de quem emite em lote; dois já não.
-  const limiteParada = addMonthsKey(lastDueMonthKey(today), -2);
+  // Parada = a última emissão ficou dois meses ou mais atrás do mês corrente. Um mês de
+  // atraso é o ritmo normal de quem emite em lote; dois já não. (O último mês devido é o
+  // anterior ao corrente, daí o -1.)
+  const limiteParada = addMonthsKey(lastDueMonthKey(today), -1);
   const fontePorContrato = fontesRaw.fonte;
   const fontes: FonteDeRecibos[] = Array.from(fontesRaw.ultimaEmissao.entries())
     .flatMap(([landlordId, ultimaEmissao]) => {
@@ -482,6 +483,8 @@ export function buildSnapshot(raw: RawData, today: Date, options: SnapshotOption
       // Contratos de cadência própria (ex.: trimestral) só entram no mês em que voltam
       // a vencer — senão a checklist pedia recibos todos os meses a quem paga ao trimestre.
       const row = arrearsByContract.get(c.id);
+      // Sem recibos há mais de 12 meses: provavelmente cessou, e tem a sua tarefa à parte.
+      if (row?.stale) return false;
       const cadence = row?.cadence ?? 1;
       if (cadence >= 2 && row?.lastPaidMonth) {
         return addMonthsKey(row.lastPaidMonth, cadence) <= thisMonth;

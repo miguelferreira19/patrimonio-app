@@ -113,8 +113,8 @@ export default async function SaudePage({ searchParams }: { searchParams: Promis
 
       <p className="text-xs text-tinta-3">
         As verificações de contratos parados e de renda desalinhada usam a mesma base da página de{" "}
-        <Link href="/imoveis?f=atraso" className="text-acao hover:underline">
-          Atrasos
+        <Link href="/cobrancas" className="text-acao hover:underline">
+          Cobranças
         </Link>
         .
       </p>

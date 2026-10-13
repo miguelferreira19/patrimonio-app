@@ -8,13 +8,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Home } from "lucide-react";
-import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
+import { Confianca, Lede, Money, Seccao } from "@/components/kit";
 import { Badge, EmptyState, Table, Td, Th } from "@/components/ui";
 import { getSession } from "@/lib/data";
 import { getSnapshot } from "@/lib/portfolio";
 import { fichaDoInquilino } from "@/lib/portfolio/inquilinos";
 import { SEVERITY_LABEL } from "@/lib/arrears";
-import { fmtDate, fmtEur, fmtPct } from "@/lib/format";
+import { fmtDate, fmtEur, monthLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -59,10 +59,10 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
       </Lede>
 
       <Seccao titulo="Comportamento">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
           <Facto rotulo="Líquido registado (12 meses)" valor={<Money value={ficha.recebido12m} escala="lg" />} />
           <Facto
-            rotulo="Saldo inferido a verificar"
+            rotulo="Em atraso"
             valor={<Money value={ficha.divida} escala="lg" tom={ficha.divida > 0 ? "atencao" : "tinta-2"} />}
           />
           <Facto
@@ -73,19 +73,11 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
               </span>
             }
           />
-          <Facto
-            rotulo="Estimativa de registo mensal"
-            valor={
-              ficha.pPagar === null || contratosAtivos.some((c) => !c.risco || c.risco.p.n < 6) ? (
-                <span className="text-[15px] text-tinta-3">dados insuficientes</span>
-              ) : (
-                <Figure value={fmtPct(ficha.pPagar, 0)} escala="lg" />
-              )
-            }
-          />
         </dl>
-        <p className="mt-3 text-xs leading-relaxed text-tinta-2">Base: últimos 12 meses documentados, sujeita à cobertura de cada fonte. O estado “crítico” assinala a urgência de revisão de meses anteriores; não significa uma probabilidade nula de pagamento. Os saldos de contratos cessados continuam consultáveis em Cobranças.</p>
-        <details className="mt-3 text-xs text-tinta-2"><summary className="cursor-pointer text-acao">Como foi calculado</summary><p className="mt-2 max-w-[72ch] leading-relaxed">A estimativa refere-se à ocorrência de receita documentada num mês de referência, sem um prazo fixo para cobrança. É ponderada pela renda e combina o histórico do contrato com o da carteira. Com menos de seis meses de referência num contrato ativo mostra dados insuficientes. Recibos não confirmam movimentos bancários. Saldos inferidos usam a renda histórica de referência e exigem verificação.</p><p className="mt-2">{contratosAtivos.map((c) => `${c.contract.tenant_name}: ${c.risco?.p.n ?? 0} meses de referência`).join(" · ")}</p></details>
+        <p className="mt-3 max-w-[72ch] text-xs leading-relaxed text-tinta-2">
+          O estado conta os meses seguidos por pagar no contrato ativo: atenção com 1 mês, atraso com 2 ou 3,
+          crítico com 4 ou mais. Um mês conta quando termina sem recibo emitido.
+        </p>
       </Seccao>
 
       <Seccao titulo="Contratos" valor={<Money value={ficha.rendaMensal} escala="sm" tom="tinta-2" />}>
@@ -102,7 +94,7 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
                     <Th>Fim</Th>
                     <Th className="text-right">Renda</Th>
                     <Th>Estado</Th>
-                    <Th className="text-right">Em dívida</Th>
+                    <Th className="text-right">Em atraso</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,7 +138,7 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
                     {fmtDate(contract.start_date)}
                     {contract.end_date ? ` a ${fmtDate(contract.end_date)}` : " até hoje"}
                     {contract.status !== "ativo" && " · cessado"}
-                    {arrears && arrears.debt > 0 && ` · ${fmtEur(arrears.debt)} em dívida`}
+                    {arrears && arrears.debt > 0 && ` · ${fmtEur(arrears.debt)} em atraso`}
                   </p>
                 </li>
               ))}
@@ -164,13 +156,13 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
                   <p className="font-medium text-tinta">{property.name}</p>
                   <p className="text-xs text-tinta-2">
                     {arrears
-                      ? `${SEVERITY_LABEL[arrears.severity]}${arrears.streak > 0 ? ` · ${arrears.streak} ${arrears.streak === 1 ? "mês" : "meses"} seguidos por liquidar` : ""}${arrears.cadence ? ` · paga de ${arrears.cadence} em ${arrears.cadence} meses` : ""}`
+                      ? `${SEVERITY_LABEL[arrears.severity]}${arrears.streak > 0 ? ` · ${arrears.streak} ${arrears.streak === 1 ? "mês" : "meses"} seguidos em atraso` : ""}${arrears.cadence ? ` · paga de ${arrears.cadence} em ${arrears.cadence} meses` : ""}`
                       : "sem leitura de atrasos"}
                   </p>
                 </div>
                 {arrears?.lastPaidMonth && (
                   <p className="mt-1 text-xs text-tinta-3">
-                    Último mês totalmente pago: <span className="tabular-nums">{arrears.lastPaidMonth.slice(0, 7)}</span>
+                    Último mês totalmente pago: <span className="tabular-nums">{monthLabel(arrears.lastPaidMonth)}</span>
                   </p>
                 )}
               </li>

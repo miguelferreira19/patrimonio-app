@@ -14,6 +14,8 @@ import type { Snapshot } from "./snapshot";
 import { mesPorExtenso } from "../format";
 
 export interface ContratoDoMes {
+  /** Id do contrato: serve só para a lista de quem falta (Cobranças). */
+  id?: string;
   /** Renda de referência (a que o contrato costuma pagar, líquida de retenção). */
   esperado: number;
   /** Recebido com referência a este mês. */
@@ -27,6 +29,8 @@ export interface ResumoDoMes {
   esperado: number;
   recebido: number;
   porReceber: number;
+  /** Os contratos que compõem `porReceber`, com quanto falta a cada um. */
+  porReceberContratos: Array<{ id: string; valor: number }>;
   /** Renda dos contratos de fontes paradas: fora do esperado, à parte. */
   porSaber: { valor: number; contratos: number };
   pagos: number;
@@ -53,6 +57,7 @@ export function resumoDoMes(input: {
   let pagos = 0;
   let total = 0;
   const porSaber = { valor: 0, contratos: 0 };
+  const porReceberContratos: ResumoDoMes["porReceberContratos"] = [];
 
   for (const c of input.contratos) {
     if (c.porSaber) {
@@ -64,8 +69,13 @@ export function resumoDoMes(input: {
     total += 1;
     esperado += c.esperado;
     recebido += c.pago;
-    if (isMonthSettled(c.pago, c.esperado)) pagos += 1;
-    else porReceber += Math.max(0, c.esperado - c.pago);
+    if (isMonthSettled(c.pago, c.esperado)) {
+      pagos += 1;
+    } else {
+      const falta = Math.max(0, c.esperado - c.pago);
+      porReceber += falta;
+      if (c.id) porReceberContratos.push({ id: c.id, valor: arred(falta) });
+    }
   }
 
   const nome = mesPorExtenso(mes).replace(/^./, (l) => l.toUpperCase());
@@ -86,6 +96,7 @@ export function resumoDoMes(input: {
     esperado: arred(esperado),
     recebido: arred(recebido),
     porReceber: arred(porReceber),
+    porReceberContratos: porReceberContratos.sort((a, b) => b.valor - a.valor),
     porSaber: { valor: arred(porSaber.valor), contratos: porSaber.contratos },
     pagos,
     total,
@@ -108,10 +119,14 @@ export function resumoDoSnapshot(snap: Snapshot): ResumoDoMes {
   }
   const contratos: ContratoDoMes[] = snap.correntes.flatMap((a) => {
     const c = a.activeContract;
-    if (!c) return [];
+    // Sem recibos há mais de 12 meses (arrears `stale`): quase sempre cessou sem baixa. Já
+    // não conta como dívida, e tem a sua tarefa ("Confirmar se o contrato cessou"); somá-lo
+    // ao "por receber" pedia todos os meses uma renda que ninguém espera (lote 2e).
+    if (!c || a.arrears?.stale) return [];
     const fonte = snap.fonteDoContrato[c.id];
     return [
       {
+        id: c.id,
         esperado: snap.expectedByContract[c.id] ?? c.rent,
         pago: pagoPorContrato.get(c.id) ?? 0,
         porSaber: !!fonte && parados.has(fonte),

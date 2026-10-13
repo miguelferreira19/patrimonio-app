@@ -53,7 +53,7 @@ export default async function Predio({ params, searchParams }: { params: Promise
           <p className="mt-1 text-xs text-tinta-3">por mês</p>
         </div>
         <div className="rounded-2xl border border-regua bg-carta px-4 py-3.5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">Saldo a verificar</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">Em atraso</p>
           <div className="mt-1.5">
             <Money value={p.divida} escala="xl" tom={p.divida > 0 ? "atencao" : "tinta"} />
           </div>

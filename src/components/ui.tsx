@@ -180,7 +180,7 @@ export function Field({ label, children }: { label: ReactNode; children: ReactNo
 // Nota: `confirmado` NÃO é verde — é pergaminho com tinta cheia. Um estado
 // confirmado distingue-se de um neutro pelo PESO DA TINTA, não pelo matiz
 // (PLANO.md §10.1: "o que está feito é tinta").
-type BadgeTone =
+export type BadgeTone =
   | "confirmado"
   | "perda"
   | "atencao"

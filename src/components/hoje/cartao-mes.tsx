@@ -29,38 +29,40 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
       <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-tinta-2">
         <li className="flex items-center gap-2">
           <i className="size-2.5 rounded-[3px] bg-tinta" />
-          Recebido registado <Money value={r.recebido} escala="sm" tom="tinta-2" />
+          Recebido <Money value={r.recebido} escala="sm" tom="tinta-2" />
         </li>
         <li className="flex items-center gap-2">
           <i className="size-2.5 rounded-[3px] bg-vellum ring-1 ring-regua-forte" />
           Por receber <Money value={r.porReceber} escala="sm" tom="tinta-2" />
         </li>
       </ul>
-      <p className="mt-2 text-xs text-tinta-2">Valores líquidos · imóveis por inteiro · recibos sujeitos a confirmação do pagamento.</p>
+      <p className="mt-2 text-xs text-tinta-2">Valores líquidos de retenção, imóveis por inteiro.</p>
       {(r.atraso.valor > 0 || r.porSaber.contratos > 0) && (
         <div className="mt-5 space-y-1.5 border-t border-regua pt-4 text-[13px]">
           {r.atraso.valor > 0 && (
-            <Link href="/imoveis?f=atraso" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
+            <Link href="/cobrancas#em-atraso" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
               <span className="text-tinta-2 underline decoration-dotted underline-offset-4">
-                Saldo inferido de meses anteriores · {r.atraso.contratos}{" "}
+                Em atraso de meses anteriores · {r.atraso.contratos}{" "}
                 {r.atraso.contratos === 1 ? "contrato" : "contratos"}
               </span>
               <Money value={r.atraso.valor} escala="sm" tom="atencao" />
             </Link>
           )}
           {r.porSaber.contratos > 0 && (
-            <Link href="/imoveis?f=parados" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
+            <Link href="/cobrancas#sem-informacao" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
               <span className="text-tinta-2 underline decoration-dotted underline-offset-4">
-                Por saber · {r.porSaber.contratos} contratos com os recibos parados
+                Sem informação · {r.porSaber.contratos} contratos com recibos suspensos
               </span>
-              <Money value={r.porSaber.valor} escala="sm" tom="futuro" />
+              <span>
+                <Money value={r.porSaber.valor} escala="sm" tom="futuro" /> <span className="text-tinta-3">/mês</span>
+              </span>
             </Link>
           )}
         </div>
       )}
       <details className="mt-4 text-xs leading-relaxed text-tinta-2">
         <summary className="cursor-pointer py-2 font-medium">Como ler estes valores</summary>
-        <p className="mt-1">Recebido é o valor líquido dos movimentos confirmados ou, na ausência destes, dos recibos importados. O esperado usa a renda de referência dos contratos com dados disponíveis. «Por receber» e os saldos inferidos não confirmam dívida. Os contratos com recibos parados ficam na linha «Por saber».</p>
+        <p className="mt-1">Um recibo emitido conta como renda recebida. O esperado é a renda habitual de cada contrato, líquida de retenção. «Por receber» é o que falta do mês em curso, que só fica em atraso depois de terminar. «Sem informação» são os contratos cujos recibos deixaram de ser emitidos: não contam como pagos nem como atraso.</p>
       </details>
     </section>
   );

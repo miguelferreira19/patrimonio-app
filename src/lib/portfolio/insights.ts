@@ -23,7 +23,7 @@ export const GRUPO_LABEL: Record<Grupo, string> = {
   poupar: "Dinheiro a poupar",
   fazer: "A fazer este mês",
   risco: "Risco",
-  saber: "Por saber",
+  saber: "Sem informação",
 };
 
 export interface Acao {
@@ -235,13 +235,10 @@ const GERADORES: Gerador[] = [
     if (emAtraso.length === 0) return [];
     const divida = emAtraso.reduce((acc, r) => acc + r.debt, 0);
 
-    // O valor da fila é a PERDA ESPERADA, não a dívida ingénua (Fase 4). A dívida crua
-    // conta como perdido dinheiro que historicamente entra no import seguinte; pô-la na
-    // linha de topo era inflacionar o que a app promete que se ganha ao agir.
-    // A ingénua vem do MESMO conjunto de meses que a perda esperada (risco.ingenua), e não
-    // de `arrears.debt`: só assim as duas são comparáveis na conta.
-    const ingenua = s.risco.ingenua > 0 ? s.risco.ingenua : emAtraso.reduce((a, r) => a + r.debt, 0);
-    const total = s.risco.esperada > 0 ? s.risco.esperada : ingenua;
+    // O valor é a dívida, com o MESMO nome e número do cartão do mês e da Cobranças
+    // (PLANO_CLAREZA.md 1.6). Era a perda esperada (Fase 4): um terceiro número para a mesma
+    // pergunta, ao lado de "saldo inferido" e "em dívida", e a família deixou de saber quanto
+    // estava em atraso. A perda esperada continua no risk.ts para quem a quiser ler.
     const n = emAtraso.length;
     const piores = emAtraso.slice(0, 3).map((r) => {
       const prop = s.ativos.find((a) => a.property.id === r.propertyId)?.property;
@@ -252,19 +249,16 @@ const GERADORES: Gerador[] = [
       {
         kind: "atraso",
         grupo: "risco",
-        titulo: `Verificar saldo de ${n} ${n === 1 ? "contrato" : "contratos"}`,
-        // V4: o número grande é a perda esperada; a dívida crua vai por extenso no porquê,
-        // senão a tarefa contradizia o "em atraso" do cartão do mês (que é a dívida).
+        titulo: `Cobrar ${n} ${n === 1 ? "contrato" : "contratos"} em atraso`,
         porque:
-          `Saldo inferido de recibos: ${fmtEur(divida)}, por verificar. O impacto estatístico estimado é ${fmtEur(total)}; não confirma dívida ou perda. ` +
+          `Meses anteriores sem recibo emitido. ` +
           `Maiores: ${piores.join(", ")}${n > 3 ? `, e outros ${n - 3}` : ""}.`,
-        euros: total,
-        confianca: "estimado",
+        euros: divida,
+        confianca: "medido",
         conta:
-          s.risco.esperada > 0
-            ? `Σ valor_mês × (1 − cura(idade)) × (1 − p̂). A soma crua dos meses em falta daria ${fmtEur(ingenua)}; a diferença é o que a carteira historicamente recupera sozinha. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`
-            : `Σ (meses em falta × renda de referência), com cap de 24 meses por contrato. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`,
-        acoes: [{ label: "Verificar saldos", href: "/imoveis?f=atraso" }],
+          "Meses em atraso × renda habitual (líquida de retenção), até 24 meses por contrato. " +
+          "Um mês conta quando termina sem recibo emitido; renda paga sem recibo regista-se no extrato.",
+        acoes: [{ label: "Ver quem deve", href: "/cobrancas" }],
       },
     ];
   },
@@ -328,11 +322,11 @@ const GERADORES: Gerador[] = [
           subject: f.landlord.id,
           grupo: "saber" as const,
           titulo: `Recibos de ${f.landlord.name} parados desde ${mesPorExtenso(f.horizonte, true)}`,
-          porque: `${f.contratos} ${f.contratos === 1 ? "contrato" : "contratos"} sem recibo emitido depois de ${fmtDate(f.ultimaEmissao)}. Esses meses ficam por importar, não em atraso.`,
+          porque: `${f.contratos} ${f.contratos === 1 ? "contrato" : "contratos"} sem recibo emitido depois de ${fmtDate(f.ultimaEmissao)}. Esses meses ficam sem informação, não em atraso, até os recibos serem emitidos.`,
           euros,
           confianca: "assumido" as const,
           conta: `${fmtEur(f.renda)}/mês × ${meses} ${meses === 1 ? "mês" : "meses"} de rendas sem recibo.`,
-          acoes: [{ label: "Ver contratos", href: `/carteira?senhorio=${f.landlord.id}` }],
+          acoes: [{ label: "Ver contratos", href: "/cobrancas#sem-informacao" }],
         };
       });
   },
