@@ -8,10 +8,146 @@ import { TermsForm } from "@/components/gestao/forms";
 import { ContractFormButton, RentUpdateButton, EndContractButton } from "@/components/forms";
 import { declaredContractDates } from "@/lib/gestao";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, nomeProprio } from "@/lib/format";
 export const dynamic = "force-dynamic";
-export default async function Page({ searchParams }: { searchParams: Promise<{ q?: string; estado?: string; id?: string }> }) {
-  const q = await searchParams; const [{ raw }, { isAdmin }] = await Promise.all([getSnapshotComRaw(), getSession()]); const agenda = await getAgenda(366, { comRendas: isAdmin });
-  const contracts = raw.contracts.filter((c) => (!q.id || c.id === q.id) && (q.estado === "todos" || (q.estado === "desconhecido" ? c.status === "ativo" && (!c.term_kind || c.term_kind === "desconhecido") : c.status === (q.estado || "ativo"))) && (!q.q || `${c.tenant_name} ${c.pf_contract_no} ${raw.properties.find((p) => p.id === c.property_id)?.name}`.toLowerCase().includes(q.q.toLowerCase())));
-  return <div className="space-y-6"><Lede title="Contratos e prazos">Distingue o fim previsto do fim efetivo. Um contrato sem data conhecida continua por confirmar.</Lede><form action="/contratos" className="grid items-end gap-3 sm:grid-cols-3"><Field label="Pesquisar inquilino ou imóvel"><Input type="search" name="q" defaultValue={q.q} /></Field><Field label="Estado"><Select name="estado" defaultValue={q.estado || "ativo"}><option value="ativo">Ativos</option><option value="desconhecido">Prazos por confirmar</option><option value="cessado">Cessados</option><option value="todos">Todos</option></Select></Field><Button type="submit">Aplicar filtros</Button></form><a href="/api/agenda" className={buttonClass({ variant: "outline" })}>Descarregar calendário</a><p className="text-sm text-tinta-2">{contracts.length} contratos · valores mensais por inteiro · ilíquidos</p><div className="space-y-4">{contracts.map((c) => <Card key={c.id} title={c.tenant_name} subtitle={nomeDaFracao(raw.properties.find((p) => p.id === c.property_id)!)} actions={<Link href={`/fracoes/${c.property_id}`} className={buttonClass({ variant: "ghost", size: "sm" })}>Abrir imóvel</Link>}><div className="flex flex-wrap justify-between gap-4"><div className="space-y-2 text-sm text-tinta-2"><p>{c.status === "ativo" ? "Ativo" : "Cessado"} · início {fmtDate(c.start_date)} · fim efetivo {c.end_date ? fmtDate(c.end_date) : "não registado"}</p><p>Prazo: {c.term_kind === "sem_termo" ? "sem termo" : c.term_kind === "prazo_certo" ? `certo · fim previsto ${c.expected_end_date ? fmtDate(c.expected_end_date) : "por confirmar"}` : "por confirmar"}{c.terms_confirmed_at ? ` · verificado em ${fmtDate(c.terms_confirmed_at)}` : " · sem confirmação documental"}</p>{declaredContractDates(c).map((p) => <p key={p.label}>{p.label}: {fmtDate(p.date)}</p>)}</div><div className="text-right"><Money value={Number(c.rent)} escala="xl" decimals={2} /><p className="mt-1 text-xs text-tinta-2">Renda atual · €/mês</p></div></div><div className="mt-4 flex flex-wrap gap-2"><Link href={`/cobrancas/${c.id}`} className={buttonClass({ variant: "outline", size: "sm" })}>Consultar pagamentos</Link>{isAdmin && <><ContractFormButton propertyId={c.property_id} contract={c} label="Editar contrato" /><RentUpdateButton contract={c} />{c.status === "ativo" && <EndContractButton contractId={c.id} />}</>}</div>{isAdmin && <div className="mt-4"><TermsForm contract={c} /></div>}<details className="mt-4 text-sm text-tinta-2"><summary className="cursor-pointer">Histórico de atualizações de renda</summary>{raw.rentUpdates.filter((u) => u.contract_id === c.id).sort((a, b) => b.effective_date.localeCompare(a.effective_date)).map((u) => <p key={u.id} className="mt-2">{fmtDate(u.effective_date)} · <Money value={u.old_rent} decimals={2} /> para <Money value={Number(u.new_rent)} decimals={2} /> · {u.reason.replaceAll("_", " ")}</p>)}{!raw.rentUpdates.some((u) => u.contract_id === c.id) && <p className="mt-2">Nenhuma atualização documentada.</p>}</details></Card>)}</div>{!contracts.length && <p className="py-8 text-sm text-tinta-2">Nenhum contrato corresponde aos filtros.</p>}<Card title="Próximos prazos registados"><ul className="divide-y divide-regua">{agenda.prazos.slice(0, 12).map((p) => <li key={p.id} className="py-3 text-sm"><p className="font-medium">{fmtDate(p.data)} · {p.titulo}</p><p className="mt-1 max-w-[72ch] text-xs text-tinta-2">{p.detalhe}</p></li>)}</ul></Card></div>;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; estado?: string; id?: string }>;
+}) {
+  const q = await searchParams;
+  const [{ raw }, { isAdmin }] = await Promise.all([getSnapshotComRaw(), getSession()]);
+  const agenda = await getAgenda(366, { comRendas: isAdmin });
+  const contracts = raw.contracts.filter(
+    (c) =>
+      (!q.id || c.id === q.id) &&
+      (q.estado === "todos" ||
+        (q.estado === "desconhecido"
+          ? c.status === "ativo" && (!c.term_kind || c.term_kind === "desconhecido")
+          : c.status === (q.estado || "ativo"))) &&
+      (!q.q ||
+        `${c.tenant_name} ${c.pf_contract_no} ${raw.properties.find((p) => p.id === c.property_id)?.name}`
+          .toLowerCase()
+          .includes(q.q.toLowerCase())),
+  );
+  return (
+    <div className="space-y-6">
+      <Lede title="Contratos e prazos">
+        Distingue o fim previsto do fim efetivo. Um contrato sem data conhecida continua por confirmar.
+      </Lede>
+      <form action="/contratos" className="grid items-end gap-3 sm:grid-cols-3">
+        <Field label="Pesquisar inquilino ou imóvel">
+          <Input type="search" name="q" defaultValue={q.q} />
+        </Field>
+        <Field label="Estado">
+          <Select name="estado" defaultValue={q.estado || "ativo"}>
+            <option value="ativo">Ativos</option>
+            <option value="desconhecido">Prazos por confirmar</option>
+            <option value="cessado">Cessados</option>
+            <option value="todos">Todos</option>
+          </Select>
+        </Field>
+        <Button type="submit">Aplicar filtros</Button>
+      </form>
+      <a href="/api/agenda" className={buttonClass({ variant: "outline" })}>
+        Descarregar calendário
+      </a>
+      <p className="text-sm text-tinta-2">
+        {contracts.length} contratos · valores mensais por inteiro · ilíquidos
+      </p>
+      <div className="space-y-4">
+        {contracts.map((c) => (
+          <Card
+            key={c.id}
+            title={nomeProprio(c.tenant_name)}
+            subtitle={nomeDaFracao(raw.properties.find((p) => p.id === c.property_id)!)}
+            actions={
+              <Link
+                href={`/fracoes/${c.property_id}`}
+                className={buttonClass({ variant: "ghost", size: "sm" })}
+              >
+                Abrir imóvel
+              </Link>
+            }
+          >
+            <div className="flex flex-wrap justify-between gap-4">
+              <div className="space-y-2 text-sm text-tinta-2">
+                <p>
+                  {c.status === "ativo" ? "Ativo" : "Cessado"} · início {fmtDate(c.start_date)} · fim efetivo{" "}
+                  {c.end_date ? fmtDate(c.end_date) : "não registado"}
+                </p>
+                <p>
+                  Prazo:{" "}
+                  {c.term_kind === "sem_termo"
+                    ? "sem termo"
+                    : c.term_kind === "prazo_certo"
+                      ? `certo · fim previsto ${c.expected_end_date ? fmtDate(c.expected_end_date) : "por confirmar"}`
+                      : "por confirmar"}
+                  {c.terms_confirmed_at
+                    ? ` · verificado em ${fmtDate(c.terms_confirmed_at)}`
+                    : " · sem confirmação documental"}
+                </p>
+                {declaredContractDates(c).map((p) => (
+                  <p key={p.label}>
+                    {p.label}: {fmtDate(p.date)}
+                  </p>
+                ))}
+              </div>
+              <div className="text-right">
+                <Money value={Number(c.rent)} escala="xl" decimals={2} />
+                <p className="mt-1 text-xs text-tinta-2">Renda atual · €/mês</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={`/cobrancas/${c.id}`} className={buttonClass({ variant: "outline", size: "sm" })}>
+                Consultar pagamentos
+              </Link>
+              {isAdmin && (
+                <>
+                  <ContractFormButton propertyId={c.property_id} contract={c} label="Editar contrato" />
+                  <RentUpdateButton contract={c} />
+                  {c.status === "ativo" && <EndContractButton contractId={c.id} />}
+                </>
+              )}
+            </div>
+            {isAdmin && (
+              <div className="mt-4">
+                <TermsForm contract={c} />
+              </div>
+            )}
+            <details className="mt-4 text-sm text-tinta-2">
+              <summary className="cursor-pointer">Histórico de atualizações de renda</summary>
+              {raw.rentUpdates
+                .filter((u) => u.contract_id === c.id)
+                .sort((a, b) => b.effective_date.localeCompare(a.effective_date))
+                .map((u) => (
+                  <p key={u.id} className="mt-2">
+                    {fmtDate(u.effective_date)} · <Money value={u.old_rent} decimals={2} /> para{" "}
+                    <Money value={Number(u.new_rent)} decimals={2} /> · {u.reason.replaceAll("_", " ")}
+                  </p>
+                ))}
+              {!raw.rentUpdates.some((u) => u.contract_id === c.id) && (
+                <p className="mt-2">Nenhuma atualização documentada.</p>
+              )}
+            </details>
+          </Card>
+        ))}
+      </div>
+      {!contracts.length && (
+        <p className="py-8 text-sm text-tinta-2">Nenhum contrato corresponde aos filtros.</p>
+      )}
+      <Card title="Próximos prazos registados">
+        <ul className="divide-y divide-regua">
+          {agenda.prazos.slice(0, 12).map((p) => (
+            <li key={p.id} className="py-3 text-sm">
+              <p className="font-medium">
+                {fmtDate(p.data)} · {p.titulo}
+              </p>
+              <p className="mt-1 max-w-[72ch] text-xs text-tinta-2">{p.detalhe}</p>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
+  );
 }

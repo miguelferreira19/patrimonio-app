@@ -64,8 +64,37 @@ export function bracketsForYear(year: number): { brackets: IrsBracket[]; bracket
   return { brackets: IRS_BRACKETS_BY_YEAR[match]!, bracketsYear: match };
 }
 
-/** Taxa autónoma/liberatória da Categoria F (art.º 72.º, n.º 1, do CIRS). */
+/** Taxa autónoma da Categoria F (art.º 72.º, n.º 1, al. e), do CIRS): a geral, e a do
+ *  arrendamento NÃO habitacional. */
 export const AUTONOMOUS_RATE = 0.28;
+/** Arrendamento habitacional: 25% (art.º 72.º, n.º 2, na redação da Lei 56/2023), para
+ *  contratos celebrados ou renovados a partir de 07/10/2023 (entendimento da AT). */
+export const HABITACIONAL_RATE = 0.25;
+export const INICIO_TAXA_HABITACIONAL = "2023-10-07";
+
+/** A taxa autónoma de um contrato.
+ *  ponytail: um contrato antigo RENOVADO depois de 07/10/2023 também passa a 25%; sem as datas
+ *  de renovação (42 contratos sem prazo registado) fica a 28%, o lado prudente: sobrestima o
+ *  imposto autónomo, nunca o subestima. */
+export function taxaAutonoma(c: Pick<Contract, "start_date">, typology: string | null): number {
+  const recente = (c.start_date ?? "") >= INICIO_TAXA_HABITACIONAL;
+  return recente && classifyUso(typology) === "habitacao" ? HABITACIONAL_RATE : AUTONOMOUS_RATE;
+}
+
+/** A taxa autónoma de cada fração, pelo contrato mais recente dela. */
+export function taxasAutonomasPorFracao(
+  contracts: Array<Pick<Contract, "property_id" | "start_date">>,
+  propertiesById: Map<string, Pick<Property, "typology">>,
+): Map<string, number> {
+  const recente = new Map<string, Pick<Contract, "property_id" | "start_date">>();
+  for (const c of contracts) {
+    const atual = recente.get(c.property_id);
+    if (!atual || (c.start_date ?? "") > (atual.start_date ?? "")) recente.set(c.property_id, c);
+  }
+  return new Map(
+    Array.from(recente, ([id, c]) => [id, taxaAutonoma(c, propertiesById.get(id)?.typology ?? null)]),
+  );
+}
 
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
@@ -299,6 +328,8 @@ export function computeLandlordFiscalYear(
   owners: PropertyOwner[],
   receipts: IrsReceiptInput[],
   expenses: IrsExpenseInput[],
+  /** Taxa autónoma por fração (`taxasAutonomasPorFracao`). Sem ela, 28% para tudo. */
+  taxas?: Map<string, number>,
 ): LandlordFiscalYear {
   const receiptTotals = receiptTotalsByProperty(receipts, year);
   const quotas = quotaPctByProperty(owners, landlordId);
@@ -310,6 +341,7 @@ export function computeLandlordFiscalYear(
   let withholding = 0;
   let deductibleExpenses = 0;
   let toConfirmExpenses = 0;
+  let rendaPelaTaxa = 0; // Σ renda × taxa da fração, para a taxa média
 
   for (const o of owners) {
     if (o.landlord_id !== landlordId) continue;
@@ -318,6 +350,7 @@ export function computeLandlordFiscalYear(
     if (rt) {
       grossRent += rt.grossRent * quota;
       withholding += rt.withholding * quota;
+      rendaPelaTaxa += rt.grossRent * quota * (taxas?.get(o.property_id) ?? AUTONOMOUS_RATE);
     }
     const et = expenseTotals.get(o.property_id);
     if (et) {
@@ -332,7 +365,9 @@ export function computeLandlordFiscalYear(
   toConfirmExpenses = round2(toConfirmExpenses);
   const netIncome = Math.max(0, round2(grossRent - deductibleExpenses));
 
-  const autonomousTax = round2(netIncome * AUTONOMOUS_RATE);
+  // 25% na habitação recente, 28% no resto: a taxa média, pesada pela renda.
+  const taxaMedia = grossRent > 0 ? rendaPelaTaxa / grossRent : AUTONOMOUS_RATE;
+  const autonomousTax = round2(netIncome * taxaMedia);
   const { brackets, bracketsYear } = bracketsForYear(year);
   const englobedTax = progressiveTax(netIncome, brackets);
   const bestRegime: "autonoma" | "englobamento" = englobedTax <= autonomousTax ? "englobamento" : "autonoma";
@@ -393,46 +428,54 @@ export const REDUCED_RATE_BRACKETS: Array<{ minYears: number; rate: number }> = 
   { minYears: 10, rate: 0.10 },
   { minYears: 5, rate: 0.15 },
 ];
+const MIN_ANOS_TAXA_REDUZIDA = 5;
 
 export interface ReducedRateResult {
   contractId: string;
   propertyId: string;
   uso: UsoClassification;
+  /** Duração CONTRATUAL (o prazo), não os anos que o inquilino já lá está. */
   durationYears: number | null;
-  /** null = não elegível (< 5 anos), uso não habitacional, ou uso "a confirmar". */
+  /** null = não elegível (< 5 anos), uso não habitacional, uso "a confirmar" ou prazo desconhecido. */
   eligibleRate: number | null;
-  /** (28% − taxa elegível) × renda anual bruta atual × quota do senhorio. */
+  /** (taxa autónoma do contrato − taxa elegível) × renda anual bruta atual × quota do senhorio. */
   annualSavings: number | null;
+  /** Habitação com 5+ anos de casa mas sem prazo registado: pode ser elegível, falta saber. */
+  prazoDesconhecido: boolean;
 }
 
 /** P2-7: elegibilidade de um contrato à taxa reduzida de longa duração. Só contratos de
  *  HABITAÇÃO (uso "a_confirmar" ou "comercial" nunca entram) — é um ALERTA, não altera nada
- *  sozinho; a comunicação à AT segue a Portaria n.º 110/2019. */
+ *  sozinho; a comunicação à AT segue a Portaria n.º 110/2019.
+ *
+ *  A duração é a do PRAZO do contrato (art.º 72.º, n.ºs 3 a 5: "contratos de duração igual ou
+ *  superior a cinco anos"), não os anos decorridos desde o início. Até 13/10/2026 era esta
+ *  última: um inquilino há 11 anos num contrato de um ano renovável aparecia a 10%, e o
+ *  Anexo F sugeria declarar uma taxa a que o contrato não tem direito. Sem prazo registado
+ *  não há taxa reduzida; o contrato fica `prazoDesconhecido` quando já leva 5+ anos. */
 export function reducedRateEligibility(
-  contract: Pick<Contract, "id" | "property_id" | "start_date" | "rent">,
+  contract: Pick<Contract, "id" | "property_id" | "start_date" | "rent" | "term_kind" | "expected_end_date">,
   typology: string | null,
   quotaPct: number,
   todayISO: string,
 ): ReducedRateResult {
   const uso = classifyUso(typology);
+  const base = { contractId: contract.id, propertyId: contract.property_id, uso };
   if (uso !== "habitacao" || !contract.start_date) {
-    return {
-      contractId: contract.id,
-      propertyId: contract.property_id,
-      uso,
-      durationYears: null,
-      eligibleRate: null,
-      annualSavings: null,
-    };
+    return { ...base, durationYears: null, eligibleRate: null, annualSavings: null, prazoDesconhecido: false };
   }
-  const durationYears = yearsBetween(contract.start_date, todayISO);
+  if (contract.term_kind !== "prazo_certo" || !contract.expected_end_date) {
+    const longo = yearsBetween(contract.start_date, todayISO) >= MIN_ANOS_TAXA_REDUZIDA;
+    return { ...base, durationYears: null, eligibleRate: null, annualSavings: null, prazoDesconhecido: longo };
+  }
+  const durationYears = yearsBetween(contract.start_date, contract.expected_end_date);
   const bracket = REDUCED_RATE_BRACKETS.find((b) => durationYears >= b.minYears);
   const eligibleRate = bracket?.rate ?? null;
   const annualSavings =
     eligibleRate !== null
-      ? round2((AUTONOMOUS_RATE - eligibleRate) * contract.rent * 12 * (quotaPct / 100))
+      ? round2((taxaAutonoma(contract, typology) - eligibleRate) * contract.rent * 12 * (quotaPct / 100))
       : null;
-  return { contractId: contract.id, propertyId: contract.property_id, uso, durationYears, eligibleRate, annualSavings };
+  return { ...base, durationYears, eligibleRate, annualSavings, prazoDesconhecido: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -563,6 +606,8 @@ export interface AnexoFRow {
   withholding: number;
   condominio: number;
   imi: number;
+  /** Taxa autónoma do contrato sem redução (28%, ou 25% na habitação desde 07/10/2023). */
+  taxaAutonoma: number;
   reduced: ReducedRateResult;
 }
 
@@ -573,7 +618,9 @@ export function anexoFRows(
   landlordId: string,
   year: number,
   owners: PropertyOwner[],
-  contracts: Array<Pick<Contract, "id" | "property_id" | "pf_contract_no" | "start_date" | "rent">>,
+  contracts: Array<
+    Pick<Contract, "id" | "property_id" | "pf_contract_no" | "start_date" | "rent" | "term_kind" | "expected_end_date">
+  >,
   propertiesById: Map<string, Pick<Property, "id" | "matriz_article" | "typology">>,
   receipts: IrsReceiptInput[],
   expenses: IrsExpenseInput[],
@@ -633,6 +680,7 @@ export function anexoFRows(
       // Sem `* q`: as despesas já vêm na medida deste senhorio (ver expenseTotalsByProperty).
       condominio: round2(et?.condominio ?? 0),
       imi: round2(et?.imi ?? 0),
+      taxaAutonoma: taxaAutonoma(c, property?.typology ?? null),
       reduced: reducedRateEligibility(c, property?.typology ?? null, quotaPct, todayISO),
     });
   }

@@ -33,6 +33,20 @@ const csp = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Rotas antigas que só redirecionavam: num sítio, em vez de um ficheiro de página cada
+  // (PLANO_CLAREZA.md, Fase 7). /dinheiro e /relatorios ficam como páginas porque o destino
+  // depende do separador pedido.
+  async redirects() {
+    return [
+      { source: "/pagamentos", destination: "/cobrancas", permanent: false },
+      { source: "/atrasos", destination: "/cobrancas", permanent: false },
+      { source: "/fracoes", destination: "/imoveis", permanent: false },
+      { source: "/irs", destination: "/impostos", permanent: false },
+      { source: "/gestao", destination: "/tarefas", permanent: false },
+      { source: "/manutencao", destination: "/tarefas?tipo=manutencao", permanent: false },
+      { source: "/vagas", destination: "/tarefas?tipo=vaga", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

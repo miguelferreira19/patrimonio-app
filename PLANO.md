@@ -19,7 +19,7 @@ da transação. Imóveis, contratos, quotas e entradas anteriores preservados. C
 e relatório em `dados/_recolhas/2026-10-09/`. Produção autenticada confirma 11 de 21
 contratos com pagamento em outubro; os dados são dinâmicos e não exigiram novo deploy.
 
-**2026-10-09 · usabilidade e acabamento da V4:** plano e registo em `AUDITORIA_UX.md`.
+**2026-10-09 · usabilidade e acabamento da V4:** plano e registo em `docs/historico/AUDITORIA_UX.md`.
 Ajuda global; acesso visível à verificação de dados e filtros de gravidade; atrasos e
 recibos parados com ligações diretas e filtro independente; pesquisa com recuperação e
 teclado no telemóvel; Arquivo com contagem filtrada, limpar filtros e abertura explícita;
@@ -1132,7 +1132,7 @@ Bloqueiam **valor**, não código. Por ordem de impacto:
 
 Pedido confirmado: todo o anexo e identidade própria baseada em casas. Migração aditiva
 aplicada em produção por autorização explícita, com testes transacionais revertidos e
-preservação dos dados financeiros. Implementação e validação em IMPLEMENTACAO_GESTAO.md.
+preservação dos dados financeiros. Implementação e validação em docs/historico/IMPLEMENTACAO_GESTAO.md. Roteiro seguinte: PLANO_CLAREZA.md.
 A recolha automática passou a importar apenas recibos novos, sem repor entidades ou
 quotas a partir de exports antigos. Datas contratuais, comprovativos e quotas sem evidência
 continuam por confirmar; os novos formulários permitem completar os dados documentados.

@@ -148,18 +148,17 @@ const ETIQUETA: Record<Insight["grupo"], { tom: "acao" | "perda" | "futuro" | "a
 function Tarefas({ snap }: { snap: Snapshot }) {
   const fila = construirFila(snap);
   const tarefas = fila.itens.filter((i) => i.grupo !== "poupar");
-  const oportunidades = fila.itens.filter((i) => i.grupo === "poupar");
+  // Só o que se pode realizar: a renda abaixo do mercado ("assumido") vive na Rentabilidade.
+  const oportunidades = fila.itens.filter((i) => i.grupo === "poupar" && i.confianca !== "assumido");
 
   return (
     <div className="space-y-8 md:space-y-10">
       <section>
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-[-0.01em]">Para fazer</h2>
-          {tarefas.length > 0 && (
-            <p className="text-sm text-tinta-2">
-              {tarefas.length} {tarefas.length === 1 ? "tarefa" : "tarefas"} por prioridade
-            </p>
-          )}
+          <Link href="/tarefas" className="text-sm font-medium text-acao hover:underline">
+            Tarefas registadas
+          </Link>
         </div>
         {tarefas.length === 0 ? (
           <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">
@@ -198,8 +197,8 @@ function Tarefas({ snap }: { snap: Snapshot }) {
         <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold tracking-[-0.01em]">Oportunidades</h2>
-            <Link href="/dinheiro?tab=analise" className="text-sm font-medium text-acao hover:underline">
-              Ver em Dinheiro
+            <Link href="/rentabilidade" className="text-sm font-medium text-acao hover:underline">
+              Ver em Rentabilidade
             </Link>
           </div>
           <ul className="mt-3 divide-y divide-regua">

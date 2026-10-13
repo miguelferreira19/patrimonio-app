@@ -80,10 +80,14 @@ export function resumoDoMes(input: {
 
   const nome = mesPorExtenso(mes).replace(/^./, (l) => l.toUpperCase());
   const faltam = total - pagos;
+  // Antes da recolha do dia 15 o mês ainda está a começar: "faltam 9 rendas" a dia 13
+  // alarmava por rendas já pagas cujo recibo só entra na recolha (PLANO_CLAREZA.md 5.6).
   const titulo =
     faltam === 0
       ? `${nome} fechado: ${pagos} de ${total} rendas recebidas.`
-      : `${faltam === 1 ? "Falta 1 renda" : `Faltam ${faltam} rendas`} de ${mesPorExtenso(mes)}.`;
+      : dia < DIA_RECOLHA
+        ? `${nome} a decorrer: ${pagos} de ${total} rendas recebidas.`
+        : `${faltam === 1 ? "Falta 1 renda" : `Faltam ${faltam} rendas`} de ${mesPorExtenso(mes)}.`;
   const contexto =
     faltam === 0
       ? "Tudo o que se esperava este mês já entrou."

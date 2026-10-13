@@ -86,6 +86,10 @@ export default async function CarteiraPage({
   if (sp.senhorio) {
     universo = universo.filter((a) => a.titulares.some((t) => t.landlord.id === sp.senhorio));
   }
+  // Os indicadores de topo leem a carteira (só filtrada por senhorio); a lente e o filtro de
+  // atraso só escolhem as LINHAS. Antes a ocupação mudava de denominador com a lente (42 de 53
+  // em Cobrança, 19 de 30 em Vazios) e os dois números pareciam contradizer-se.
+  const carteira = universo;
   if (soAtraso) universo = universo.filter((a) => (a.arrears?.streak ?? 0) > 0);
   if (lente === "vazios") universo = universo.filter((a) => !a.activeContract || a.vazios.length > 0);
 
@@ -98,7 +102,7 @@ export default async function CarteiraPage({
   const totalDireita = linhas.reduce((acc, l) => acc + (l.valor ?? 0), 0);
 
   const heroi = heroiDa(lente, linhas.length, totalDireita, snap.arrears.summary.totalDebt);
-  const arrendadas = universo.filter((a) => a.activeContract).length;
+  const arrendadas = carteira.filter((a) => a.activeContract).length;
 
   return (
     <div className="space-y-8">
@@ -122,10 +126,10 @@ export default async function CarteiraPage({
       {/* Os números que a frase-título carregava, agora em voz baixa: confere-se aqui em
           vez de os ler dentro de uma manchete. */}
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-regua py-3.5 sm:grid-cols-4">
-        <Facto rotulo="Frações" valor={<Figure value={String(universo.length)} escala="lg" />} />
+        <Facto rotulo="Frações" valor={<Figure value={String(carteira.length)} escala="lg" />} />
         <Facto
           rotulo="Arrendadas"
-          valor={<Figure value={`${arrendadas} de ${universo.length}`} escala="lg" />}
+          valor={<Figure value={`${arrendadas} de ${carteira.length}`} escala="lg" />}
         />
         <Facto
           rotulo="Renda contratada"

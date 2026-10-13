@@ -10,12 +10,13 @@
 // diretamente (todas as datas já vieram calculadas em `projecao`/`resumo`/`concentracao`).
 //
 // REGRA: nada de regra de negócio nova aqui além da agregação e da leitura dos motores que
-// já existem (`renda.ts`, `futuro.ts`, `snapshot.ts`, `calc.ts`). Os geradores 6 e 7
-// (`yieldBaixo`, `candidatoAVenda`) dependem de `area_m2`, hoje por preencher em quase toda
-// a carteira (V3.md) — ficam corretos e devolvem `[]` até as fichas serem preenchidas, sem
-// inventar um fallback a partir do VPT (decisão explícita do utilizador).
+// já existem (`renda.ts`, `futuro.ts`, `snapshot.ts`, `calc.ts`).
+//
+// Saíram a 13/10/2026 (PLANO_CLAREZA.md 3.5) os conselhos que ordenavam património ao lado
+// de rendimento: "rever a venda" (o VALOR da fração, 207 mil €, à frente de rendas de
+// 3 mil €/ano), "capacidade de investimento" (o resultado projetado com outro nome) e
+// "rever o yield". O rendimento face ao valor vive agora na Rentabilidade.
 
-import { SEVERITY_LABEL } from "../arrears";
 import { nomeDaFracao } from "./predios";
 import { fmtEur, fmtPct } from "../format";
 import type { Grupo, Insight } from "./insights";
@@ -126,46 +127,6 @@ const GERADORES: GeradorConselho[] = [
     ];
   },
 
-  function capacidadeDeInvestir(e) {
-    const { capacidade, projecao } = e;
-    const euros = capacidade.despesasConhecidas ? capacidade.liquido24m! : capacidade.receita24m;
-    if (euros <= 0) return [];
-
-    const horizonteMeses = projecao.length;
-    // HONESTIDADE OBRIGATÓRIA (V3.md, futuro.ts): sem despesas conhecidas, a app tem de
-    // dizer às claras que o número é receita bruta, nunca disfarçar de "líquido".
-    const espelhadas = capacidade.despesasEspelhadas
-      ? " Parte da despesa é ESPELHADA de um comproprietário (não foi medida neste senhorio)."
-      : "";
-    const conta = capacidade.despesasConhecidas
-      ? `Receita esperada (${fmtEur(capacidade.receita24m)}) menos despesa média mensal projetada (${fmtEur(capacidade.despesas24m!)}) ao longo de ${horizonteMeses} meses = líquido ${fmtEur(capacidade.liquido24m!)}.${espelhadas}`
-      : `${fmtEur(capacidade.receita24m)} de receita ESPERADA nos próximos ${horizonteMeses} meses. É receita BRUTA: a tabela de despesas não tem registos suficientes (menos de 3 nos últimos 12 meses) para calcular um líquido credível.`;
-
-    return [
-      {
-        kind: "capacidade_investir",
-        grupo: "poupar",
-        horizonte: "estrutural",
-        titulo: "Planear a aplicação da capacidade de investimento",
-        porque: capacidade.despesasConhecidas
-          ? `A carteira liberta ${fmtEur(capacidade.liquido24m!)} líquidos nos próximos ${horizonteMeses} meses.`
-          : `A carteira espera receber ${fmtEur(capacidade.receita24m)} nos próximos ${horizonteMeses} meses; não há despesas suficientes registadas para calcular o líquido.`,
-        euros,
-        // Despesa espelhada volta a descer a confiança para "assumido": o líquido deixa
-        // de ser uma média de factos e passa a incluir a conta de outra pessoa.
-        confianca:
-          capacidade.despesasConhecidas && !capacidade.despesasEspelhadas ? "estimado" : "assumido",
-        conta,
-        // Sem ação: este conselho VIVE na /analise, e um botão "Ver projeção" na página
-        // que já mostra a projeção é ruído. Quando houver despesas registadas, a ação
-        // natural é o Ano, não esta página.
-        acoes: capacidade.despesasConhecidas
-          ? [{ label: "Ver despesas do ano", href: `/ano/${e.hoje.getFullYear()}#despesas` }]
-          : [{ label: "Registar despesas", href: `/ano/${e.hoje.getFullYear()}#despesas` }],
-      },
-    ];
-  },
-
   function rendaAExpirar(e) {
     const { resumo, projecao } = e;
     if (resumo.quedaContratada <= 0) return [];
@@ -186,72 +147,6 @@ const GERADORES: GeradorConselho[] = [
     ];
   },
 
-  // ---------- BLOQUEADOS NAS ÁREAS (devolvem [] até `area_m2` estar preenchida) ----------
-
-  function yieldBaixo(e) {
-    const comYield = e.snap.correntes.filter((a) => a.mercado.grossYield !== null);
-    // Uma mediana de um ponto só não compara nada: exige pelo menos dois yields conhecidos.
-    if (comYield.length < 2) return [];
-
-    const med = mediana(comYield.map((a) => a.mercado.grossYield!));
-    if (med <= 0) return [];
-    const limiar = med * 0.7;
-
-    const out: Conselho[] = [];
-    for (const a of comYield) {
-      const y = a.mercado.grossYield!;
-      if (y >= limiar) continue;
-      const valor = a.mercado.estimatedValue;
-      if (valor === null) continue; // sem valor estimado nao ha euros para mostrar
-      const ganho = valor * (med - y);
-      if (ganho <= 0) continue;
-
-      out.push({
-        kind: "yield_baixo",
-        subject: a.property.id,
-        grupo: "poupar",
-        horizonte: "estrutural",
-        titulo: `Rever o yield de ${nomeDaFracao(a.property)}`,
-        porque: `${nomeDaFracao(a.property)} rende ${fmtPct(y, 1)} ao ano sobre o valor estimado, abaixo dos ${fmtPct(limiar, 1)} (70% da mediana da carteira, ${fmtPct(med, 1)}, sobre ${comYield.length} frações com área conhecida).`,
-        euros: ganho,
-        confianca: "estimado",
-        conta: `(mediana ${fmtPct(med, 1)} − yield atual ${fmtPct(y, 1)}) × valor estimado ${fmtEur(valor)} = ${fmtEur(ganho)}/ano.`,
-        acoes: [{ label: "Ver mercado", href: "/mercado" }],
-      });
-    }
-    return out;
-  },
-
-  function candidatoAVenda(e) {
-    const comYield = e.snap.correntes.filter((a) => a.mercado.grossYield !== null);
-    // Um quartil com poucos pontos não diz nada: exige uma amostra mínima.
-    if (comYield.length < 4) return [];
-    const corte = quartil25(comYield.map((a) => a.mercado.grossYield!));
-
-    const out: Conselho[] = [];
-    for (const a of comYield) {
-      const y = a.mercado.grossYield!;
-      if (y > corte) continue;
-      const emAtraso = a.arrears !== null && a.arrears.severity !== "ok" && a.arrears.severity !== "ritmo_proprio";
-      if (!emAtraso) continue;
-      const valor = a.mercado.estimatedValue;
-      if (valor === null || valor <= 0) continue;
-
-      out.push({
-        kind: "candidato_venda",
-        subject: a.property.id,
-        grupo: "risco",
-        horizonte: "estrutural",
-        titulo: `Rever a venda de ${nomeDaFracao(a.property)}`,
-        porque: `${nomeDaFracao(a.property)} está no quartil inferior de yield da carteira (${fmtPct(y, 1)}, corte ${fmtPct(corte, 1)}) e tem histórico de atraso (${SEVERITY_LABEL[a.arrears!.severity]}).`,
-        euros: valor,
-        confianca: "estimado",
-        conta: `Valor estimado da fração (área × mediana de venda INE) = ${fmtEur(valor)}. É uma SIMULAÇÃO a partir dos dados da própria carteira, não uma recomendação de investimento.`,
-        acoes: [{ label: "Ver fração", href: `/fracoes/${a.property.id}` }],
-      });
-    }
-    return out;
-  },
 ];
 
 /**
@@ -263,25 +158,4 @@ const GERADORES: GeradorConselho[] = [
 export function construirConselhos(entrada: EntradaConselhos): Conselho[] {
   const todos = GERADORES.flatMap((g) => g(entrada));
   return todos.filter((c) => c.euros >= LIMIAR_CONSELHO_EUR).sort((a, b) => b.euros - a.euros);
-}
-
-// ---------------------------------------------------------------------------
-// Utilitários locais (estatística simples, não regra de negócio)
-// ---------------------------------------------------------------------------
-
-function mediana(valores: number[]): number {
-  if (valores.length === 0) return 0;
-  const s = [...valores].sort((a, b) => a - b);
-  const meio = Math.floor(s.length / 2);
-  return s.length % 2 === 0 ? (s[meio - 1] + s[meio]) / 2 : s[meio];
-}
-
-/** Valor de corte do quartil inferior (25º percentil), pelo método do "vizinho mais
- *  próximo": simples e suficiente para sinalizar candidatos, não para relatório
- *  estatístico. */
-function quartil25(valores: number[]): number {
-  if (valores.length === 0) return 0;
-  const s = [...valores].sort((a, b) => a - b);
-  const idx = Math.floor(0.25 * (s.length - 1));
-  return s[idx];
 }

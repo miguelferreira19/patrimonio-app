@@ -14,6 +14,7 @@ import {
   progressiveTax,
   receiptTotalsByProperty,
   reducedRateEligibility,
+  taxaAutonoma,
   yearsBetween,
 } from "./irs";
 import type { Contract, Property, PropertyOwner } from "./types";
@@ -205,42 +206,57 @@ assert.equal(yearsBetween("2016-01-01", "2026-01-01"), 10);
 assert.equal(yearsBetween("2006-01-01", "2026-01-01"), 20);
 
 // ---------- reducedRateEligibility (P2-7) ----------
+// A duração é a do PRAZO do contrato (início → fim previsto), não os anos decorridos.
+type ContratoArt72 = Pick<Contract, "id" | "property_id" | "start_date" | "rent" | "term_kind" | "expected_end_date">;
+const comPrazo = (id: string, inicio: string, fim: string, rent = 500): ContratoArt72 => ({
+  id, property_id: "p1", start_date: inicio, rent, term_kind: "prazo_certo", expected_end_date: fim,
+});
 {
-  // Exatamente 5 anos -> 15%.
-  const c: Pick<Contract, "id" | "property_id" | "start_date" | "rent"> = {
-    id: "c1", property_id: "p1", start_date: "2021-01-01", rent: 500,
-  };
-  const r = reducedRateEligibility(c, "T2", 100, "2026-01-01");
+  // Prazo de exatamente 5 anos -> 15%.
+  const r = reducedRateEligibility(comPrazo("c1", "2021-01-01", "2026-01-01"), "T2", 100, "2026-01-01");
   assert.equal(r.durationYears, 5);
   assert.equal(r.eligibleRate, 0.15);
 }
 {
-  // Exatamente 10 anos, quota 50% -> 10%; poupança calculada à mão.
-  const c: Pick<Contract, "id" | "property_id" | "start_date" | "rent"> = {
-    id: "c2", property_id: "p1", start_date: "2016-01-01", rent: 500,
-  };
-  const r = reducedRateEligibility(c, "T2", 50, "2026-01-01");
+  // Prazo de 10 anos, quota 50% -> 10%; contrato de antes de 07/10/2023 paga 28% sem redução.
+  const r = reducedRateEligibility(comPrazo("c2", "2016-01-01", "2026-01-01"), "T2", 50, "2026-01-01");
   assert.equal(r.eligibleRate, 0.10);
   // (28% - 10%) x 500 x 12 x 50% = 18% x 3000 = 540
   assert.equal(r.annualSavings, 540, "poupança à mão: 18% de 3000");
 }
 {
-  // Exatamente 20 anos -> 5%.
-  const c: Pick<Contract, "id" | "property_id" | "start_date" | "rent"> = {
-    id: "c3", property_id: "p1", start_date: "2006-01-01", rent: 500,
-  };
-  const r = reducedRateEligibility(c, "T2", 100, "2026-01-01");
+  // Prazo de 20 anos -> 5%.
+  const r = reducedRateEligibility(comPrazo("c3", "2006-01-01", "2026-01-01"), "T2", 100, "2026-01-01");
   assert.equal(r.eligibleRate, 0.05);
 }
 {
-  // Menos de 5 anos -> não elegível.
-  const c: Pick<Contract, "id" | "property_id" | "start_date" | "rent"> = {
-    id: "c4", property_id: "p1", start_date: "2022-01-01", rent: 500,
-  };
-  const r = reducedRateEligibility(c, "T2", 100, "2026-01-01");
+  // Prazo de 4 anos -> não elegível.
+  const r = reducedRateEligibility(comPrazo("c4", "2022-01-01", "2026-01-01"), "T2", 100, "2026-01-01");
   assert.equal(r.eligibleRate, null);
   assert.equal(r.annualSavings, null);
 }
+{
+  // O bug de 13/10/2026: 11 anos de casa num contrato sem prazo registado NÃO é um contrato de
+  // 10 anos. Não há taxa reduzida; fica a confirmar.
+  const c: ContratoArt72 = { id: "c8", property_id: "p1", start_date: "2015-01-01", rent: 500, term_kind: "desconhecido", expected_end_date: null };
+  const r = reducedRateEligibility(c, "T2", 100, "2026-01-01");
+  assert.equal(r.eligibleRate, null, "sem prazo não se assume a duração");
+  assert.equal(r.annualSavings, null);
+  assert.equal(r.prazoDesconhecido, true, "mas assinala que vale a pena confirmar");
+  const novo = reducedRateEligibility({ ...c, start_date: "2024-01-01" }, "T2", 100, "2026-01-01");
+  assert.equal(novo.prazoDesconhecido, false, "com menos de 5 anos de casa não há nada a confirmar");
+}
+{
+  // Contrato habitacional de 2024 com prazo de 5 anos: a base é 25% (Lei 56/2023), não 28%.
+  const r = reducedRateEligibility(comPrazo("c9", "2024-01-01", "2029-01-01"), "T2", 100, "2026-01-01");
+  assert.equal(r.eligibleRate, 0.15);
+  assert.equal(r.annualSavings, 600, "(25% - 15%) x 6000");
+}
+// Taxa autónoma por contrato: 25% só na habitação celebrada desde 07/10/2023.
+assert.equal(taxaAutonoma({ start_date: "2023-10-07" }, "T1"), 0.25);
+assert.equal(taxaAutonoma({ start_date: "2023-10-06" }, "T1"), 0.28, "antes da lei, sem renovação conhecida");
+assert.equal(taxaAutonoma({ start_date: "2025-01-01" }, "Loja"), 0.28, "não habitacional fica a 28%");
+assert.equal(taxaAutonoma({ start_date: "2025-01-01" }, null), 0.28, "uso por confirmar: o lado prudente");
 {
   // Comércio nunca beneficia, mesmo com contrato antigo.
   const c: Pick<Contract, "id" | "property_id" | "start_date" | "rent"> = {
@@ -355,7 +371,7 @@ function prop(id: string, vpt: number, extra: Partial<PropAimi> = {}): [string, 
 {
   const owners: PropertyOwner[] = [{ property_id: "p1", landlord_id: "L1", quota: 50 }];
   const contracts = [
-    { id: "c1", property_id: "p1", pf_contract_no: "123", start_date: "2016-01-01", rent: 500 },
+    { id: "c1", property_id: "p1", pf_contract_no: "123", start_date: "2016-01-01", rent: 500, term_kind: "prazo_certo" as const, expected_end_date: "2026-01-01" },
     // p2 não pertence a L1 (sem property_owners) -- não deve aparecer nas linhas.
     { id: "c2", property_id: "p2", pf_contract_no: "456", start_date: "2020-01-01", rent: 300 },
   ];
@@ -378,7 +394,9 @@ function prop(id: string, vpt: number, extra: Partial<PropAimi> = {}): [string, 
   assert.equal(row.withholding, 250, "500 x 50%");
   assert.equal(row.imi, 600, "1200 x 50%");
   assert.equal(row.condominio, 150, "300 x 50%");
-  assert.equal(row.reduced.eligibleRate, 0.10, "10 anos de contrato");
+  assert.equal(row.reduced.eligibleRate, 0.10, "prazo de 10 anos");
+  const semPrazo = anexoFRows("L1", 2025, owners, [{ ...contracts[0], term_kind: undefined, expected_end_date: null }], propertiesById, receipts, expenses, "2026-01-01");
+  assert.equal(semPrazo[0].reduced.eligibleRate, null, "10 anos de casa sem prazo registado não dão 10% no Anexo F");
   assert.equal(row.reduced.annualSavings, 540);
 }
 

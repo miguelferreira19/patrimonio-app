@@ -20,8 +20,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    // V4: o invólucro novo (REDESENHO.md §3.2). Para voltar ao masthead: trocar <Shell> por
-    // <Masthead role={role} email={...} /> mais o <main> antigo (ver git log deste ficheiro).
+    // O invólucro com os 5 destinos (shell.tsx). O masthead e o nav da V1-V3 foram apagados
+    // no plano de clareza (Fase 7); estão no git se alguma vez fizerem falta.
     <Shell role={role} email={user.email ?? null}>
       {error && (
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-regua bg-atencao-tenue px-4 py-3 text-sm">

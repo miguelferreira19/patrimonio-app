@@ -1,17 +1,12 @@
 "use client";
 
-// O INVÓLUCRO da V4 (REDESENHO.md §3.2, 2026-10-09). Substitui o `masthead.tsx`.
+// O INVÓLUCRO (V4, REDESENHO.md §3.2; destinos do PLANO_CLAREZA.md §4).
 //
-// Computador: barra lateral fina com os 4 destinos e a conta no rodapé.
-// Telemóvel: cabeçalho fino e uma barra de separadores EM BAIXO, ao alcance do polegar. Os
-// separadores no topo transbordavam ("Documentos" cortado) e obrigavam a voltar acima.
+// Computador: barra lateral fina com os 5 destinos e a conta no rodapé.
+// Telemóvel: cabeçalho fino e os MESMOS 5 destinos numa barra EM BAIXO, ao alcance do polegar.
 //
-// Os destinos respondem a perguntas, não a tabelas: Hoje, Imóveis, Dinheiro, Arquivo. As
-// rotas antigas continuam a acender o destino certo (`DONO`), e passam a redirects à medida
-// que as fases do REDESENHO.md as substituem.
-//
-// REVERSÍVEL: `masthead.tsx` e `nav.tsx` ficam intactos; voltar é trocar o import no
-// `(app)/layout.tsx`.
+// Os destinos respondem a perguntas: Hoje, Cobranças, Imóveis, Rentabilidade, Impostos. As
+// rotas antigas continuam a acender o destino certo (`dono`).
 
 import { Marca as MarcaIdentidade } from "./marca";
 import Link from "next/link";
@@ -26,8 +21,10 @@ import {
   Settings,
   Stethoscope,
   Users,
-  Wallet,
-  ClipboardList, FileClock, ReceiptText, Wrench,
+  ClipboardList,
+  Landmark,
+  ReceiptText,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "./ui";
@@ -44,33 +41,34 @@ interface Destino {
   dono: string[];
 }
 
+// Cinco destinos, os mesmos no computador e no telemóvel (PLANO_CLAREZA.md §4). Eram nove,
+// três deles vazios, mais um separador "Gestão" só no telemóvel. Cada destino responde a uma
+// pergunta; as rotas antigas continuam a acender o destino certo (`dono`).
 const DESTINOS: Destino[] = [
-  { href: "/", label: "Hoje", icon: CircleDot, dono: [] },
+  { href: "/", label: "Hoje", icon: CircleDot, dono: ["/tarefas", "/gestao"] },
+  { href: "/cobrancas", label: "Cobranças", icon: ReceiptText, dono: ["/cobrancas", "/pagamentos", "/atrasos", "/inquilinos"] },
   {
     href: "/imoveis",
     label: "Imóveis",
     icon: Building2,
-    dono: ["/imoveis", "/carteira", "/fracoes", "/inquilinos"],
+    dono: ["/imoveis", "/carteira", "/fracoes", "/contratos", "/carta", "/arquivo", "/documentos", "/vagas", "/manutencao"],
   },
-  { href: "/cobrancas", label: "Cobranças", icon: ReceiptText, dono: ["/cobrancas", "/pagamentos", "/atrasos"] },
-  { href: "/contratos", label: "Contratos e prazos", icon: FileClock, dono: ["/contratos", "/carta"] },
-  { href: "/tarefas", label: "Tarefas", icon: ClipboardList, dono: ["/tarefas", "/gestao"] },
-  { href: "/despesas", label: "Despesas", icon: Wallet, dono: ["/despesas"] },
-  { href: "/manutencao", label: "Manutenção", icon: Wrench, dono: ["/manutencao", "/vagas"] },
-  { href: "/arquivo", label: "Documentos", icon: FolderOpen, dono: ["/arquivo", "/documentos"] },
-  { href: "/relatorios", label: "Relatórios", icon: Wallet, dono: ["/relatorios", "/dinheiro", "/ano", "/analise", "/irs", "/mercado"] },
+  { href: "/rentabilidade", label: "Rentabilidade", icon: TrendingUp, dono: ["/rentabilidade", "/analise", "/mercado", "/despesas"] },
+  { href: "/impostos", label: "Impostos", icon: Landmark, dono: ["/impostos", "/ano", "/irs", "/dinheiro", "/relatorios", "/senhorios"] },
 ];
-const MOBILE: Destino[] = [DESTINOS[0], DESTINOS[1], DESTINOS[2], { href: "/gestao", label: "Gestão", icon: ClipboardList, dono: ["/gestao", "/tarefas", "/contratos", "/despesas", "/manutencao", "/vagas", "/arquivo", "/documentos", "/carta"] }, DESTINOS[8]];
+const MOBILE = DESTINOS;
 
 const ADMIN: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: "/tarefas", label: "Tarefas", icon: ClipboardList },
   { href: "/senhorios", label: "Senhorios", icon: Users },
+  { href: "/arquivo", label: "Documentos", icon: FolderOpen },
   { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
   { href: "/admin", label: "Admin", icon: Settings },
 ];
 
 function ativo(pathname: string, d: Destino): boolean {
-  if (d.href === "/") return pathname === "/";
-  return d.dono.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const meu = d.dono.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return d.href === "/" ? pathname === "/" || meu : meu;
 }
 
 export function Shell({

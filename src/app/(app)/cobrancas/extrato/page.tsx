@@ -40,7 +40,7 @@ export default async function Extrato({ searchParams }: { searchParams: Promise<
       <Lede title="Extrato mês a mês">
         Cada linha é um contrato num mês. Abre um mês para ver os recibos e registar um pagamento recebido sem recibo.
       </Lede>
-      <ScopeFilters q={q} landlords={data.raw.landlords} action="/cobrancas/extrato" hidden={hidden} />
+      <ScopeFilters q={q} landlords={data.raw.landlords} action="/cobrancas/extrato" hidden={hidden} extrato />
       <p className="text-sm text-tinta-2">
         {monthLabel(data.from)} a {monthLabel(data.to)} · {AMBITO_LABEL[data.scope]} · {data.rows.length} meses de contrato
         {excluidos > 0 ? ` · ${excluidos} fora dos totais por quota desconhecida` : ""}

@@ -13,6 +13,7 @@ import {
   anexoFRows,
   computeLandlordFiscalYear,
   reducedRateEligibility,
+  taxasAutonomasPorFracao,
   type AimiExposure,
   type AnexoFRow,
   type IrsReceiptInput,
@@ -55,6 +56,8 @@ export interface AnoDoSenhorio {
   elegiveisArt72: ContratoElegivel[];
   /** Poupança anual total se todos os contratos elegíveis forem comunicados à AT. */
   poupancaArt72: number;
+  /** Habitação com 5+ anos de casa sem prazo registado: pode ter taxa reduzida, falta o prazo. */
+  prazoPorConfirmar: number;
 }
 
 export interface DadosDoAno {
@@ -114,6 +117,7 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
   const despesas = linhas<Expense>(expensesQ, "expenses");
   const porId = new Map(propriedades.map((p) => [p.id, p]));
   const hoje = todayISO();
+  const taxas = taxasAutonomasPorFracao(contratos, porId);
 
   const porSenhorio = senhorios.map((landlord) => {
     const quotas = new Map<string, number>();
@@ -143,14 +147,22 @@ export async function carregarAno(anoPedido: number): Promise<DadosDoAno> {
       })
       .filter((e) => e.rate > 0 && e.savings > 0)
       .sort((a, b) => b.savings - a.savings);
+    // Habitação com 5+ anos de casa e sem prazo registado: pode ter direito, falta o prazo.
+    const prazoPorConfirmar = contratos.filter(
+      (c) =>
+        c.status === "ativo" &&
+        quotas.has(c.property_id) &&
+        reducedRateEligibility(c, porId.get(c.property_id)?.typology ?? null, 100, hoje).prazoDesconhecido,
+    ).length;
 
     return {
       landlord,
-      fy: computeLandlordFiscalYear(landlord.id, ano, owners, recibos, despesas),
+      fy: computeLandlordFiscalYear(landlord.id, ano, owners, recibos, despesas, taxas),
       anexoF: anexoFRows(landlord.id, ano, owners, contratos, porId, recibos, despesas, hoje),
       aimi: aimiExposure(landlord.id, owners, porId),
       elegiveisArt72: elegiveis,
       poupancaArt72: elegiveis.reduce((a, e) => a + e.savings, 0),
+      prazoPorConfirmar,
     };
   });
 

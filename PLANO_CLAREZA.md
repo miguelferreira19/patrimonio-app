@@ -307,7 +307,16 @@ Quando chegar o código do Portal:
 **Aceitação:** depois da primeira recolha da herança, "Sem informação" baixa de 21 contratos para
 zero e qualquer atraso real desses inquilinos aparece na Cobranças.
 
-### Fase 3 · Rentabilidade (G). Resolve a queixa n.º 3
+### Fase 3 · Rentabilidade (G). Resolve a queixa n.º 3 · FEITA a 13/10
+
+> **Resultado** (ago 2025 a jul 2026, imóveis por inteiro): renda 171 634 €, custos 57 501 €,
+> resultado 114 133 €, 1,9% do valor de mercado nas frações com valor estimado. Mais rentáveis:
+> São Pedro, Quinta do Galo 3, Jeniffer Lote 2D. Prejuízo: Andar de Ranhados, Paulo Emilio,
+> Capitão Salomão (obras). Página `/rentabilidade` (caixas, barras por prédio, top/bottom 5,
+> tabela ordenável). Despesas sem dupla contagem (`quotasDeclarantes`); obras pela média de 3
+> anos (também na projeção). Fiscal: 25% na habitação desde 07/10/2023 (`taxaAutonoma`); art. 72.º
+> pela duração do PRAZO, não pelos anos de casa. "Vender ou manter" é a coluna "% do valor" com
+> alerta abaixo de 3%.
 
 - **3.1 Uma só regra para despesas por inteiro.** Por (artigo, categoria, ano): total = soma do
   declarado ÷ soma das quotas de quem declarou. Fica num só sítio (`irs.ts`), e `scopedExpense`
@@ -334,7 +343,13 @@ zero e qualquer atraso real desses inquilinos aparece na Cobranças.
 é igual ao total. As despesas de 2025 reconciliam com os 45 524 € do Anexo F mais as
 reconstruções, cada uma identificada.
 
-### Fase 4 · Oportunidades honestas (P/M)
+### Fase 4 · Oportunidades honestas (P/M) · FEITA a 13/10
+
+> Gerador de vazios (11 frações, cerca de 28 mil €/ano, estimado). A renda abaixo do mercado diz
+> "só na mudança de inquilino" e fica fora do Hoje. O art. 72.º separa-se em "comunicar" (prazo
+> conhecido) e "confirmar o prazo" (sem informação). Saíram os conselhos "rever a venda",
+> "capacidade de investimento" e "rever o yield". **Ficou:** "rendas paradas há mais de 24 meses"
+> nos conselhos da Projeção (admin), com um critério diferente do coeficiente anual.
 
 - **4.1 Gerador de vazios** em `insights.ts`, a partir de `vacancyGaps` (`calc.ts`). Mostra o
   valor pela última renda ou, sem ela, pela mediana × área, marcado como estimativa.
@@ -349,7 +364,12 @@ reconstruções, cada uma identificada.
 **Aceitação:** a soma das oportunidades só inclui valores medidos ou realizáveis; os vazios
 aparecem com nome e há quanto tempo estão vagos.
 
-### Fase 5 · Navegação e acabamento (M)
+### Fase 5 · Navegação e acabamento (M) · FEITA a 13/10
+
+> Cinco destinos (Hoje, Cobranças, Imóveis, Rentabilidade, Impostos), iguais no telemóvel. Tarefas,
+> manutenção e vagas numa só lista. "Âmbito" fora de Imóveis, Mercado e Despesas (fica no Extrato
+> e na Projeção, admin). Manchete do Hoje calma antes do dia 15. Ocupação da Carteira já não muda
+> com a lente. Nomes de inquilinos e frações formatados.
 
 - **5.1** `shell.tsx`: os 5 destinos (§4), iguais no telemóvel. Os redirects das rotas antigas
   passam todos para um único sítio, `next.config.ts`, em vez de 10 ficheiros de página.
@@ -370,6 +390,9 @@ aparecem com nome e há quanto tempo estão vagos.
 
 ### Fase 6 · Dados (contínua, quase toda ação tua; a app ajuda)
 
+> Verificado a 13/10: o `ListaContratos.xls` do Portal **não traz o NIF** do inquilino (só o
+> nome), por isso os NIF vêm dos documentos dos contratos. "Terreno 401" já não aparece como vaga.
+
 | Tarefa | Quem | Onde |
 |---|---|---|
 | 62 recibos sem contrato | tu | `/saude/recibos` (já existe) |
@@ -379,7 +402,14 @@ aparecem com nome e há quanto tempo estão vagos.
 | 3 quotas por fechar | tu | ficha → titularidade |
 | "Terreno 401" na ocupação | app | rever a classificação em `currentProperties` |
 
-### Fase 7 · Limpeza técnica e documentação (M), depois das fases 1 a 5
+### Fase 7 · Limpeza técnica e documentação (M) · FEITA a 13/10
+
+> Apagados `nav.tsx`, `masthead.tsx`, `agora/retrato.tsx` e 7 páginas que só redirecionavam (agora
+> em `next.config.ts`). Os 13 ficheiros da V5 escritos em linhas únicas foram formatados (Prettier,
+> uso pontual, sem dependência nova). Documentos antigos em `docs/historico/`; CLAUDE.md com 148
+> linhas sobre o estado atual. **Ficou, de propósito:** dividir `forms.tsx` (730 linhas, abaixo do
+> limite de 800; partir formulários com estado só trazia risco); a ficha da fração ainda lê os
+> pagamentos sem os registos manuais (0 registos hoje).
 
 - Apagar o que ficou para "voltar atrás": `nav.tsx`, `masthead.tsx`, páginas absorvidas, o
   vocabulário morto de `PaymentState` e, se for substituído, `scopedExpense`.
@@ -404,8 +434,8 @@ aparecem com nome e há quanto tempo estão vagos.
 | 7 | 7 · Limpeza | manutenção futura | M | baixo | 1–5 |
 | contínua | 6 · Dados | qualidade dos números | n/a | n/a | n/a |
 
-Estado a 13/10: Fases 0 e 1 feitas. A Fase 2 espera o código do Portal da herança. A seguir:
-Fase 3 (rentabilidade).
+Estado a 13/10: Fases 0, 1, 3, 4, 5 e 7 feitas e publicadas. A Fase 2 espera o código do Portal
+da herança; a Fase 6 é sobretudo ação tua (NIF, prazos, recibos sem contrato).
 
 ## 7. Decisões (respondidas a 13/10)
 

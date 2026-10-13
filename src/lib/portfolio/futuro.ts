@@ -182,6 +182,9 @@ export interface CapacidadeDeInvestimento {
  *  seguro inserido uma vez, por engano ou teste) finja ser uma média mensal credível. */
 const DESPESAS_MIN_REGISTOS = 3;
 
+/** Despesas pontuais (investimento), que não se repetem todos os anos. */
+export const CATEGORIAS_DE_OBRAS = new Set<Expense["category"]>(["obras", "conservacao"]);
+
 /**
  * Capacidade de investimento: receita projetada menos despesa conhecida.
  *
@@ -216,8 +219,18 @@ export function capacidadeDeInvestimento({
     };
   }
 
-  const totalUltimos12 = ultimos12.reduce((acc, e) => acc + e.amount, 0);
-  const mediaMensal = totalUltimos12 / 12;
+  // Obras e conservação são pontuais: repetir os 26,6 mil € de obras do avô em 2025 durante
+  // 24 meses punha a projeção a perder metade da renda (PLANO_CLAREZA.md 1.3). Entram pela
+  // média de 3 anos; o recorrente (IMI, condomínio, seguro, ...) pela dos últimos 12 meses.
+  const inicio36 = addMonthsKey(mesHoje, -36);
+  const obras36 = expenses
+    .filter((e) => CATEGORIAS_DE_OBRAS.has(e.category))
+    .filter((e) => mesDe(e.expense_date) >= inicio36 && mesDe(e.expense_date) < mesHoje)
+    .reduce((acc, e) => acc + e.amount, 0);
+  const recorrente12 = ultimos12
+    .filter((e) => !CATEGORIAS_DE_OBRAS.has(e.category))
+    .reduce((acc, e) => acc + e.amount, 0);
+  const mediaMensal = recorrente12 / 12 + obras36 / 36;
   const despesas24m = mediaMensal * projecao.length;
   return {
     receita24m,

@@ -8,12 +8,211 @@ import type { Contract, Landlord, Property, Receipt } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
 import { useRouter } from "next/navigation";
-export function ReceiptCorrection({ receipts, contracts, properties, landlords }: { receipts: Receipt[]; contracts: Contract[]; properties: Property[]; landlords: Landlord[] }) {
-  const [choices, setChoices] = useState<Record<string, string>>({}); const [q, setQ] = useState(""); const [page, setPage] = useState(0); const [plan, setPlan] = useState<ReceiptAssociation[]>([]); const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [note, setNote] = useState(""); const router = useRouter();
-  const filtered = receipts.filter((r) => `${r.receipt_number} ${r.pf_contract_no} ${r.ref_month} ${landlords.find((l) => l.id === r.landlord_id)?.name} ${properties.find((p) => p.id === r.property_id)?.name}`.toLowerCase().includes(q.toLowerCase())); const selected = Object.entries(choices).filter(([, v]) => v);
-  async function preview() { setBusy(true); setError(""); try { const r = await previewReceiptLinks(selected.map(([receipt_id, contract_id]) => ({ receipt_id, contract_id }))); if (!r.ok) setError(r.error); else setPlan(r.plan ?? []); } catch { setError("Não foi possível preparar a pré-visualização. Tenta novamente."); } finally { setBusy(false); } }
-  async function apply() { setBusy(true); setError(""); try { const r = await applyReceiptLinks(plan, note); if (!r.ok) setError(r.error); else { setChoices({}); setPlan([]); setNote(""); router.refresh(); } } catch { setError("A ligação foi interrompida. Atualiza a lista antes de repetir."); } finally { setBusy(false); } }
-  return <div className="space-y-5"><Field label="Pesquisar número, fonte, imóvel ou período"><Input type="search" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} /></Field><div className="flex flex-wrap items-center gap-3"><p className="text-sm text-tinta-2">{filtered.length} recibos · {selected.length} selecionados</p><Button variant="outline" disabled={busy} onClick={() => { const next = { ...choices }; for (const r of filtered) { const matches = receiptCandidates(r, contracts); if (matches.length === 1) next[r.id] = matches[0].contract.id; if (Object.values(next).filter(Boolean).length >= 500) break; } setChoices(next); setPlan([]); }}>Selecionar correspondências únicas para rever</Button><Button disabled={busy || !selected.length} onClick={preview}>{busy ? "A preparar…" : "Pré-visualizar associações"}</Button></div>{error && <p role="alert" className="text-sm text-perda">{error}</p>}
-    {plan.length > 0 && <section className="space-y-4 rounded-2xl border border-regua-forte bg-carta p-5"><h2 className="text-lg font-semibold">Rever {plan.length} associações</h2><p className="text-sm text-tinta-2">Os recibos mantêm número, montantes, fonte e período. Apenas a associação ao contrato e imóvel será alterada.</p><ul className="max-h-96 divide-y divide-regua overflow-auto">{plan.map((p) => <li key={p.receipt_id} className="py-3 text-sm">{p.number} · {p.month.slice(0, 7)} · <Money value={p.amount} decimals={2} /> · {p.source}<p className="mt-1 font-medium">Destino: {p.tenant}</p>{p.warnings.map((s) => <p key={s} className="mt-1 text-atencao">{s}</p>)}</li>)}</ul><Field label="Motivo e evidência da associação"><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field><Button disabled={busy || note.trim().length < 3} onClick={apply}>{busy ? "A associar…" : "Confirmar associações revistas"}</Button><Button variant="ghost" onClick={() => setPlan([])} disabled={busy}>Voltar à seleção</Button></section>}
-    <ul className="divide-y divide-regua border-y border-regua">{filtered.slice(page * 30, (page + 1) * 30).map((r) => { const matches = receiptCandidates(r, contracts); return <li key={r.id} className="space-y-3 py-5"><div className="flex flex-wrap justify-between gap-3"><div><p className="text-sm font-semibold">Recibo {r.receipt_number || "sem número"} · {r.ref_month.slice(0, 7)}</p><p className="mt-1 text-xs text-tinta-2">{landlords.find((l) => l.id === r.landlord_id)?.name || r.source} · emissão {fmtDate(r.issue_date)} · contrato no Portal {r.pf_contract_no || "desconhecido"}</p><p className="mt-1 text-xs text-tinta-2">{properties.find((p) => p.id === r.property_id)?.name || "Imóvel sem associação"}</p></div><Money value={Number(r.amount)} decimals={2} /></div><Field label="Contrato de destino"><Select value={choices[r.id] || ""} disabled={busy} onChange={(e) => { setChoices({ ...choices, [r.id]: e.target.value }); setPlan([]); }}><option value="">Não associar</option><optgroup label="Correspondências documentais">{matches.map(({ contract: c, reason }) => <option key={c.id} value={c.id}>{c.tenant_name} · {reason}</option>)}</optgroup><optgroup label="Todos os contratos, incluindo cessados">{contracts.filter((c) => !matches.some((m) => m.contract.id === c.id)).map((c) => <option key={c.id} value={c.id}>{c.tenant_name} · {nomeDaFracao(properties.find((p) => p.id === c.property_id)!)} · {c.status}</option>)}</optgroup></Select></Field><p className="text-xs text-tinta-2">{matches.length === 1 ? "Uma correspondência documental; confirmar o inquilino antes de aplicar." : matches.length > 1 ? "Correspondência ambígua. Escolhe o contrato após verificar os documentos." : "Sem correspondência automática. Verifica o documento e a ficha do imóvel."}</p></li>; })}</ul><div className="flex items-center gap-3"><Button variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</Button><p className="text-sm tabular-nums">Página {page + 1} de {Math.max(1, Math.ceil(filtered.length / 30))}</p><Button variant="outline" disabled={(page + 1) * 30 >= filtered.length} onClick={() => setPage(page + 1)}>Seguinte</Button></div></div>;
+export function ReceiptCorrection({
+  receipts,
+  contracts,
+  properties,
+  landlords,
+}: {
+  receipts: Receipt[];
+  contracts: Contract[];
+  properties: Property[];
+  landlords: Landlord[];
+}) {
+  const [choices, setChoices] = useState<Record<string, string>>({});
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+  const [plan, setPlan] = useState<ReceiptAssociation[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const router = useRouter();
+  const filtered = receipts.filter((r) =>
+    `${r.receipt_number} ${r.pf_contract_no} ${r.ref_month} ${landlords.find((l) => l.id === r.landlord_id)?.name} ${properties.find((p) => p.id === r.property_id)?.name}`
+      .toLowerCase()
+      .includes(q.toLowerCase()),
+  );
+  const selected = Object.entries(choices).filter(([, v]) => v);
+  async function preview() {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await previewReceiptLinks(
+        selected.map(([receipt_id, contract_id]) => ({ receipt_id, contract_id })),
+      );
+      if (!r.ok) setError(r.error);
+      else setPlan(r.plan ?? []);
+    } catch {
+      setError("Não foi possível preparar a pré-visualização. Tenta novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function apply() {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await applyReceiptLinks(plan, note);
+      if (!r.ok) setError(r.error);
+      else {
+        setChoices({});
+        setPlan([]);
+        setNote("");
+        router.refresh();
+      }
+    } catch {
+      setError("A ligação foi interrompida. Atualiza a lista antes de repetir.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-5">
+      <Field label="Pesquisar número, fonte, imóvel ou período">
+        <Input
+          type="search"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(0);
+          }}
+        />
+      </Field>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-tinta-2">
+          {filtered.length} recibos · {selected.length} selecionados
+        </p>
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            const next = { ...choices };
+            for (const r of filtered) {
+              const matches = receiptCandidates(r, contracts);
+              if (matches.length === 1) next[r.id] = matches[0].contract.id;
+              if (Object.values(next).filter(Boolean).length >= 500) break;
+            }
+            setChoices(next);
+            setPlan([]);
+          }}
+        >
+          Selecionar correspondências únicas para rever
+        </Button>
+        <Button disabled={busy || !selected.length} onClick={preview}>
+          {busy ? "A preparar…" : "Pré-visualizar associações"}
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-perda">
+          {error}
+        </p>
+      )}
+      {plan.length > 0 && (
+        <section className="space-y-4 rounded-2xl border border-regua-forte bg-carta p-5">
+          <h2 className="text-lg font-semibold">Rever {plan.length} associações</h2>
+          <p className="text-sm text-tinta-2">
+            Os recibos mantêm número, montantes, fonte e período. Apenas a associação ao contrato e imóvel
+            será alterada.
+          </p>
+          <ul className="max-h-96 divide-y divide-regua overflow-auto">
+            {plan.map((p) => (
+              <li key={p.receipt_id} className="py-3 text-sm">
+                {p.number} · {p.month.slice(0, 7)} · <Money value={p.amount} decimals={2} /> · {p.source}
+                <p className="mt-1 font-medium">Destino: {p.tenant}</p>
+                {p.warnings.map((s) => (
+                  <p key={s} className="mt-1 text-atencao">
+                    {s}
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+          <Field label="Motivo e evidência da associação">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </Field>
+          <Button disabled={busy || note.trim().length < 3} onClick={apply}>
+            {busy ? "A associar…" : "Confirmar associações revistas"}
+          </Button>
+          <Button variant="ghost" onClick={() => setPlan([])} disabled={busy}>
+            Voltar à seleção
+          </Button>
+        </section>
+      )}
+      <ul className="divide-y divide-regua border-y border-regua">
+        {filtered.slice(page * 30, (page + 1) * 30).map((r) => {
+          const matches = receiptCandidates(r, contracts);
+          return (
+            <li key={r.id} className="space-y-3 py-5">
+              <div className="flex flex-wrap justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">
+                    Recibo {r.receipt_number || "sem número"} · {r.ref_month.slice(0, 7)}
+                  </p>
+                  <p className="mt-1 text-xs text-tinta-2">
+                    {landlords.find((l) => l.id === r.landlord_id)?.name || r.source} · emissão{" "}
+                    {fmtDate(r.issue_date)} · contrato no Portal {r.pf_contract_no || "desconhecido"}
+                  </p>
+                  <p className="mt-1 text-xs text-tinta-2">
+                    {properties.find((p) => p.id === r.property_id)?.name || "Imóvel sem associação"}
+                  </p>
+                </div>
+                <Money value={Number(r.amount)} decimals={2} />
+              </div>
+              <Field label="Contrato de destino">
+                <Select
+                  value={choices[r.id] || ""}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setChoices({ ...choices, [r.id]: e.target.value });
+                    setPlan([]);
+                  }}
+                >
+                  <option value="">Não associar</option>
+                  <optgroup label="Correspondências documentais">
+                    {matches.map(({ contract: c, reason }) => (
+                      <option key={c.id} value={c.id}>
+                        {c.tenant_name} · {reason}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Todos os contratos, incluindo cessados">
+                    {contracts
+                      .filter((c) => !matches.some((m) => m.contract.id === c.id))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.tenant_name} · {nomeDaFracao(properties.find((p) => p.id === c.property_id)!)} ·{" "}
+                          {c.status}
+                        </option>
+                      ))}
+                  </optgroup>
+                </Select>
+              </Field>
+              <p className="text-xs text-tinta-2">
+                {matches.length === 1
+                  ? "Uma correspondência documental; confirmar o inquilino antes de aplicar."
+                  : matches.length > 1
+                    ? "Correspondência ambígua. Escolhe o contrato após verificar os documentos."
+                    : "Sem correspondência automática. Verifica o documento e a ficha do imóvel."}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex items-center gap-3">
+        <Button variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
+          Anterior
+        </Button>
+        <p className="text-sm tabular-nums">
+          Página {page + 1} de {Math.max(1, Math.ceil(filtered.length / 30))}
+        </p>
+        <Button
+          variant="outline"
+          disabled={(page + 1) * 30 >= filtered.length}
+          onClick={() => setPage(page + 1)}
+        >
+          Seguinte
+        </Button>
+      </div>
+    </div>
+  );
 }

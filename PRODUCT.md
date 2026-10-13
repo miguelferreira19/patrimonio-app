@@ -32,4 +32,4 @@ prazos, despesas, manutenção, disponibilidade, documentos, saúde dos dados e
 relatórios. Rotas anteriores mantêm-se utilizáveis. Aplicação da migração aditiva
  e publicação em produção explicitamente autorizadas.
 
-Plano e evidência: IMPLEMENTACAO_GESTAO.md. Regras operacionais: CLAUDE.md.
+Roteiro ativo: PLANO_CLAREZA.md (5 destinos, visual em vez de prosa). Histórico: docs/historico/. Regras operacionais: CLAUDE.md.

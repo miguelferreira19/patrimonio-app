@@ -105,32 +105,48 @@ const GERADORES: Gerador[] = [
     // O maior lever da carteira: o quadro 4.2 do Anexo F está vazio nos dois senhorios.
     // Reusa `reducedRateEligibility` do irs.ts. Quota 100: ótica de família, valores por
     // inteiro (a soma das quotas de uma fração é 100, logo isto é o total da família).
-    const elegiveis = s.correntes
+    const todos = s.correntes
       .filter((a) => a.activeContract)
       .map((a) => ({
         ativo: a,
         r: reducedRateEligibility(a.activeContract!, a.property.typology, 100, s.hoje),
-      }))
-      .filter((x) => x.r.eligibleRate !== null && (x.r.annualSavings ?? 0) > 0);
-    if (elegiveis.length === 0) return [];
-
-    const total = elegiveis.reduce((acc, x) => acc + (x.r.annualSavings ?? 0), 0);
-    const n = elegiveis.length;
-    return [
-      {
+      }));
+    const elegiveis = todos.filter((x) => x.r.eligibleRate !== null && (x.r.annualSavings ?? 0) > 0);
+    // A taxa depende do PRAZO do contrato, e 42 não o têm registado (irs.ts). Esses não são
+    // poupança, são uma pergunta: quanto valeria SE o prazo for longo, à taxa de 5 anos.
+    const porConfirmar = todos.filter((x) => x.r.prazoDesconhecido);
+    const itens: Insight[] = [];
+    if (elegiveis.length > 0) {
+      const n = elegiveis.length;
+      itens.push({
         kind: "art72_elegivel",
         grupo: "poupar",
         titulo: `Comunicar ${n} ${n === 1 ? "contrato" : "contratos"} à AT para taxa reduzida do art. 72.º`,
-        porque: `${n} de habitação com duração longa, hoje tributados a 28%. Podem descer a ${elegiveis
+        porque: `${n} de habitação com prazo longo. Podem descer a ${elegiveis
           .map((x) => fmtPct(x.r.eligibleRate ?? 0, 0))
           .filter((v, i, arr) => arr.indexOf(v) === i)
           .join(" ou ")}.`,
-        euros: total,
+        euros: elegiveis.reduce((acc, x) => acc + (x.r.annualSavings ?? 0), 0),
         confianca: "estimado",
-        conta: `(28% − taxa elegível) × renda anual, por contrato. Exige comunicação à AT (Portaria 110/2019).`,
-        acoes: [{ label: "Ver no IRS", href: "/irs" }],
-      },
-    ];
+        conta: `(taxa autónoma − taxa reduzida) × renda anual, por contrato. Exige comunicação à AT (Portaria 110/2019).`,
+        acoes: [{ label: "Ver no IRS", href: "/relatorios?tab=irs" }],
+      });
+    }
+    if (porConfirmar.length > 0) {
+      const n = porConfirmar.length;
+      const ate = porConfirmar.reduce((acc, x) => acc + 0.13 * x.ativo.activeContract!.rent * 12, 0);
+      itens.push({
+        kind: "art72_prazo",
+        grupo: "saber",
+        titulo: `Confirmar o prazo de ${n} ${n === 1 ? "contrato longo" : "contratos longos"} (art. 72.º)`,
+        porque: `Habitação com 5 ou mais anos de casa e sem prazo registado. Se o prazo for de 5+ anos, a taxa desce.`,
+        euros: ate,
+        confianca: "assumido",
+        conta: `Até (28% − 15%) × renda anual, só se o prazo do contrato for de 5 anos ou mais.`,
+        acoes: [{ label: "Ver contratos", href: "/contratos?estado=desconhecido" }],
+      });
+    }
+    return itens;
   },
 
   function atualizacaoDeRenda(s) {
@@ -168,6 +184,41 @@ const GERADORES: Gerador[] = [
     ];
   },
 
+  function vazios(s) {
+    // Frações correntes sem contrato (11 de 53 a 13/10/2026). Não havia alerta nenhum: a
+    // lente Vazios da Carteira era o único sítio onde se viam. O valor é a última renda
+    // que a fração teve; sem contrato anterior, a mediana do INE × área; sem as duas, a
+    // fração aparece mas não soma (não se inventa uma renda).
+    const linhas = s.correntes
+      .filter((a) => !a.activeContract)
+      .map((a) => {
+        const ultima = a.contracts[0]?.rent ?? null;
+        const mercado =
+          a.mercado.benchmarkRentM2 !== null && a.property.area_m2 ? a.mercado.benchmarkRentM2 * a.property.area_m2 : null;
+        const desde = a.vazios.find((g) => g.gapEnd === null)?.gapStart ?? null;
+        return { ativo: a, renda: ultima ?? mercado, estimada: ultima === null && mercado !== null, desde };
+      })
+      .sort((x, y) => (y.renda ?? 0) - (x.renda ?? 0));
+    if (linhas.length === 0) return [];
+    const n = linhas.length;
+    const total = linhas.reduce((acc, l) => acc + (l.renda ?? 0) * 12, 0);
+    return [
+      {
+        kind: "vazios",
+        grupo: "poupar",
+        titulo: `Arrendar ${n} ${n === 1 ? "fração vazia" : "frações vazias"}`,
+        porque: linhas
+          .slice(0, 3)
+          .map((l) => `${nomeDaFracao(l.ativo.property)}${l.desde ? ` (desde ${monthLabel(l.desde.slice(0, 7) + "-01")})` : ""}`)
+          .join(", "),
+        euros: total,
+        confianca: linhas.some((l) => l.estimada || l.renda === null) ? "estimado" : "medido",
+        conta: `Σ última renda de cada fração × 12; sem contrato anterior, mediana INE × área. ${linhas.filter((l) => l.renda === null).length} sem valor de referência, fora da soma.`,
+        acoes: [{ label: "Ver vagas", href: "/imoveis?f=vagas" }],
+      },
+    ];
+  },
+
   function rendaAbaixoDoMercado(s) {
     const total = s.mercado.potencialMes * 12;
     if (s.mercado.abaixo.length === 0 || total <= 0) return [];
@@ -176,7 +227,7 @@ const GERADORES: Gerador[] = [
       {
         kind: "renda_abaixo_mercado",
         grupo: "poupar",
-        titulo: `Rever ${s.mercado.abaixo.length} ${s.mercado.abaixo.length === 1 ? "renda" : "rendas"} abaixo da mediana do mercado`,
+        titulo: `${s.mercado.abaixo.length} ${s.mercado.abaixo.length === 1 ? "renda abaixo" : "rendas abaixo"} do mercado (na mudança de inquilino)`,
         porque: `A pior é ${nomeDaFracao(pior.property)}, ${fmtPct(pior.mercado.deviation ?? 0, 0)} face à mediana INE. Só se capta quando a fração muda de inquilino.`,
         euros: total,
         // ASSUMIDO, e por isso fora do número de topo (2026-10-03): a mediana é de NOVOS

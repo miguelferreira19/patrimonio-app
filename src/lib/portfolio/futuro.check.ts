@@ -201,7 +201,21 @@ const MES_HOJE = monthKeyFromDate(HOJE);
   assert.equal(cap.despesas24m, ((200 + 300 + 100) / 12) * proj.length, "a espelhada CONTA para o numero");
 }
 
-console.log("futuro.check.ts: OK (A, B, C, D, E, F, G)");
+// H — obras pontuais não se repetem (PLANO_CLAREZA.md 1.3): 26,6 mil € de conservação do avô
+// em 2025 eram projetados 24 meses seguidos. Entram pela média de 3 anos; o IMI pela de 12.
+{
+  const proj = projetar({ contracts: [contract({ id: "a", rent: 500 })], payments: [], hoje: HOJE, meses: 24 });
+  const expenses: Expense[] = [
+    despesa({ id: "i1", expense_date: "2025-03-01", amount: 120, category: "imi" }),
+    despesa({ id: "i2", expense_date: "2025-06-01", amount: 120, category: "imi" }),
+    despesa({ id: "i3", expense_date: "2025-11-01", amount: 120, category: "imi" }),
+    despesa({ id: "o1", expense_date: "2025-12-31", amount: 36_000, category: "conservacao" }),
+  ];
+  const cap = capacidadeDeInvestimento({ projecao: proj, expenses, hoje: HOJE });
+  assert.equal(cap.despesas24m, (360 / 12 + 36_000 / 36) * 24, "obras a 1/36 por mês, não a 1/12");
+}
+
+console.log("futuro.check.ts: OK (A, B, C, D, E, F, G, H)");
 
 // Uma emissão de outra fonte não aumenta o histórico em falta deste contrato.
 {

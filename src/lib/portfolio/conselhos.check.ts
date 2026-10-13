@@ -150,46 +150,9 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
   assert.ok(item!.conta?.includes("homónimos"), "a conta avisa do risco de homonimos");
 }
 
-// B — capacidadeDeInvestir sem despesas conhecidas devolve confianca "assumido" e a conta
-// menciona que é receita bruta; com despesas conhecidas, confianca passa a "estimado".
-{
-  const capSemDespesas: CapacidadeDeInvestimento = {
-    receita24m: 50_000, despesas24m: null, liquido24m: null, despesasConhecidas: false, despesasEspelhadas: false,
-  };
-  const conselhos = construirConselhos(
-    entradaBase({ capacidade: capSemDespesas, projecao: projecaoNeutra() }),
-  );
-  const item = conselhos.find((c) => c.kind === "capacidade_investir");
-  assert.ok(item, "capacidade material gera conselho");
-  assert.equal(item!.euros, 50_000, "sem despesas conhecidas, euros = receita bruta");
-  assert.equal(item!.confianca, "assumido", "sem despesas conhecidas: confianca assumido");
-  assert.ok(item!.conta?.includes("BRUTA"), "a conta diz explicitamente que e receita bruta");
-
-  const capComDespesas: CapacidadeDeInvestimento = {
-    receita24m: 50_000, despesas24m: 10_000, liquido24m: 40_000, despesasConhecidas: true, despesasEspelhadas: false,
-  };
-  const conselhos2 = construirConselhos(entradaBase({ capacidade: capComDespesas }));
-  const item2 = conselhos2.find((c) => c.kind === "capacidade_investir");
-  assert.ok(item2, "capacidade com despesas tambem gera conselho");
-  assert.equal(item2!.euros, 40_000, "com despesas conhecidas, euros = liquido");
-  assert.equal(item2!.confianca, "estimado", "com despesas conhecidas: confianca estimado");
-}
-
-// C — carteira sem area_m2 nenhuma não gera yieldBaixo nem candidatoAVenda, e não rebenta.
-{
-  const raw = rawBase(); // prop() por defeito tem area_m2: null
-  const snap = buildSnapshot(raw, TODAY);
-  assert.ok(
-    snap.correntes.every((a) => a.mercado.grossYield === null),
-    "sem area_m2, grossYield e sempre null",
-  );
-  const conselhos = construirConselhos(entradaBase({ snap }));
-  assert.ok(!conselhos.some((c) => c.kind === "yield_baixo"), "sem area_m2 nao ha yieldBaixo");
-  assert.ok(!conselhos.some((c) => c.kind === "candidato_venda"), "sem area_m2 nao ha candidatoAVenda");
-}
-
-// D — carteira COM yields conhecidos gera yieldBaixo para a fração abaixo do limiar (70% da
-// mediana) e não para a que está acima.
+// B, C, D — os conselhos que ordenavam património ao lado de rendimento saíram (13/10/2026,
+// PLANO_CLAREZA.md 3.5): "capacidade de investimento", "rever o yield" e "rever a venda".
+// Uma carteira COM yields baixos e com capacidade material já não os gera.
 {
   const raw: RawData = {
     ...rawBase(),
@@ -198,9 +161,7 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
       prop({ id: "alto", dicofre: "0101", area_m2: 100 }),
     ],
     contracts: [
-      // yield = renda*12 / (area * sale_median_m2) = 6000 / 200000 = 0.03
       contr({ id: "cb", property_id: "baixo", rent: 500 }),
-      // yield = 18000 / 200000 = 0.09
       contr({ id: "ca", property_id: "alto", rent: 1500 }),
     ],
     benchmarks: [bench({ id: "b1", dicofre: "0101", sale_median_m2: 2000 })],
@@ -209,18 +170,13 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
     paymentsRecentes: [],
   };
   const snap = buildSnapshot(raw, TODAY);
-  const baixo = snap.correntes.find((a) => a.property.id === "baixo")!;
-  const alto = snap.correntes.find((a) => a.property.id === "alto")!;
-  assert.ok(baixo.mercado.grossYield !== null && alto.mercado.grossYield !== null, "os dois tem yield conhecido");
-  // mediana dos dois = (0.03 + 0.09) / 2 = 0.06; limiar = 0.042. "baixo" (0.03) fica abaixo,
-  // "alto" (0.09) fica muito acima.
-  assert.ok(baixo.mercado.grossYield! < 0.042 && alto.mercado.grossYield! >= 0.042);
-
-  const conselhos = construirConselhos(entradaBase({ snap }));
-  const itensYield = conselhos.filter((c) => c.kind === "yield_baixo");
-  assert.equal(itensYield.length, 1, "so a fracao abaixo do limiar gera conselho");
-  assert.equal(itensYield[0].subject, "baixo", "e e a fracao certa");
-  assert.ok(!itensYield.some((c) => c.subject === "alto"), "a fracao acima do limiar nao gera conselho");
+  const capacidade: CapacidadeDeInvestimento = {
+    receita24m: 50_000, despesas24m: 10_000, liquido24m: 40_000, despesasConhecidas: true, despesasEspelhadas: false,
+  };
+  const conselhos = construirConselhos(entradaBase({ snap, capacidade, projecao: projecaoNeutra() }));
+  for (const kind of ["capacidade_investir", "yield_baixo", "candidato_venda"]) {
+    assert.ok(!conselhos.some((c) => c.kind === kind), `${kind} já não é um conselho`);
+  }
 }
 
 // E — conselhos abaixo do limiar de materialidade não aparecem.
@@ -260,7 +216,6 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
     rendasParadas: [
       { contractId: "c1", tenant: "Inquilino B", rendaAtual: 400, mesesSemAtualizar: 30, rendaSugerida: 500, ganhoAnual: 1200 },
     ],
-    capacidade: { receita24m: 30_000, despesas24m: null, liquido24m: null, despesasConhecidas: false, despesasEspelhadas: false },
     resumo: { total: 0, totalP10: 0, totalP90: 0, mediaMensal: 0, quedaContratada: 500 },
   });
   const conselhos = construirConselhos(entrada);
@@ -291,4 +246,4 @@ function entradaBase(overrides: Partial<EntradaConselhos> = {}): EntradaConselho
   }
 }
 
-console.log("conselhos.check.ts: OK (A, A2, B, C, D, E, F, G)");
+console.log("conselhos.check.ts: OK (A, A2, BCD, E, F, G)");

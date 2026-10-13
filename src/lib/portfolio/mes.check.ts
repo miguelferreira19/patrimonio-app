@@ -20,7 +20,7 @@ const semAtraso = { valor: 0, contratos: 0 };
   assert.equal(r.porReceber, 600);
   assert.equal(r.pagos, 1);
   assert.equal(r.total, 3);
-  assert.equal(r.titulo, "Faltam 2 rendas de outubro.");
+  assert.equal(r.titulo, "Outubro a decorrer: 1 de 3 rendas recebidas.", "antes da recolha do dia 15 não se alarma");
   assert.match(r.contexto, /recolha do dia 15/);
   assert.deepEqual(r.atraso, { valor: 1925, contratos: 11 }, "o atraso é o dos meses anteriores, passado tal e qual");
 }

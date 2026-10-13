@@ -13,6 +13,7 @@ import {
   computeLandlordFiscalYear,
   expenseTotalsByProperty,
   reducedRateEligibility,
+  taxasAutonomasPorFracao,
 } from "@/lib/irs";
 import { todayISO } from "@/lib/format";
 import { paginateAll } from "@/lib/paginate";
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
   const quotaByProperty = new Map<string, number>();
   for (const o of owners) if (o.landlord_id === landlord.id) quotaByProperty.set(o.property_id, o.quota ?? 100);
 
-  const fy = computeLandlordFiscalYear(landlord.id, year, owners, receipts, expenses);
+  const fy = computeLandlordFiscalYear(landlord.id, year, owners, receipts, expenses, taxasAutonomasPorFracao(contracts, propertiesById));
   const rows = anexoFRows(landlord.id, year, owners, contracts, propertiesById, receipts, expenses, todayISO());
   const aimi = aimiExposure(landlord.id, owners, propertiesById);
   const reducedList = contracts
@@ -216,9 +217,9 @@ export async function GET(request: Request) {
   notas.push([]);
   notas.push(["Simulação de regime (rendimento predial líquido tratado isoladamente)"]);
   notas.push(["Rendimento predial líquido", fy.netIncome]);
-  notas.push(["Imposto, taxa autónoma 28%", fy.autonomousTax]);
+  notas.push(["Imposto, taxa autónoma (28%; 25% na habitação desde 07/10/2023)", fy.autonomousTax]);
   notas.push([`Imposto, englobamento (escalões ${fy.bracketsYear})`, fy.englobedTax]);
-  notas.push(["Melhor opção", fy.bestRegime === "autonoma" ? "Taxa autónoma (28%)" : "Englobamento"]);
+  notas.push(["Melhor opção", fy.bestRegime === "autonoma" ? "Taxa autónoma" : "Englobamento"]);
   notas.push([]);
   notas.push(["Despesas a confirmar (categorias «Obras» e «Outras», NÃO somadas ao Anexo F acima)"]);
   notas.push(["Fração", "Valor (quota do senhorio)"]);

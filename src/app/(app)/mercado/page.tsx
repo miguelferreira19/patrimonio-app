@@ -25,7 +25,7 @@ import { DeviationBadge } from "@/components/kit/badges";
 import { sum } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { getSnapshotComRaw } from "@/lib/portfolio";
-import { OwnerSelection, ScopeFilters } from "@/components/gestao/operacional";
+import { OwnerSelection } from "@/components/gestao/operacional";
 import { shareOf, AMBITO_LABEL, type Ambito } from "@/lib/gestao";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
 
@@ -65,7 +65,6 @@ export default async function MercadoPage({ searchParams }: { searchParams: Prom
           Nenhuma fração encontrou território no INE. Em <strong>Admin</strong>, atualiza os
           benchmarks e confirma a freguesia e a área nas fichas.
         </Lede>
-        <ScopeFilters q={q} landlords={raw.landlords} action="/relatorios" period={false} search={false} hidden={{ tab: "mercado" }} />
         <EmptyState icon={Building2}>Sem medianas carregadas.</EmptyState>
       </div>
     );
@@ -81,8 +80,7 @@ export default async function MercadoPage({ searchParams }: { searchParams: Prom
           conta={`Σ área × mediana de venda (€/m²) das ${comValor.length} frações de habitação com área conhecida = ${fmtEur(valorCarteira)}. É uma ordem de grandeza a partir de medianas públicas, nunca uma avaliação.`}
         />
       </Lede>
-      <ScopeFilters q={q} landlords={raw.landlords} action="/relatorios" period={false} search={false} hidden={{ tab: "mercado" }} />
-      <div><p className="text-sm text-tinta-2">{AMBITO_LABEL[scope]} · {comValor.length} de {linhas.length} frações no âmbito · estimativa pelas últimas medianas disponíveis</p><div className="mt-2"><Money value={valorCarteira} escala="hero" /></div>{snap.correntes.length > linhas.length && <p className="mt-3 text-xs text-tinta-2">{snap.correntes.length - linhas.length} frações fora do âmbito ou sem quota conhecida.</p>}</div>
+      <div><p className="text-sm text-tinta-2">{comValor.length} de {linhas.length} frações · medianas mais recentes do INE</p><div className="mt-2"><Money value={valorCarteira} escala="hero" /></div>{snap.correntes.length > linhas.length && <p className="mt-3 text-xs text-tinta-2">{snap.correntes.length - linhas.length} frações fora do âmbito ou sem quota conhecida.</p>}</div>
 
       <Seccao titulo="Leitura da carteira">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">

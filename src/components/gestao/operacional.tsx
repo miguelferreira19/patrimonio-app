@@ -33,6 +33,8 @@ export function ScopeFilters({
   period = true,
   hidden = {},
   search = true,
+  ambito = true,
+  extrato = false,
 }: {
   q: OperationalQuery;
   landlords: Landlord[];
@@ -40,12 +42,16 @@ export function ScopeFilters({
   period?: boolean;
   hidden?: Record<string, string>;
   search?: boolean;
+  /** Âmbito e proprietário: só no Extrato e na Projeção (admin). A família vê por inteiro. */
+  ambito?: boolean;
+  /** Estado e ordenação dos meses: só fazem sentido no Extrato. */
+  extrato?: boolean;
 }) {
   const esteMes = new Date().toISOString().slice(0, 7);
   return (
     <details open={q.ambito === "proprietario" && !q.senhorio} className="rounded-2xl border border-regua bg-carta p-4">
       <summary className="min-h-8 cursor-pointer text-sm font-semibold text-acao">
-        Filtrar por período, âmbito e proprietário
+        Filtrar
       </summary>
       <form action={action} className="mt-4">
         {Object.entries(hidden).map(([name, value]) => (
@@ -67,6 +73,7 @@ export function ScopeFilters({
               </Field>
             </>
           )}
+          {ambito && (<>
           <Field label="Âmbito dos valores">
             <Select name="ambito" defaultValue={q.ambito ?? "inteiro"}>
               {Object.entries(AMBITO_LABEL).map(([v, label]) => (
@@ -82,7 +89,8 @@ export function ScopeFilters({
               ))}
             </Select>
           </Field>
-          {period && (
+          </>)}
+          {period && extrato && (
             <>
               <Field label="Estado">
                 <Select name="estado" defaultValue={q.estado ?? ""}>

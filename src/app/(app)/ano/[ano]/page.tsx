@@ -49,11 +49,11 @@ export default async function AnoPage({
 
   const escolhido =
     dados.porSenhorio.find((s) => s.landlord.id === sp.senhorio) ?? dados.porSenhorio[0];
-  const { fy, aimi, anexoF, elegiveisArt72, poupancaArt72 } = escolhido;
+  const { fy, aimi, anexoF, elegiveisArt72, poupancaArt72, prazoPorConfirmar } = escolhido;
 
   const nomePorFracao = new Map(dados.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
   const destino = (ano: number, senhorio?: string) => emDinheiro
-    ? `/relatorios?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`
+    ? `/impostos?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`
     : `/ano/${ano}${senhorio ? `?senhorio=${senhorio}` : ""}`;
   const poupancaRegime = Math.abs(fy.autonomousTax - fy.englobedTax);
   const sobra = fy.netIncome - fy.bestTax;
@@ -71,7 +71,7 @@ export default async function AnoPage({
     },
     { label: "Rendimento líquido predial", valor: fy.netIncome, tipo: "saldo" },
     {
-      label: `Imposto (${fy.bestRegime === "autonoma" ? "taxa autónoma 28%" : "englobamento"})`,
+      label: `Imposto (${fy.bestRegime === "autonoma" ? "taxa autónoma" : "englobamento"})`,
       valor: fy.bestTax,
       tipo: "saida",
       nota: `escalões de ${fy.bracketsYear}`,
@@ -162,7 +162,7 @@ export default async function AnoPage({
               n={1}
               titulo={
                 fy.bestRegime === "autonoma"
-                  ? "Manter a taxa autónoma de 28%"
+                  ? "Manter a taxa autónoma"
                   : "Optar pelo englobamento no Anexo F"
               }
               euros={poupancaRegime}
@@ -176,10 +176,16 @@ export default async function AnoPage({
                 euros={poupancaArt72}
                 porque={`${elegiveisArt72
                   .slice(0, 3)
-                  .map((e) => `${e.propertyName} (${e.anos} anos, ${fmtPct(e.rate, 0)})`)
+                  .map((e) => `${e.propertyName} (prazo de ${e.anos} anos, ${fmtPct(e.rate, 0)})`)
                   .join(", ")}${elegiveisArt72.length > 3 ? `, e outros ${elegiveisArt72.length - 3}` : ""}.`}
-                conta="(28% − taxa elegível) × renda anual. Exige comunicação à AT, Portaria 110/2019; sem ela a taxa não se aplica."
+                conta="(taxa autónoma do contrato − taxa reduzida) × renda anual. A duração é a do PRAZO do contrato, não os anos de casa. Exige comunicação à AT, Portaria 110/2019."
               />
+            )}
+            {prazoPorConfirmar > 0 && (
+              <Link href="/contratos?estado=desconhecido" className="flex flex-wrap items-center gap-2 rounded-xl border border-regua px-4 py-3 text-sm hover:bg-vellum">
+                <Badge tone="futuro">{prazoPorConfirmar} {prazoPorConfirmar === 1 ? "contrato" : "contratos"}</Badge>
+                <span className="text-tinta-2">com 5+ anos de casa e prazo por registar: podem ter taxa reduzida</span>
+              </Link>
             )}
             <Decisao
               n={elegiveisArt72.length > 0 ? 3 : 2}
@@ -241,7 +247,7 @@ export default async function AnoPage({
                       {r.reduced.eligibleRate ? (
                         <Badge tone="teal">{fmtPct(r.reduced.eligibleRate, 0)}</Badge>
                       ) : (
-                        <Badge tone="zinc">28%</Badge>
+                        <Badge tone="zinc">{fmtPct(r.taxaAutonoma, 0)}</Badge>
                       )}
                     </Td>
                   </tr>
@@ -260,7 +266,7 @@ export default async function AnoPage({
       <section id="despesas" className="scroll-mt-6">
         <ExpensesClient
           expenses={dados.despesas}
-          properties={dados.propriedades.map((p) => ({ id: p.id, name: p.name }))}
+          properties={dados.propriedades.map((p) => ({ id: p.id, name: nomeDaFracao(p) }))}
           landlords={dados.senhorios}
           isAdmin={isAdmin}
           currentYear={dados.ano}
