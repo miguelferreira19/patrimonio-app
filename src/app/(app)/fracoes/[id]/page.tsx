@@ -13,6 +13,8 @@ import {
 import { Badge, buttonClass, cn } from "@/components/ui";
 import { Carregar } from "@/components/documentos/carregar";
 import { Money } from "@/components/kit";
+import { Faixa } from "@/components/faixa/faixa";
+import { QuotaEvidence } from "@/components/gestao/forms";
 import { monthCellStatus, type MonthCellData } from "@/lib/monthcell";
 import { geoOptionsFromBenchmarks, marketView, rentUpdateEligibility, sum, vacancyGaps } from "@/lib/calc";
 import { getSession } from "@/lib/data";
@@ -38,6 +40,7 @@ import type {
 } from "@/lib/types";
 import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
 import { DeviationBadge } from "@/components/kit/badges";
+import { paginateAll } from "@/lib/paginate";
 import { linha, linhas } from "@/lib/supabase/dados";
 
 export const dynamic = "force-dynamic";
@@ -125,10 +128,12 @@ export default async function FracaoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; voltar?: string }>;
 }) {
   const { id } = await params;
-  const separador = (await searchParams).tab ?? "resumo";
+  const query = await searchParams; const separador = query.tab ?? "resumo";
+  const back = query.voltar && /^\/(?:imoveis|carteira)(?:[/?]|$)/.test(query.voltar) ? query.voltar : "/imoveis";
+  const tabHref = (tab: string) => `/fracoes/${id}?${new URLSearchParams({ tab, voltar: back })}`;
   const { supabase, isAdmin } = await getSession();
 
   const [propQ, ownersQ, landlordsQ, contractsQ, geo] = await Promise.all([
@@ -167,7 +172,7 @@ export default async function FracaoPage({
     // × 12 meses/ano. Chegar a 1000 linhas exigia ~80 anos de contrato. Se um dia esta
     // query passar a abranger mais do que uma fração, tem de ser paginada.
     contractIds.length > 0
-      ? supabase.from("payments").select("*").in("contract_id", contractIds).limit(20000)
+      ? paginateAll<Payment>(async (from, to) => linhas<Payment>(await supabase.from("payments").select("*").in("contract_id", contractIds).order("id").range(from, to), "payments")).then((data) => ({ data, error: null }))
       : Promise.resolve({ data: [] as Payment[] }),
     supabase
       .from("receipts")
@@ -306,7 +311,7 @@ export default async function FracaoPage({
   return (
     <div className="space-y-6">
       <nav aria-label="Localização" className="text-[13px] text-tinta-3">
-        <Link href="/imoveis" className="text-tinta-2 hover:text-tinta">
+        <Link href={back} className="text-tinta-2 hover:text-tinta">
           Imóveis
         </Link>
         {" / "}
@@ -350,11 +355,13 @@ export default async function FracaoPage({
         </div>
       </header>
 
+      <div className="flex flex-wrap gap-2"><Link href={`/cobrancas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Pagamentos e saldos</Link><Link href={`/manutencao?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Manutenção</Link><Link href={`/vagas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Disponibilidade</Link></div>
+      {isAdmin && <QuotaEvidence property={property} owners={owners.map((o) => ({ id: o.landlord_id, label: `${landlords.find((l) => l.id === o.landlord_id)?.name ?? "Proprietário"} · ${o.quota}%`, confirmed: o.quota_confirmed === true }))} />}
       <nav aria-label="Secções da fração" className="-mx-4 flex gap-1 overflow-x-auto border-b border-regua px-4 md:mx-0 md:px-0">
         {TABS.map(([k, nome]) => (
           <Link
             key={k}
-            href={k === "resumo" ? `/fracoes/${property.id}` : `/fracoes/${property.id}?tab=${k}`}
+            href={tabHref(k)}
             aria-current={tab === k ? "page" : undefined}
             className={cn(
               "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors duration-150",
@@ -372,13 +379,13 @@ export default async function FracaoPage({
       {tab === "resumo" && (
         <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
           <div className="space-y-5">
-            <Bloco titulo="Pagamentos" acao={historiaAtiva && <Link href={`/fracoes/${property.id}?tab=pagamentos`} className="text-sm font-medium text-acao hover:underline">Histórico completo</Link>}>
+            <Bloco titulo="Pagamentos" acao={historiaAtiva && <Link href={tabHref("pagamentos")} className="text-sm font-medium text-acao hover:underline">Histórico completo</Link>}>
               {ultimosAnos.length === 0 ? (
                 <p className="text-sm text-tinta-2">{active ? "Ainda sem pagamentos registados." : "Sem contrato ativo."}</p>
               ) : (
                 <div className="space-y-4">
                   {ultimosAnos.map((y) => (
-                    <LinhaDoTempo key={y.year} ano={y.year} meses={y.months} total={y.totalReceived} />
+                    <LinhaDoTempo key={y.year} ano={y.year} meses={y.months} total={y.totalReceived} contractId={historiaAtiva!.contract.id} />
                   ))}
                 </div>
               )}
@@ -461,7 +468,7 @@ export default async function FracaoPage({
 
             <Bloco
               titulo="Documentos"
-              acao={<Link href={`/fracoes/${property.id}?tab=documentos`} className="text-sm font-medium text-acao hover:underline">Todos</Link>}
+              acao={<Link href={tabHref("documentos")} className="text-sm font-medium text-acao hover:underline">Todos</Link>}
             >
               {docsDaFracao.length === 0 ? (
                 <p className="text-sm text-tinta-2">Nada arquivado.</p>
@@ -479,7 +486,7 @@ export default async function FracaoPage({
             {missingOutside12 > 0
               ? `${missingOutside12} ${missingOutside12 === 1 ? "mês em falta" : "meses em falta"} antes dos últimos 12 meses${referenceRent !== null ? ` (cerca de ${fmtEur(missingOutside12 * referenceRent)} à renda atual)` : ""}.`
               : "Nenhum mês em falta antes dos últimos 12 meses."}
-            {cessadosOcultos > 0 && ` ${cessadosOcultos} ${cessadosOcultos === 1 ? "contrato terminado fica" : "contratos terminados ficam"} de fora; o histórico deles está na ficha do inquilino.`}
+            {cessadosOcultos > 0 && ` ${cessadosOcultos} contratos cessados têm consulta financeira preservada em Cobranças, incluindo saldos verificados.`}
           </p>
           {histories.length === 0 ? (
             <p className="text-sm text-tinta-2">Sem contrato ativo.</p>
@@ -488,7 +495,7 @@ export default async function FracaoPage({
               <Bloco key={h.contract.id} titulo={histories.length > 1 ? `${nomeProprio(h.contract.tenant_name)} · desde ${fmtDate(h.contract.start_date)}` : "Ano a ano"}>
                 <div className="space-y-4">
                   {h.years.slice().reverse().map((y) => (
-                    <LinhaDoTempo key={y.year} ano={y.year} meses={y.months} total={y.totalReceived} />
+                    <LinhaDoTempo key={y.year} ano={y.year} meses={y.months} total={y.totalReceived} contractId={h.contract.id} />
                   ))}
                 </div>
               </Bloco>
@@ -670,47 +677,6 @@ function ProximoPasso({ titulo, children }: { titulo: string; children: React.Re
   );
 }
 
-const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-/** Um ano em 12 células: a altura é a fração da renda que entrou; o eixo vive FORA das
- *  células (a faixa repetia o nome do mês dentro de cada uma). */
-function LinhaDoTempo({ ano, meses, total }: { ano: number; meses: MonthCellData[]; total: number }) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between text-xs">
-        <span className="font-semibold text-tinta-2">{ano}</span>
-        <Money value={total} escala="sm" tom="tinta-2" />
-      </div>
-      <div className="grid grid-cols-12 gap-1">
-        {meses.map((m) => {
-          const fr = m.expected > 0 ? Math.min(1, m.paid / m.expected) : 0;
-          return (
-            <div
-              key={m.month}
-              title={`${monthLabel(m.month)}: ${fmtEur(m.paid)}`}
-              className={cn(
-                "relative h-9 overflow-hidden rounded-[4px]",
-                m.status === "falta" && "bg-perda-tenue shadow-[inset_0_-3px_0_var(--color-perda)]",
-                m.status === "fora" && "bg-vellum",
-                m.status === "futuro" && "tecido-futuro",
-                (m.status === "pago" || m.status === "parcial") && "bg-vellum",
-              )}
-            >
-              {(m.status === "pago" || m.status === "parcial") && (
-                <span
-                  className={cn("absolute inset-x-0 bottom-0", m.status === "pago" ? "bg-tinta" : "bg-atencao")}
-                  style={{ height: `${Math.max(12, fr * 100)}%` }}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-1 grid grid-cols-12 gap-1 text-center text-[10px] text-tinta-3">
-        {MES_CURTO.map((m) => (
-          <span key={m}>{m}</span>
-        ))}
-      </div>
-    </div>
-  );
+function LinhaDoTempo({ ano, meses, total, contractId }: { ano: number; meses: MonthCellData[]; total: number; contractId: string }) {
+  return <Faixa meses={meses.map((m) => m.month)} linhas={[{ id: contractId, contractId, nome: String(ano), sub: "Registos do ano", href: `/cobrancas/${contractId}`, estado: "arrendado", celulas: meses, valor: total, nota: "líquido registado" }]} horizon={meses.filter((m) => m.status !== "futuro" && m.status !== "fora").at(-1)?.month ?? null} carteira={[]} />;
 }

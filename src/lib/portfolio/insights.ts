@@ -252,11 +252,11 @@ const GERADORES: Gerador[] = [
       {
         kind: "atraso",
         grupo: "risco",
-        titulo: `Cobrar ${n} ${n === 1 ? "contrato em atraso" : "contratos em atraso"}`,
+        titulo: `Verificar saldo de ${n} ${n === 1 ? "contrato" : "contratos"}`,
         // V4: o número grande é a perda esperada; a dívida crua vai por extenso no porquê,
         // senão a tarefa contradizia o "em atraso" do cartão do mês (que é a dívida).
         porque:
-          `Em dívida ${fmtEur(divida)}; se ninguém cobrar, perde-se perto de ${fmtEur(total)}. ` +
+          `Saldo inferido de recibos: ${fmtEur(divida)}, por verificar. O impacto estatístico estimado é ${fmtEur(total)}; não confirma dívida ou perda. ` +
           `Maiores: ${piores.join(", ")}${n > 3 ? `, e outros ${n - 3}` : ""}.`,
         euros: total,
         confianca: "estimado",
@@ -264,7 +264,7 @@ const GERADORES: Gerador[] = [
           s.risco.esperada > 0
             ? `Σ valor_mês × (1 − cura(idade)) × (1 − p̂). A soma crua dos meses em falta daria ${fmtEur(ingenua)}; a diferença é o que a carteira historicamente recupera sozinha. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`
             : `Σ (meses em falta × renda de referência), com cap de 24 meses por contrato. Deriva de RECIBOS: renda paga em dinheiro sem recibo aparece aqui como atraso.`,
-        acoes: [{ label: "Ver atrasos", href: "/imoveis?f=atraso" }],
+        acoes: [{ label: "Verificar saldos", href: "/imoveis?f=atraso" }],
       },
     ];
   },

@@ -115,18 +115,20 @@ export function projetar({
   payments,
   hoje,
   meses = 24,
+  horizons,
 }: {
   contracts: Contract[];
   payments: PaymentLight[];
   hoje: Date;
   meses?: number;
+  horizons?: Map<string, string>;
 }): MesProjetado[] {
   const mesHoje = monthKeyFromDate(hoje);
   const horizonte = horizonteDeDados(payments, mesHoje);
   const somas = somasPorContratoEMes(payments);
 
   const historicos = new Map(
-    contracts.map((c) => [c.id, historicoDoContrato(c, somas, horizonte)]),
+    contracts.map((c) => [c.id, historicoDoContrato(c, somas, horizons ? horizons.get(c.id) ?? null : horizonte)]),
   );
   const prior: PriorCarteira = priorDaCarteira(Array.from(historicos.values()));
   const pPorContrato = new Map<string, PPagar>(

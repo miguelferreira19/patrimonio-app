@@ -55,7 +55,7 @@ export default async function CarteiraPage({
   }>;
 }) {
   const sp = await searchParams;
-  const janela = JANELAS.includes(Number(sp.meses) as 12 | 24) ? Number(sp.meses) : 24;
+  const janela = JANELAS.includes(Number(sp.meses) as 12 | 24) ? Number(sp.meses) : 12;
   const soAtraso = sp.filtro === "atraso";
   const porSenhorio = sp.grupo === "senhorio";
 
@@ -104,7 +104,7 @@ export default async function CarteiraPage({
     <div className="space-y-8">
       <Lede
         eyebrow={`Carteira · ${LENTES[lente]}`}
-        title={<Money value={heroi.valor} escala="hero" tom={heroi.tom} />}
+        title={`Histórico mensal · ${LENTES[lente]}`}
         actions={
           isAdmin ? (
             <>
@@ -116,7 +116,7 @@ export default async function CarteiraPage({
           ) : undefined
         }
       >
-        {heroi.legenda}
+        {heroi.legenda} Valores por inteiro; registos de recibos sujeitos a confirmação dos pagamentos.
       </Lede>
 
       {/* Os números que a frase-título carregava, agora em voz baixa: confere-se aqui em
@@ -229,6 +229,7 @@ function linhaDe(a: Ativo, lente: Lente, janela: number): LinhaFaixa {
     id: a.property.id,
     nome: a.property.name,
     href: `/fracoes/${a.property.id}`,
+    contractId: c?.id,
     celulas: a.faixa.slice(-janela),
     estado: (!c ? "vago" : (arr?.streak ?? 0) > 0 ? "atencao" : "arrendado") as LinhaFaixa["estado"],
   };

@@ -62,13 +62,14 @@ export default async function SaudePage({ searchParams }: { searchParams: Promis
     today: snap.hoje,
   });
   const counts = countBySeverity(issues);
+  const affected = issues.reduce((n, i) => n + (i.affectedCount ?? 1), 0);
   const filtro = ["erro", "aviso", "info"].includes(gravidade ?? "") ? gravidade as HealthSeverity : null;
   const visiveis = filtro ? issues.filter((i) => i.severity === filtro) : issues;
   const groups = groupByKind(visiveis);
 
   return (
     <div className="space-y-4">
-      <header><h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">Verificar os dados</h1><p className="mt-2 text-sm text-tinta-2">Começa pelos erros, depois confirma os avisos. Abre uma ocorrência para consultar a ficha.</p></header>
+      <header><h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">Verificar os dados</h1><p className="mt-2 text-sm text-tinta-2">{groupByKind(issues).length} tipos de problema · {affected} registos assinalados, podendo um registo ter várias verificações. Abre uma ocorrência para consultar e corrigir a ficha.</p></header>
       <nav aria-label="Gravidade das ocorrências" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {([null, "erro", "aviso", "info"] as const).map((g) => <Link key={g ?? "todos"} href={g ? `/saude?gravidade=${g}` : "/saude"} aria-current={filtro === g ? "page" : undefined} className={cn("rounded-2xl border bg-carta p-4 transition-colors hover:border-regua-forte", filtro === g ? "border-tinta" : "border-regua")}><p className="text-sm text-tinta-2">{g === null ? "Todas" : g === "erro" ? "Erros" : g === "aviso" ? "Avisos" : "A completar"}</p><p className={cn("mt-2 text-2xl font-semibold tabular-nums", g === "erro" && counts.erro > 0 ? "text-perda" : g === "aviso" && counts.aviso > 0 ? "text-atencao" : "text-tinta")}>{g === null ? issues.length : counts[g]}</p><p className="mt-1 text-xs text-tinta-3">{g === null ? "ocorrências na carteira" : g === "erro" ? "podem afetar os números" : g === "aviso" ? "a confirmar" : "informação em falta"}</p></Link>)}
       </nav>
@@ -85,7 +86,7 @@ export default async function SaudePage({ searchParams }: { searchParams: Promis
           <Card
             key={kind}
             title={KIND_LABEL[kind] ?? kind}
-            subtitle={`${list.length} ${list.length === 1 ? "ocorrência" : "ocorrências"}`}
+            subtitle={`${list.reduce((n, i) => n + (i.affectedCount ?? 1), 0)} registos assinalados`}
             actions={<Badge tone={TONE[list[0].severity]}>{SEVERITY_LABEL[list[0].severity]}</Badge>}
           >
             <ul className="divide-y divide-regua">

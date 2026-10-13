@@ -79,7 +79,7 @@ function status(over: Partial<Parameters<typeof monthCellStatus>[0]> = {}) {
 // F — os títulos distinguem "não pagou" de "não sei": é a diferença que a V1 apagava.
 {
   const base: MonthCellData = { month: "2026-05-01", status: "falta", paid: 0, expected: 400 };
-  assert.ok(monthCellTitle(base).includes("em falta"));
+assert.ok(monthCellTitle(base).includes("por verificar"));
   assert.ok(
     monthCellTitle({ ...base, status: "futuro" }).includes("não importado"),
     "o estado futuro tem de dizer que a app não sabe, não que faltou",

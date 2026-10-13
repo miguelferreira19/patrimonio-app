@@ -133,7 +133,7 @@ function Fluxo({ snap }: { snap: Snapshot }) {
 
 const ETIQUETA: Record<Insight["grupo"], { tom: "acao" | "perda" | "futuro" | "atencao"; texto: string }> = {
   fazer: { tom: "acao", texto: "Este mês" },
-  risco: { tom: "perda", texto: "Risco" },
+  risco: { tom: "atencao", texto: "Risco" },
   saber: { tom: "futuro", texto: "Por saber" },
   poupar: { tom: "atencao", texto: "Oportunidade" },
 };
@@ -218,7 +218,7 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
   return (
     <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5">
       <div className="flex items-start justify-between gap-3">
-        <div><Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "perda" : "tinta"} /><p className="mt-1 text-xs text-tinta-3">{item.grupo === "saber" ? "Valor por confirmar" : item.kind === "recibo_por_emitir" ? "Renda bruta a documentar" : item.kind === "atraso" ? "Perda esperada" : "Impacto estimado"}</p></div>
+        <div><Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "atencao" : "tinta"} /><p className="mt-1 text-xs text-tinta-3">{item.grupo === "saber" ? "Valor por confirmar" : item.kind === "recibo_por_emitir" ? "Renda bruta a documentar" : item.kind === "atraso" ? "Impacto estimado · recibos" : "Impacto estimado"}</p></div>
         <Badge tone={et.tom}>{et.texto}</Badge>
       </div>
       <div>
@@ -296,7 +296,7 @@ function Atrasados({ snap }: { snap: Snapshot }) {
     <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
       <h2 className="text-lg font-semibold tracking-[-0.01em]">Quem está em atraso</h2>
       {atrasados.length === 0 ? (
-        <p className="mt-2 text-sm text-tinta-2">Ninguém. Todos os meses anteriores estão pagos.</p>
+        <p className="mt-2 text-sm text-tinta-2">Os registos disponíveis dos meses anteriores estão completos.</p>
       ) : (
         <ul className="mt-2 divide-y divide-regua">
           {atrasados.map((a) => (
@@ -310,7 +310,7 @@ function Atrasados({ snap }: { snap: Snapshot }) {
                   {a.arrears && `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} sem pagar`}
                 </p>
               </div>
-              <Money value={a.arrears?.debt ?? 0} tom="perda" className="shrink-0" />
+              <Money value={a.arrears?.debt ?? 0} tom="atencao" className="shrink-0" />
             </li>
           ))}
         </ul>

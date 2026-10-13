@@ -24,27 +24,32 @@ import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
 import { DeviationBadge } from "@/components/kit/badges";
 import { sum } from "@/lib/calc";
 import { getSession } from "@/lib/data";
-import { getSnapshotLeve } from "@/lib/portfolio";
+import { getSnapshotComRaw } from "@/lib/portfolio";
+import { OwnerSelection, ScopeFilters } from "@/components/gestao/operacional";
+import { shareOf, AMBITO_LABEL, type Ambito } from "@/lib/gestao";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function MercadoPage() {
+export default async function MercadoPage({ searchParams }: { searchParams: Promise<{ ambito?: string; senhorio?: string }> }) {
   await getSession();
 
   // Fase 1: o marketView de cada fração já vem calculado no snapshot (PLANO.md §7.1).
   // P0-2c continua garantido: `correntes` exclui terrenos e imóveis vendidos.
-  const snap = await getSnapshotLeve();
+  const q = await searchParams ?? {}; const { snap, raw } = await getSnapshotComRaw(); const scope: Ambito = ["carteira", "proprietario"].includes(q.ambito ?? "") ? q.ambito as Ambito : "inteiro";
+  if (scope === "proprietario" && !raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Valor estimado dos imóveis" q={q} landlords={raw.landlords} action="/relatorios" hidden={{ tab: "mercado" }} />;
+  const share = (id: string) => shareOf(id, raw.owners, raw.landlords, scope, q.senhorio);
 
   const linhas = snap.correntes
-    .map((a) => ({ property: a.property, contract: a.activeContract ?? undefined, mv: a.mercado }))
+    .filter((a) => share(a.property.id) !== null)
+    .map((a) => ({ property: a.property, contract: a.activeContract ? { ...a.activeContract, rent: a.activeContract.rent * share(a.property.id)! } : undefined, mv: { ...a.mercado, estimatedValue: a.mercado.estimatedValue === null ? null : a.mercado.estimatedValue * share(a.property.id)!, gapEurMonth: a.mercado.gapEurMonth === null ? null : a.mercado.gapEurMonth * share(a.property.id)! } }))
     .sort((a, b) => (a.mv.deviation ?? Infinity) - (b.mv.deviation ?? Infinity));
 
   const comparaveis = linhas.filter((r) => r.mv.benchmark !== undefined);
   const comDesvio = linhas.filter((r) => r.mv.deviation !== null);
   const comValor = linhas.filter((r) => r.mv.estimatedValue !== null);
 
-  const potencialMes = snap.mercado.potencialMes;
+  const potencialMes = sum(linhas.map((r) => r.mv.gapEurMonth));
   const abaixo = comDesvio.filter((r) => r.mv.deviation! <= -0.1);
   const valorCarteira = sum(comValor.map((r) => r.mv.estimatedValue));
   const rendaAnual = sum(comValor.map((r) => (r.contract?.rent ?? 0) * 12));
@@ -56,10 +61,11 @@ export default async function MercadoPage() {
   if (comparaveis.length === 0) {
     return (
       <div className="space-y-6">
-        <Lede eyebrow="Mercado" title="Ainda não há com que comparar.">
+        <Lede title="Mercado · dados insuficientes">
           Nenhuma fração encontrou território no INE. Em <strong>Admin</strong>, atualiza os
           benchmarks e confirma a freguesia e a área nas fichas.
         </Lede>
+        <ScopeFilters q={q} landlords={raw.landlords} action="/relatorios" period={false} search={false} hidden={{ tab: "mercado" }} />
         <EmptyState icon={Building2}>Sem medianas carregadas.</EmptyState>
       </div>
     );
@@ -67,7 +73,7 @@ export default async function MercadoPage() {
 
   return (
     <div className="space-y-8">
-      <Lede eyebrow="Mercado" title={<Money value={valorCarteira} escala="hero" />}>
+      <Lede title="Valor estimado dos imóveis com dados suficientes">
         O que a carteira valeria hoje, em {comValor.length} de {linhas.length} frações: as que têm
         área medida e mediana de venda do INE.{" "}
         <Confianca
@@ -75,6 +81,8 @@ export default async function MercadoPage() {
           conta={`Σ área × mediana de venda (€/m²) das ${comValor.length} frações de habitação com área conhecida = ${fmtEur(valorCarteira)}. É uma ordem de grandeza a partir de medianas públicas, nunca uma avaliação.`}
         />
       </Lede>
+      <ScopeFilters q={q} landlords={raw.landlords} action="/relatorios" period={false} search={false} hidden={{ tab: "mercado" }} />
+      <div><p className="text-sm text-tinta-2">{AMBITO_LABEL[scope]} · {comValor.length} de {linhas.length} frações no âmbito · estimativa pelas últimas medianas disponíveis</p><div className="mt-2"><Money value={valorCarteira} escala="hero" /></div>{snap.correntes.length > linhas.length && <p className="mt-3 text-xs text-tinta-2">{snap.correntes.length - linhas.length} frações fora do âmbito ou sem quota conhecida.</p>}</div>
 
       <Seccao titulo="Leitura da carteira">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
@@ -141,6 +149,8 @@ export default async function MercadoPage() {
                   <p className="mt-0.5 text-xs text-tinta-3">
                     {property.parish ?? "freguesia por preencher"}
                     {mv.benchmark?.level === "concelho" && " · mediana do concelho"}
+                    {mv.rentBenchmark && ` · rendas INE ${mv.rentBenchmark.period}, ${mv.rentBenchmark.municipality}`}
+                    {mv.saleBenchmark && ` · vendas INE ${mv.saleBenchmark.period}, ${mv.saleBenchmark.municipality}`}
                     {contract ? ` · ${fmtEur(contract.rent)}/mês` : " · sem contrato"}
                   </p>
                 </div>
@@ -162,7 +172,7 @@ export default async function MercadoPage() {
               {mv.benchmark !== undefined && (
                 <details className="mt-1.5 text-xs">
                   <summary className="inline-flex cursor-pointer select-none text-tinta-3 transition-colors duration-150 hover:text-tinta-2">
-                    a conta
+                    Como foi calculado
                   </summary>
                   <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-tinta-2 sm:grid-cols-4">
                     <Linha

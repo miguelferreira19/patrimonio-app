@@ -3,6 +3,7 @@ node_modules/
 out/
 build/
 .check/
+__pycache__/
 
 # Segredos — NUNCA commitar
 .env
@@ -20,4 +21,5 @@ next-env.d.ts
 .DS_Store
 
 .vercel
+.impeccable/review/
 .env*

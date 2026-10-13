@@ -66,7 +66,7 @@ export function Agenda({
       )}
       {contratosSemFim > 0 && (
         <p className="mt-2 text-xs text-tinta-3">
-          Os fins de contrato não entram: {contratosSemFim} contratos ativos não têm data de fim na base.
+          {contratosSemFim} contratos ativos têm prazos por confirmar e não geram datas de fim na agenda.
         </p>
       )}
     </section>

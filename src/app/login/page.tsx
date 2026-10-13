@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Marca } from "@/components/marca";
 import { redirect } from "next/navigation";
 import { FileText, LineChart, ShieldCheck } from "lucide-react";
 import { createClient, supabaseConfigured } from "@/lib/supabase/server";
@@ -25,10 +25,7 @@ export default async function LoginPage() {
       {/* Painel de marca */}
       <div className="login-glow relative hidden w-[45%] flex-col overflow-hidden p-10 lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3fb39b]/15">
-            <Image src="/marca.svg" alt="" width={32} height={32} className="size-8" />
-          </span>
-          <span className="text-lg font-semibold text-white">Património</span>
+          <Marca dark />
         </div>
 
         <div className="flex flex-1 flex-col justify-center">
@@ -49,6 +46,7 @@ export default async function LoginPage() {
       {/* Formulário */}
       <div className="flex flex-1 items-center justify-center bg-papel p-6">
         <div className="w-full max-w-sm">
+          <div className="mb-8 lg:hidden"><Marca /></div>
           <div className="mb-8">
             <h1 className="text-2xl font-semibold tracking-tight text-tinta">Entrar</h1>
             <p className="mt-1 text-sm text-tinta-2">Gestão de arrendamentos da família</p>

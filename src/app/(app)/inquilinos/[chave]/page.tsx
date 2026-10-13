@@ -38,9 +38,9 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
     <div className="space-y-6">
       <Lede
         eyebrow={ficha.ativos > 0 ? "Arrendatário" : "Arrendatário (sem contrato ativo)"}
-        title={<Money value={ficha.rendaMensal} escala="hero" />}
+        title={ficha.nome}
       >
-        {ficha.nome}
+        Renda contratada mensal: <Money value={ficha.rendaMensal} escala="lg" /> · ilíquida · imóveis por inteiro
         {ficha.nif ? ` · NIF ${ficha.nif}` : ""}
         {ficha.ativos > 0
           ? ` · ${ficha.ativos} ${ficha.ativos === 1 ? "contrato ativo" : "contratos ativos"}`
@@ -60,10 +60,10 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
 
       <Seccao titulo="Comportamento">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-          <Facto rotulo="Recebido (12 meses)" valor={<Money value={ficha.recebido12m} escala="lg" />} />
+          <Facto rotulo="Líquido registado (12 meses)" valor={<Money value={ficha.recebido12m} escala="lg" />} />
           <Facto
-            rotulo="Em dívida"
-            valor={<Money value={ficha.divida} escala="lg" tom={ficha.divida > 0 ? "perda" : "tinta-2"} />}
+            rotulo="Saldo inferido a verificar"
+            valor={<Money value={ficha.divida} escala="lg" tom={ficha.divida > 0 ? "atencao" : "tinta-2"} />}
           />
           <Facto
             rotulo="Estado"
@@ -74,22 +74,18 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
             }
           />
           <Facto
-            rotulo="Probabilidade de pagar"
+            rotulo="Estimativa de registo mensal"
             valor={
-              ficha.pPagar === null ? (
-                <span className="text-[15px] text-tinta-3">por saber</span>
+              ficha.pPagar === null || contratosAtivos.some((c) => !c.risco || c.risco.p.n < 6) ? (
+                <span className="text-[15px] text-tinta-3">dados insuficientes</span>
               ) : (
                 <Figure value={fmtPct(ficha.pPagar, 0)} escala="lg" />
               )
             }
           />
         </dl>
-        <p className="mt-3 text-xs text-tinta-3">
-          O recebido são os 12 meses da janela da carteira, não o histórico todo. A dívida e o
-          estado são só dos contratos ATIVOS: o que ficou por pagar num contrato cessado não se
-          cobra a quem já saiu. A probabilidade é a do risco da carteira (Beta-Binomial com
-          shrinkage), ponderada pela renda de cada contrato.
-        </p>
+        <p className="mt-3 text-xs leading-relaxed text-tinta-2">Base: últimos 12 meses documentados, sujeita à cobertura de cada fonte. O estado “crítico” assinala a urgência de revisão de meses anteriores; não significa uma probabilidade nula de pagamento. Os saldos de contratos cessados continuam consultáveis em Cobranças.</p>
+        <details className="mt-3 text-xs text-tinta-2"><summary className="cursor-pointer text-acao">Como foi calculado</summary><p className="mt-2 max-w-[72ch] leading-relaxed">A estimativa refere-se à ocorrência de receita documentada num mês de referência, sem um prazo fixo para cobrança. É ponderada pela renda e combina o histórico do contrato com o da carteira. Com menos de seis meses de referência num contrato ativo mostra dados insuficientes. Recibos não confirmam movimentos bancários. Saldos inferidos usam a renda histórica de referência e exigem verificação.</p><p className="mt-2">{contratosAtivos.map((c) => `${c.contract.tenant_name}: ${c.risco?.p.n ?? 0} meses de referência`).join(" · ")}</p></details>
       </Seccao>
 
       <Seccao titulo="Contratos" valor={<Money value={ficha.rendaMensal} escala="sm" tom="tinta-2" />}>

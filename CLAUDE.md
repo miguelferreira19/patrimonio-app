@@ -4,6 +4,9 @@ Contexto operacional para agentes. Plano completo, backlog e conhecimento de dom
 (o Apêndice A desse ficheiro é obrigatório antes de mexer em atrasos, import ou schema). Setup
 inicial: SETUP.md.
 
+**Roteiro ativo desde 13/10/2026: PLANO_CLAREZA.md** (atrasos, devedores, herança, rentabilidade,
+5 destinos). Prevalece sobre os planos anteriores; o domínio do PLANO.md mantém-se.
+
 ## O que é
 App interna (família) de gestão de ~50 arrendamentos: frações, contratos, recibos do Portal das
 Finanças, pagamentos, despesas, benchmarks INE, atrasos, IRS. **PT-PT sempre.** Ótica de FAMÍLIA:
@@ -306,3 +309,35 @@ os contratos mudam de fonte sozinhos.
 Lista completa e priorizada em **PLANO.md, Apêndice B**. O mais urgente: colar no SQL Editor o bloco
 "V2 · FASE 0" do fim de `supabase/schema.sql` (índices únicos que só existiam no gerador Python,
 `receipts.cancelled`, índices de contrato-mês).
+
+## V5 · Gestão operacional e identidade (2026-10-09)
+
+Esta secção prevalece sobre as descrições históricas de navegação, pagamentos e import
+acima. Âmbito pedido: todo o anexo; manter a composição de Hoje. A aplicação direta da
+migração aditiva em produção foi expressamente autorizada pelo utilizador.
+
+- Navegação: Hoje, Imóveis, Cobranças, Contratos e prazos, Despesas, Manutenção,
+  Documentos e Relatórios; gestão e disponibilidade acessíveis também no telemóvel.
+  Rotas antigas continuam a funcionar. Administração continua separada.
+- `gestao.ts` e `portfolio/operacional.ts` distinguem evidência documental de movimentos
+  confirmados e saldos verificados. A faixa histórica reutiliza `monthcell.ts` e abre o
+  extrato mensal. Ausência de recibo não confirma dívida.
+- Escrita manual de movimentos foi agora pedida: `actions/gestao.ts`, RPCs transacionais,
+  identificação idempotente, repartição mensal, reconciliação, anulação e histórico
+  imutável. Só administradores escrevem; nunca apagar o movimento original.
+- `supabase/gestao-operacional.sql` é o bloco V5 do fim de `schema.sql`.
+  `node scripts/sync-gestao-schema.cjs` sincroniza-os. `scripts/validar-gestao.py` testa
+  dentro de uma transação revertida; `--aplicar` aplica apenas a migração após os testes.
+- A recolha agendada usa `scripts/importar_recibos_automatico.py`, chamado pelo ficheiro
+  local `dados/recolher_recibos.py`. Importa apenas recibos novos e recalcula só os meses
+  afetados, preservando movimentos confirmados, imóveis, quotas e contratos editados.
+  `python scripts/importar_recibos_automatico.py Pai --validar` verifica sem gravar.
+  O gerador integral antigo mantém-se para recuperação, não para a recolha automática.
+- Relatórios permitem imóvel por inteiro, quotas familiares conhecidas ou proprietário.
+  Uma despesa declarada por um proprietário já é a sua parte; reconstruções por quota
+  são estimativas explícitas. Fórmulas fiscais mantidas.
+- Marca central: `components/marca.tsx`, `public/brand/`, `scripts/gerar-marca.cjs`.
+  Casa com pátio e ala lateral, substituindo o P por pedido. `node scripts/gerar-icons.cjs`
+  regenera SVG, favicon e PNG de instalação.
+- Gate atual: build + 26 módulos de self-check. Documentação e validação final em
+  `IMPLEMENTACAO_GESTAO.md`; sistema visual em `DESIGN.md`.

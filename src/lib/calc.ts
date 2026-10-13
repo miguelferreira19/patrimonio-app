@@ -89,6 +89,8 @@ export interface MarketView {
   estimatedValue: number | null;  // área × mediana de venda €/m²
   grossYield: number | null;      // renda anual / valor estimado
   benchmark: MarketBenchmark | undefined;
+  rentBenchmark?: MarketBenchmark;
+  saleBenchmark?: MarketBenchmark;
 }
 
 export function marketView(
@@ -121,6 +123,8 @@ export function marketView(
     estimatedValue,
     grossYield,
     benchmark: rentBench ?? saleBench,
+    rentBenchmark: rentBench,
+    saleBenchmark: saleBench,
   };
 }
 

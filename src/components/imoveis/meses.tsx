@@ -10,7 +10,7 @@ import type { EstadoMes } from "@/lib/portfolio/imoveis";
 const COR: Record<EstadoMes, string> = {
   pago: "bg-tinta",
   parcial: "bg-[linear-gradient(to_top,var(--color-atencao)_55%,var(--color-vellum)_55%)]",
-  falta: "bg-perda",
+  falta: "bg-atencao",
   fora: "bg-vellum",
   // Hachura em ardósia CHEIA a 60%: a `tecido-futuro` da faixa (riscas em futuro-tenue)
   // quase desaparecia sobre o cartão branco, e "por importar" é o estado da fonte parada.
@@ -19,9 +19,9 @@ const COR: Record<EstadoMes, string> = {
 };
 
 const NOME: Record<EstadoMes, string> = {
-  pago: "pago",
+  pago: "registo completo",
   parcial: "parcial",
-  falta: "em falta",
+  falta: "por verificar",
   fora: "sem contrato",
   futuro: "por importar",
   curso: "em curso",

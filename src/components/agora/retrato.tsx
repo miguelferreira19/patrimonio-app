@@ -66,18 +66,18 @@ export function Retrato({ snap, className }: { snap: Snapshot; className?: strin
         valor={<Figure value={fmtPct(snap.ocupacao.taxa, 0)} escala="lg" />}
       />
       <Numero
-        label="Em atraso"
+        label="Saldo a verificar"
         nota={
           emAtraso === 0
-            ? "nenhum contrato em atraso"
-            : `${fmtEur(snap.risco.esperada)} de perda esperada`
+            ? "nenhum saldo inferido pendente"
+            : `${fmtEur(snap.risco.esperada)} de impacto estatístico estimado`
         }
         valor={
           <Figure
             value={String(emAtraso)}
             unit={emAtraso === 1 ? "contrato" : "contratos"}
             escala="lg"
-            tom={emAtraso > 0 ? "perda" : "tinta"}
+            tom={emAtraso > 0 ? "atencao" : "tinta"}
           />
         }
       />

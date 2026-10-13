@@ -21,7 +21,7 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
         <Money value={r.recebido} escala="hero" />
       </div>
       <p className="mt-2 text-sm text-tinta-2">
-        de <Money value={r.esperado} escala="sm" tom="tinta-2" /> esperados · {r.pagos} de {r.total} contratos pagos
+        de <Money value={r.esperado} escala="sm" tom="tinta-2" /> esperados · {r.pagos} de {r.total} contratos com registo completo
       </p>
       <div className="mt-5 flex h-3 overflow-hidden rounded-full bg-vellum" aria-hidden="true">
         <span className="h-full bg-tinta" style={{ width: `${pRecebido}%` }} />
@@ -29,22 +29,23 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
       <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-tinta-2">
         <li className="flex items-center gap-2">
           <i className="size-2.5 rounded-[3px] bg-tinta" />
-          Recebido <Money value={r.recebido} escala="sm" tom="tinta-2" />
+          Recebido registado <Money value={r.recebido} escala="sm" tom="tinta-2" />
         </li>
         <li className="flex items-center gap-2">
           <i className="size-2.5 rounded-[3px] bg-vellum ring-1 ring-regua-forte" />
           Por receber <Money value={r.porReceber} escala="sm" tom="tinta-2" />
         </li>
       </ul>
+      <p className="mt-2 text-xs text-tinta-2">Valores líquidos · imóveis por inteiro · recibos sujeitos a confirmação do pagamento.</p>
       {(r.atraso.valor > 0 || r.porSaber.contratos > 0) && (
         <div className="mt-5 space-y-1.5 border-t border-regua pt-4 text-[13px]">
           {r.atraso.valor > 0 && (
             <Link href="/imoveis?f=atraso" className="flex items-baseline justify-between gap-3 rounded-lg py-2 hover:bg-vellum">
               <span className="text-tinta-2 underline decoration-dotted underline-offset-4">
-                Em atraso de meses anteriores · {r.atraso.contratos}{" "}
+                Saldo inferido de meses anteriores · {r.atraso.contratos}{" "}
                 {r.atraso.contratos === 1 ? "contrato" : "contratos"}
               </span>
-              <Money value={r.atraso.valor} escala="sm" tom="perda" />
+              <Money value={r.atraso.valor} escala="sm" tom="atencao" />
             </Link>
           )}
           {r.porSaber.contratos > 0 && (
@@ -59,7 +60,7 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
       )}
       <details className="mt-4 text-xs leading-relaxed text-tinta-2">
         <summary className="cursor-pointer py-2 font-medium">Como ler estes valores</summary>
-        <p className="mt-1">Recebido é o valor líquido registado nos recibos importados. O esperado usa a renda de referência dos contratos com dados disponíveis. «Por receber» não confirma um atraso. Os contratos com recibos parados ficam na linha «Por saber».</p>
+        <p className="mt-1">Recebido é o valor líquido dos movimentos confirmados ou, na ausência destes, dos recibos importados. O esperado usa a renda de referência dos contratos com dados disponíveis. «Por receber» e os saldos inferidos não confirmam dívida. Os contratos com recibos parados ficam na linha «Por saber».</p>
       </details>
     </section>
   );

@@ -38,9 +38,9 @@ export interface MonthCellData {
 }
 
 export const MONTH_CELL_LABEL: Record<MonthCellStatus, string> = {
-  pago: "Pago",
-  parcial: "Parcial",
-  falta: "Em falta",
+  pago: "Recebido registado",
+  parcial: "Registo parcial",
+  falta: "Por verificar",
   fora: "Sem contrato",
   futuro: "Por importar",
 };
@@ -58,11 +58,11 @@ export function monthCellTitle(cell: MonthCellData): string {
   const label = monthLabel(cell.month);
   switch (cell.status) {
     case "pago":
-      return `${label}: pago (${fmtEur(cell.paid, 2)})`;
+      return `${label}: recebido registado (${fmtEur(cell.paid, 2)}), sujeito a confirmação do movimento`;
     case "parcial":
       return `${label}: parcial, recebido ${fmtEur(cell.paid, 2)} de ${fmtEur(cell.expected, 2)} (faltam ${fmtEur(cell.expected - cell.paid, 2)})`;
     case "falta":
-      return `${label}: em falta (esperado ${fmtEur(cell.expected, 2)})`;
+      return `${label}: pagamento por verificar (referência ${fmtEur(cell.expected, 2)}); ausência de recibo não comprova dívida`;
     case "fora":
       return `${label}: fora do período do contrato`;
     default:

@@ -13,4 +13,6 @@ dados/
 node_modules/
 .next/
 .check/
+__pycache__/
 *.tsbuildinfo
+.impeccable/review/

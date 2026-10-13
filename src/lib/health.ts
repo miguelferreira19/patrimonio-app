@@ -20,6 +20,7 @@ export interface HealthIssue {
   title: string;
   detail: string;
   href?: string;
+  affectedCount?: number;
 }
 
 /** Nem toda a linha de um `kind` tem a mesma gravidade: as quotas são erro quando passam
@@ -43,6 +44,8 @@ export const KIND_LABEL: Record<string, string> = {
   quotas: "Quotas de propriedade por fechar",
   recibos_orfaos: "Recibos sem contrato associado",
   ficha_incompleta: "Fichas de fração por completar",
+  inquilino_incompleto: "Identificação do inquilino por completar",
+  prazo_desconhecido: "Prazos contratuais por confirmar",
 };
 
 /** Ordem de apresentação (mais grave primeiro). */
@@ -241,13 +244,14 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
   for (const [propertyId, total] of quotaByProperty) {
     if (Math.abs(total - 100) <= QUOTA_TOLERANCE) continue;
     const excesso = total > 100;
+    if (!excesso && propById.get(propertyId)?.quota_remainder_kind === "externa") continue;
     issues.push({
       kind: "quotas",
       severity: excesso ? "erro" : "info",
       title: name(propertyId),
       detail: excesso
         ? `As quotas registadas somam ${total.toFixed(1)}%, mais do que a fração inteira. Alguém está a declarar parte a mais no Anexo F.`
-        : `Estão registados ${total.toFixed(1)}% de titulares; faltam ${(100 - total).toFixed(1)}%. Ou é compropriedade fora da família (legítimo), ou falta o comproprietário na base. Não afeta a ótica de família, só o IRS de cada um.`,
+        : `Estão registados ${total.toFixed(1)}% de titulares. Confirma se os restantes ${(100 - total).toFixed(1)}% pertencem a titulares externos ou se falta documentação. Os totais por quota usam apenas a parte conhecida.`,
       href: `/fracoes/${propertyId}`,
     });
   }
@@ -259,6 +263,8 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
       kind: "recibos_orfaos",
       severity: "aviso",
       title: `${orphanReceipts} recibos`,
+      affectedCount: orphanReceipts,
+      href: "/saude/recibos",
       detail:
         "Foram importados sem contrato associado, por isso não contam para pagamentos nem atrasos. Normalmente falta o contrato no Portal ou o nº de contrato não bate certo.",
     });
@@ -291,6 +297,10 @@ export function computeHealth(input: HealthInput): HealthIssue[] {
   }
 
   // 7) Fichas de fração incompletas — bloqueiam o €/m² vs INE na página de Mercado (P0-2).
+  for (const c of contracts.filter((c) => c.status === "ativo")) {
+    if (!c.tenant_nif) issues.push({ kind: "inquilino_incompleto", severity: "info", title: c.tenant_name, detail: "NIF do inquilino por confirmar. Completa a identificação no contrato após consultar a documentação.", href: `/contratos?id=${c.id}` });
+    if (c.term_kind === "desconhecido") issues.push({ kind: "prazo_desconhecido", severity: "info", title: c.tenant_name, detail: "Duração, renovação e pré-aviso ainda não foram verificados. A agenda não assume um fim de contrato.", href: `/contratos?id=${c.id}` });
+  }
   // A regra vive em calc.ts porque a tira de Cobertura conta o mesmo (PLANO.md §7).
   for (const p of properties) {
     const missing = missingFichaFields(p);

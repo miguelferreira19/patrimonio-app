@@ -53,13 +53,13 @@ export default async function AnoPage({
 
   const nomePorFracao = new Map(dados.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
   const destino = (ano: number, senhorio?: string) => emDinheiro
-    ? `/dinheiro?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`
+    ? `/relatorios?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`
     : `/ano/${ano}${senhorio ? `?senhorio=${senhorio}` : ""}`;
   const poupancaRegime = Math.abs(fy.autonomousTax - fy.englobedTax);
   const sobra = fy.netIncome - fy.bestTax;
 
   const degraus: Degrau[] = [
-    { label: "Rendas recebidas", valor: fy.grossRent, tipo: "entrada", nota: "recibos emitidos no ano, ilíquidos" },
+    { label: "Rendas documentadas", valor: fy.grossRent, tipo: "entrada", nota: "recibos emitidos no ano, ilíquidos" },
     {
       label: "Despesas dedutíveis",
       valor: fy.deductibleExpenses,

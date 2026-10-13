@@ -13,7 +13,7 @@
 // REVERSÍVEL: `masthead.tsx` e `nav.tsx` ficam intactos; voltar é trocar o import no
 // `(app)/layout.tsx`.
 
-import Image from "next/image";
+import { Marca as MarcaIdentidade } from "./marca";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +27,7 @@ import {
   Stethoscope,
   Users,
   Wallet,
+  ClipboardList, FileClock, ReceiptText, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "./ui";
@@ -51,14 +52,15 @@ const DESTINOS: Destino[] = [
     icon: Building2,
     dono: ["/imoveis", "/carteira", "/fracoes", "/inquilinos"],
   },
-  {
-    href: "/dinheiro",
-    label: "Dinheiro",
-    icon: Wallet,
-    dono: ["/dinheiro", "/ano", "/analise", "/irs", "/mercado", "/despesas"],
-  },
-  { href: "/arquivo", label: "Arquivo", icon: FolderOpen, dono: ["/arquivo", "/documentos", "/carta"] },
+  { href: "/cobrancas", label: "Cobranças", icon: ReceiptText, dono: ["/cobrancas", "/pagamentos", "/atrasos"] },
+  { href: "/contratos", label: "Contratos e prazos", icon: FileClock, dono: ["/contratos", "/carta"] },
+  { href: "/tarefas", label: "Tarefas", icon: ClipboardList, dono: ["/tarefas", "/gestao"] },
+  { href: "/despesas", label: "Despesas", icon: Wallet, dono: ["/despesas"] },
+  { href: "/manutencao", label: "Manutenção", icon: Wrench, dono: ["/manutencao", "/vagas"] },
+  { href: "/arquivo", label: "Documentos", icon: FolderOpen, dono: ["/arquivo", "/documentos"] },
+  { href: "/relatorios", label: "Relatórios", icon: Wallet, dono: ["/relatorios", "/dinheiro", "/ano", "/analise", "/irs", "/mercado"] },
 ];
+const MOBILE: Destino[] = [DESTINOS[0], DESTINOS[1], DESTINOS[2], { href: "/gestao", label: "Gestão", icon: ClipboardList, dono: ["/gestao", "/tarefas", "/contratos", "/despesas", "/manutencao", "/vagas", "/arquivo", "/documentos", "/carta"] }, DESTINOS[8]];
 
 const ADMIN: Array<{ href: string; label: string; icon: LucideIcon }> = [
   { href: "/senhorios", label: "Senhorios", icon: Users },
@@ -144,9 +146,9 @@ export function Shell({
       {/* ---------- Telemóvel: separadores em baixo ---------- */}
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-regua bg-carta/95 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-regua bg-carta/95 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 backdrop-blur-md md:hidden"
       >
-        {DESTINOS.map((d) => {
+        {MOBILE.map((d) => {
           const on = ativo(pathname, d);
           return (
             <Link
@@ -171,8 +173,7 @@ export function Shell({
 function Marca() {
   return (
     <Link href="/" className="flex items-center gap-2.5 px-1.5">
-      <Image src="/marca.svg" alt="" width={32} height={32} priority className="size-8" />
-      <span className="text-[17px] font-semibold tracking-[-0.01em] text-tinta">Património</span>
+      <MarcaIdentidade />
     </Link>
   );
 }

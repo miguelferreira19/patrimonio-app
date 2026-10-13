@@ -16,7 +16,7 @@ function property(id: string, over: Partial<Property> = {}): Property {
 
 function contract(id: string, over: Partial<Contract> = {}): Contract {
   return {
-    id, property_id: "p1", tenant_name: `Inquilino ${id}`, tenant_nif: null,
+    id, property_id: "p1", tenant_name: `Inquilino ${id}`, tenant_nif: "123456789",
     pf_contract_no: null, start_date: "2020-01-01", end_date: null, rent: 500,
     due_day: 1, status: "ativo", notes: null, ...over,
   };
@@ -291,3 +291,6 @@ function run(over: Partial<HealthInput> = {}) {
 }
 
 console.log("health: casos OK (A, B, C, C2, C3, C4, D, E, F, G, H, I, J)");
+
+assert.ok(run({ contracts: [contract("sem-nif", { tenant_nif: null })] }).some((i) => i.kind === "inquilino_incompleto"));
+assert.ok(!run({ properties: [property("p1", { quota_remainder_kind: "externa" })], owners: [{ property_id: "p1", landlord_id: "l", quota: 50 }] }).some((i) => i.kind === "quotas"));

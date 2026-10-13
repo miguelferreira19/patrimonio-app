@@ -107,7 +107,7 @@ export function Masthead({ role, email }: { role: Role; email: string | null }) 
         <div className="flex items-end justify-between gap-4 pb-3 pt-5 md:pt-7">
           <Link href="/" className="group flex items-baseline gap-3">
             <Image
-              src="/logo.png"
+              src="/brand/app-icon-small.svg"
               alt=""
               width={22}
               height={25}

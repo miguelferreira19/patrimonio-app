@@ -1127,3 +1127,12 @@ Bloqueiam **valor**, não código. Por ordem de impacto:
    aparecer na FICHA dessa fração, não nesta página — e as declarações de IRS
    (`dados/Pai/IRS_PAI.pdf`, `dados/Avo_Miguel/IRS_Miguel.pdf`) com o seletor em "Geral". Os
    contratos de arrendamento entram à medida que forem chegando.
+
+## Atualização de 9 de outubro de 2026 · Gestão operacional
+
+Pedido confirmado: todo o anexo e identidade própria baseada em casas. Migração aditiva
+aplicada em produção por autorização explícita, com testes transacionais revertidos e
+preservação dos dados financeiros. Implementação e validação em IMPLEMENTACAO_GESTAO.md.
+A recolha automática passou a importar apenas recibos novos, sem repor entidades ou
+quotas a partir de exports antigos. Datas contratuais, comprovativos e quotas sem evidência
+continuam por confirmar; os novos formulários permitem completar os dados documentados.

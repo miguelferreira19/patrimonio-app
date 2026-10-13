@@ -41,9 +41,11 @@ type Estado = { nome: string; ok: boolean; onde: string; erro?: string };
 export function Carregar({
   fracoes,
   destino,
+  onUploaded,
 }: {
   fracoes: FracaoOpcao[];
   destino?: FracaoOpcao;
+  onUploaded?: (paths: string[]) => void;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +64,9 @@ export function Carregar({
     setResultados([]);
     const supabase = createClient();
     const feitos: Estado[] = [];
+    const paths: string[] = [];
 
+    try {
     for (const file of Array.from(files)) {
       const escopo = destino?.matriz || escopoFixo || escopoSugerido(file.name, matrizes) || GERAL;
       // NUNCA `upsert: true`: o arquivo não tem versões, e um segundo "contrato.pdf" na
@@ -84,10 +88,14 @@ export function Carregar({
         onde: escopo === GERAL ? "Geral" : labelDe.get(escopo) ?? destino?.label ?? escopo,
         erro: error?.message,
       });
+      if (!error) paths.push(chave);
       setResultados([...feitos]);
     }
 
-    setAEnviar(false);
+    onUploaded?.(paths);
+    } catch {
+      setResultados([...feitos, { nome: "Envio interrompido", ok: false, onde: destino?.label ?? "Arquivo", erro: "Falha de ligação. Verifica os ficheiros já enviados e tenta novamente." }]);
+    } finally { setAEnviar(false); }
     if (inputRef.current) inputRef.current.value = "";
     router.refresh();
   }

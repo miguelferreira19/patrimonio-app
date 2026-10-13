@@ -22,7 +22,7 @@ import { fmtEur, monthLabel } from "@/lib/format";
 const SUPERFICIE: Record<MonthCellData["status"], string> = {
   pago: "bg-vellum",
   parcial: "bg-vellum/40",
-  falta: "border border-perda/25 bg-transparent",
+  falta: "border border-atencao/25 bg-transparent",
   fora: "tecido-vazio",
   futuro: "tecido-futuro",
 };
@@ -30,7 +30,7 @@ const SUPERFICIE: Record<MonthCellData["status"], string> = {
 const ROTULO: Record<MonthCellData["status"], string> = {
   pago: "font-medium text-tinta",
   parcial: "text-atencao",
-  falta: "text-perda",
+  falta: "text-atencao",
   fora: "text-tinta-3",
   futuro: "text-futuro",
 };
@@ -39,12 +39,16 @@ export function Celula({
   cell,
   onClick,
   showDeficit = false,
+  showMonth = true,
+  label,
   className,
 }: {
   cell: MonthCellData;
   onClick?: () => void;
   /** Mostra quanto falta, dentro da célula. Usado na grelha de 24 meses dos Atrasos. */
   showDeficit?: boolean;
+  showMonth?: boolean;
+  label?: string;
   className?: string;
 }) {
   const fill = fillFraction(cell);
@@ -61,11 +65,11 @@ export function Celula({
         />
       )}
       {cell.status === "falta" && (
-        <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] bg-perda" />
+        <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] bg-atencao" />
       )}
-      <span className="relative z-10 font-mono text-[10px] leading-tight">
+      {showMonth && <span className="relative z-10 font-mono text-[10px] leading-tight">
         {monthLabel(cell.month, false)}
-      </span>
+      </span>}
       {showDeficit && cell.status === "parcial" && (
         <span className="relative z-10 font-mono text-[10px] leading-tight tabular-nums">
           −{fmtEur(cell.expected - cell.paid, 0)}
@@ -94,7 +98,7 @@ export function Celula({
       type="button"
       onClick={onClick}
       title={titulo}
-      aria-label={`${monthLabel(cell.month)}: ${MONTH_CELL_LABEL[cell.status].toLowerCase()}`}
+      aria-label={`${label ? `${label} · ` : ""}${monthLabel(cell.month)}: ${MONTH_CELL_LABEL[cell.status].toLowerCase()}; abrir detalhe`}
       className={cn(
         classes,
         "transition-colors hover:border-acao/40 hover:bg-acao-tenue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-1 focus-visible:ring-offset-carta",

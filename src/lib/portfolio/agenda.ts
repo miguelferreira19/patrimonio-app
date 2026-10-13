@@ -24,7 +24,7 @@ export interface Prazo {
   /** Identificador estável: é o UID do evento no .ics, e não pode mudar entre exports,
    *  senão o calendário duplica o evento em vez de o atualizar. */
   id: string;
-  tipo: "fiscal" | "renda";
+  tipo: "fiscal" | "renda" | "contrato";
   titulo: string;
   detalhe: string;
   euros: number | null;

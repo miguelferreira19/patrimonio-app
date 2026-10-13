@@ -18,6 +18,7 @@
 // e as suas server actions foram apagados; uma correção pontual faz-se por SQL.
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Celula, CelulaLegenda } from "./celula";
 import { Money } from "@/components/kit";
@@ -35,6 +36,7 @@ export interface LinhaFaixa {
   /** Ponto à esquerda do nome: arrendado (tinta), vago (ardósia), atenção (âmbar). */
   estado: "arrendado" | "vago" | "atencao";
   href: string;
+  contractId?: string;
   celulas: MonthCellData[];
   /** Coluna da direita, ditada pela lente. `valor` é euros; `nota` é a linha de baixo. */
   valor: number | null;
@@ -74,6 +76,7 @@ export function Faixa({
   /** A faixa da carteira inteira: a última linha, e o que substitui o gráfico de fluxo. */
   carteira: MonthCellData[];
 }) {
+  const router = useRouter();
   // Índice do primeiro mês ALÉM da fronteira: é onde se desenha a linha vertical. -1
   // quando tudo o que está no ecrã já é conhecido.
   const iFronteira = horizon ? meses.findIndex((m) => m > horizon) : 0;
@@ -94,7 +97,7 @@ export function Faixa({
         {/* Largura mínima para cada célula ter ~20px: o rótulo do mês ("mai") em mono de
             10px precisa de 18. A 720px fixos, 24 meses davam células de 14px e os rótulos
             colavam uns aos outros ("mjunjulago"). Abaixo disto, a faixa faz scroll. */}
-        <div className="min-w-[820px] sm:min-w-[900px]">
+        <div style={{ minWidth: Math.max(680, meses.length * 44 + 310) }}>
           {/* Eixo: o ano no PRIMEIRO mês e depois só em cada janeiro. Marcar só os
               janeiros deixava uma janela que começa em agosto com uma única etiqueta,
               "2026", em cima de doze meses que em metade são de 2025 — quem lia a faixa
@@ -110,7 +113,7 @@ export function Faixa({
                     i === 0 || m.slice(5, 7) === "01" ? "font-medium text-tinta-2" : "text-tinta-3",
                   )}
                 >
-                  {i === 0 || m.slice(5, 7) === "01" ? m.slice(0, 4) : ""}
+                  <span className="block h-3">{i === 0 || m.slice(5, 7) === "01" ? m.slice(0, 4) : ""}</span><span className="mt-1 block">{monthLabel(m, false)}</span>
                 </span>
               ))}
               <Fronteira i={iFronteira} n={meses.length} rotulo />
@@ -139,7 +142,7 @@ export function Faixa({
 
                 <div className="relative grid flex-1 gap-[2px]" style={grelha}>
                   {l.celulas.map((c) => (
-                    <Celula key={c.month} cell={c} className="h-7" />
+                    <Celula key={c.month} cell={c} className="h-11" showMonth={false} label={l.nome} onClick={l.contractId ? () => router.push(`/cobrancas/${l.contractId}?mes=${c.month.slice(0, 7)}&voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`) : undefined} />
                   ))}
                   <Fronteira i={iFronteira} n={meses.length} />
                 </div>
@@ -161,7 +164,7 @@ export function Faixa({
               </div>
               <div className="relative grid flex-1 gap-[2px]" style={grelha}>
                 {carteira.map((c) => (
-                  <Celula key={c.month} cell={c} className="h-7" />
+                  <Celula key={c.month} cell={c} className="h-7" showMonth={false} />
                 ))}
                 <Fronteira i={iFronteira} n={meses.length} />
               </div>

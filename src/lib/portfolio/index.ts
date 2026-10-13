@@ -14,6 +14,7 @@ import { monthKeyFromDate, todayISO } from "../format";
 import { aimiPorSenhorio, construirAgenda, rendasDosAtivos } from "./agenda";
 import { loadRaw } from "./load";
 import { buildSnapshot, type Snapshot } from "./snapshot";
+import { declaredContractDates } from "../gestao";
 
 export const getSnapshot = cache(async (): Promise<Snapshot> => {
   const supabase = await createClient();
@@ -66,6 +67,11 @@ export async function getAgenda(dias: number, { comRendas }: { comRendas: boolea
     rendas: comRendas ? rendasDosAtivos(snap.correntes) : [],
     aimi: aimiPorSenhorio(raw.landlords, raw.owners, raw.properties),
   });
-  const contratosSemFim = raw.contracts.filter((c) => c.status === "ativo" && !c.end_date).length;
+  const cutoff = new Date(hoje + "T12:00:00Z"); cutoff.setUTCDate(cutoff.getUTCDate() + dias);
+  for (const c of raw.contracts.filter((c) => c.status === "ativo")) for (const [index, date] of declaredContractDates(c).entries()) {
+    if (date.date >= hoje && date.date <= cutoff.toISOString().slice(0, 10)) prazos.push({ id: `contrato-${c.id}-${index}`, data: date.date, tipo: "contrato", titulo: `${date.label} · ${c.tenant_name}`, detalhe: `Fonte: ${c.term_source}. Verificar a vigência da cláusula antes de agir.`, euros: null, confianca: "medido", href: `/contratos?id=${c.id}` });
+  }
+  prazos.sort((a, b) => a.data.localeCompare(b.data));
+  const contratosSemFim = raw.contracts.filter((c) => c.status === "ativo" && (!c.term_kind || c.term_kind === "desconhecido")).length;
   return { prazos, hoje, contratosSemFim };
 }

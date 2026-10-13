@@ -20,6 +20,7 @@ export interface Landlord {
   name: string;
   nif: string | null;
   notes: string | null;
+  in_portfolio?: boolean;
 }
 
 // "terreno" (não arrendável) e "vendido" (já não é da família) saem de todas as
@@ -41,12 +42,14 @@ export interface Property {
   matriz_article: string | null;
   status: PropertyStatus;
   notes: string | null;
+  quota_remainder_kind?: "por_confirmar" | "externa";
 }
 
 export interface PropertyOwner {
   property_id: string;
   landlord_id: string;
   quota: number;
+  quota_confirmed?: boolean;
 }
 
 export type ContractStatus = "ativo" | "cessado";
@@ -63,6 +66,14 @@ export interface Contract {
   due_day: number;
   status: ContractStatus;
   notes: string | null;
+  term_kind?: "desconhecido" | "sem_termo" | "prazo_certo";
+  expected_end_date?: string | null;
+  duration_months?: number | null;
+  renewal_months?: number | null;
+  notice_days_landlord?: number | null;
+  notice_days_tenant?: number | null;
+  term_source?: string | null;
+  terms_confirmed_at?: string | null;
 }
 
 export interface RentUpdate {
@@ -151,6 +162,7 @@ export interface Expense {
   amount: number;
   description: string | null;
   origem: ExpenseOrigem;
+  case_id?: string | null;
 }
 
 export interface MarketBenchmark {

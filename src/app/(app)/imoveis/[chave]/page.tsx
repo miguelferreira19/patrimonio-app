@@ -13,8 +13,10 @@ import { emAtrasoDaCarteira } from "@/lib/portfolio/insights";
 
 export const dynamic = "force-dynamic";
 
-export default async function Predio({ params }: { params: Promise<{ chave: string }> }) {
-  const { chave } = await params;
+export default async function Predio({ params, searchParams }: { params: Promise<{ chave: string }>; searchParams: Promise<{ voltar?: string }> }) {
+  const { chave } = await params; const q = await searchParams;
+  const back = q.voltar && /^\/imoveis(?:[/?]|$)/.test(q.voltar) ? q.voltar : "/imoveis";
+  const current = `/imoveis/${encodeURIComponent(chave)}?voltar=${encodeURIComponent(back)}`;
   const snap = await getSnapshot();
   const p = resumirPredios(snap).find((x) => x.chave === decodeURIComponent(chave));
   if (!p) notFound();
@@ -27,7 +29,7 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
   return (
     <div className="space-y-6">
       <nav aria-label="Localização" className="text-[13px] text-tinta-3">
-        <Link href="/imoveis" className="text-tinta-2 hover:text-tinta">
+        <Link href={back} className="text-tinta-2 hover:text-tinta">
           Imóveis
         </Link>{" "}
         / {p.nome}
@@ -36,7 +38,7 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
         <h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">{p.nome}</h1>
         <p className="mt-1.5 text-sm text-tinta-2">
           {p.morada ? `${p.morada} · ` : ""}
-          {p.fracoes.length} frações
+          {p.fracoes.length} frações · valores do imóvel por inteiro
           {p.correntes > 0 && ` · ${p.arrendadas} de ${p.correntes} arrendadas`}
           {titulares && ` · ${titulares}`}
         </p>
@@ -51,9 +53,9 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
           <p className="mt-1 text-xs text-tinta-3">por mês</p>
         </div>
         <div className="rounded-2xl border border-regua bg-carta px-4 py-3.5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">Em atraso</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">Saldo a verificar</p>
           <div className="mt-1.5">
-            <Money value={p.divida} escala="xl" tom={p.divida > 0 ? "perda" : "tinta"} />
+            <Money value={p.divida} escala="xl" tom={p.divida > 0 ? "atencao" : "tinta"} />
           </div>
           <p className="mt-1 text-xs text-tinta-3">meses anteriores</p>
         </div>
@@ -70,7 +72,7 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
           return (
             <li key={f.property.id}>
               <Link
-                href={`/fracoes/${f.property.id}`}
+                href={`/fracoes/${f.property.id}?voltar=${encodeURIComponent(current)}`}
                 className="flex items-center gap-4 px-4 py-3.5 transition-colors duration-150 hover:bg-vellum md:px-5"
               >
                 <div className="min-w-0 flex-1">
@@ -82,8 +84,8 @@ export default async function Predio({ params }: { params: Promise<{ chave: stri
                 {c && <Meses meses={meses} className="hidden sm:flex" />}
                 <div className="w-24 shrink-0 text-right">
                   {divida > 0 ? (
-                    <Badge tone="perda">
-                      <Money value={divida} escala="sm" tom="perda" />
+                    <Badge tone="atencao">
+                      <Money value={divida} escala="sm" tom="atencao" />
                     </Badge>
                   ) : c ? (
                     <span className="text-sm">

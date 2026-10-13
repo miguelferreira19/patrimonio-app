@@ -18,7 +18,11 @@ import { ProjecaoChart, type ProjecaoDatum } from "@/components/charts";
 import { Confianca, Figure, Lede, Money, Seccao } from "@/components/kit";
 import { buttonClass } from "@/components/ui";
 import { getSession } from "@/lib/data";
-import { getSnapshotComRaw } from "@/lib/portfolio";
+import { getSnapshotComRaw, buildSnapshot } from "@/lib/portfolio";
+import { scopeRaw } from "@/lib/portfolio/ambito";
+import { OwnerSelection, ScopeFilters } from "@/components/gestao/operacional";
+import { AMBITO_LABEL, type Ambito } from "@/lib/gestao";
+import { horizontePorContrato } from "@/lib/arrears";
 import { construirConselhos, type Conselho } from "@/lib/portfolio/conselhos";
 import { capacidadeDeInvestimento, projetar, resumoDaProjecao } from "@/lib/portfolio/futuro";
 import { concentracao, crescimento, rendasParadas, serieAnual } from "@/lib/portfolio/renda";
@@ -28,17 +32,23 @@ export const dynamic = "force-dynamic";
 
 const MESES_PROJETADOS = 24;
 
-export default async function AnalisePage() {
+export default async function AnalisePage({ searchParams }: { searchParams: Promise<{ ambito?: string; senhorio?: string }> }) {
   const { isAdmin } = await getSession();
   if (!isAdmin) redirect("/");
 
-  const { raw, snap, today } = await getSnapshotComRaw();
+  const q = await searchParams ?? {}; const original = await getSnapshotComRaw();
+  const scope: Ambito = ["carteira", "proprietario"].includes(q.ambito ?? "") ? q.ambito as Ambito : "inteiro";
+  if (scope === "proprietario" && !original.raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Projeção de receitas · 24 meses" q={q} landlords={original.raw.landlords} action="/relatorios" hidden={{ tab: "analise" }} />;
+  const scoped = scopeRaw(original.raw, scope, q.senhorio); const raw = scoped.raw; const today = original.today; const snap = scope === "inteiro" ? original.snap : buildSnapshot(raw, today);
+  const horizons = horizontePorContrato(original.raw.receiptsRecentes.flatMap((r) => r.landlord_id ? [{ ...r, landlord_id: r.landlord_id, issue_date: r.issue_date ?? null }] : []), today).porContrato;
+  const forecastContracts = raw.contracts.map((c) => c.status === "ativo" && c.term_kind === "prazo_certo" && c.terms_confirmed_at && c.term_source && c.expected_end_date ? { ...c, end_date: c.expected_end_date } : c);
 
   const projecao = projetar({
-    contracts: raw.contracts,
+    contracts: forecastContracts,
     payments: raw.payments,
     hoje: today,
     meses: MESES_PROJETADOS,
+    horizons,
   });
   const resumo = resumoDaProjecao(projecao);
   const capacidade = capacidadeDeInvestimento({ projecao, expenses: raw.expenses, hoje: today });
@@ -70,19 +80,19 @@ export default async function AnalisePage() {
   return (
     <div className="space-y-8">
       <Lede
-        eyebrow={`Próximos ${MESES_PROJETADOS} meses`}
-        title={<Money value={resumo.total} escala="hero" />}
+        title={`Projeção de receitas · ${MESES_PROJETADOS} meses`}
         actions={
           <Link href="/carteira?lente=risco" className="text-sm text-acao hover:underline">
             Ver o risco por fração
           </Link>
         }
       >
-        Receita esperada, entre {fmtEur(resumo.totalP10)} e {fmtEur(resumo.totalP90)}. É uma
-        simulação a partir dos teus próprios dados, não um conselho de investimento.
+        Cenário de receitas ilíquidas · {AMBITO_LABEL[scope]} · de {projecao[0]?.mes.slice(0, 7)} a {projecao.at(-1)?.mes.slice(0, 7)}. Não mede o saldo bancário disponível.
       </Lede>
-
-      <Recomendacoes conselhos={conselhos} temAreas={snap.correntes.some((a) => a.property.area_m2)} />
+      <ScopeFilters q={q} landlords={original.raw.landlords} action="/relatorios" period={false} search={false} hidden={{ tab: "analise" }} />
+      <div><p className="text-sm text-tinta-2">Receita esperada no cenário de 24 meses</p><div className="mt-2"><Money value={resumo.total} escala="hero" /></div><p className="mt-3 text-sm text-tinta-2">Banda de cenários: {fmtEur(resumo.totalP10)} a {fmtEur(resumo.totalP90)} · {raw.contracts.filter((c) => c.status === "ativo" && (!c.term_kind || c.term_kind === "desconhecido")).length} contratos com prazo desconhecido, mantidos no cenário de continuidade.{scoped.excluded > 0 && ` ${scoped.excluded} imóveis excluídos por quota desconhecida ou fora do âmbito.`}</p></div>
+      <details className="text-sm text-tinta-2"><summary className="cursor-pointer text-acao">Como foi calculado</summary><p className="mt-3 max-w-[72ch] leading-relaxed">A projeção multiplica as rendas contratuais pela estimativa de ocorrência de receita, ajustada ao histórico e à média da carteira. A cobertura é específica da fonte de cada contrato. Registos de recibos não confirmam movimentos bancários. Prazos certos documentados usam o fim previsto; prazos desconhecidos assumem continuidade, sem renovação ou novo arrendamento inventados. A banda soma limites individuais e não é um intervalo probabilístico do total. As despesas repetem a média dos últimos 12 meses, incluindo valores espelhados quando identificados. O resultado operacional precede impostos, financiamento e despesas não registadas; não representa dinheiro livre para investir.</p></details>
+      {scope === "inteiro" && <Recomendacoes conselhos={conselhos} temAreas={snap.correntes.some((a) => a.property.area_m2)} />}
 
       <Projecao resumo={resumo} capacidade={capacidade} projData={projData} />
 
@@ -191,7 +201,7 @@ function Projecao({
   return (
     <Seccao
       titulo="Projeção"
-      nota="A linha cheia é o esperado, o tracejado é o contratado. A distância entre os dois é o risco de crédito; a queda do tracejado são contratos a expirar."
+      nota="Receitas ilíquidas estimadas. A linha cheia é o esperado no cenário; o tracejado é o contratado. Fins previstos documentados condicionam a continuidade."
     >
       <ProjecaoChart data={projData} />
 
@@ -222,7 +232,7 @@ function Projecao({
           }
         />
         <Numero
-          label={capacidade.despesasConhecidas ? "Sobra em 24 meses" : "Entra em 24 meses"}
+          label={capacidade.despesasConhecidas ? "Resultado operacional projetado" : "Receita projetada"}
           valor={
             <Money
               value={capacidade.liquido24m ?? capacidade.receita24m}
@@ -232,7 +242,7 @@ function Projecao({
           }
           nota={
             capacidade.despesasConhecidas
-              ? "líquido, o que fica para investir"
+              ? `antes de impostos, financiamento e custos desconhecidos${capacidade.despesasEspelhadas ? "; inclui despesas espelhadas estimadas" : ""}`
               : "receita bruta: sem despesas registadas não há líquido"
           }
         />

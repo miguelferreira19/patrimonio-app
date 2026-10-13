@@ -202,3 +202,14 @@ const MES_HOJE = monthKeyFromDate(HOJE);
 }
 
 console.log("futuro.check.ts: OK (A, B, C, D, E, F, G)");
+
+// Uma emissão de outra fonte não aumenta o histórico em falta deste contrato.
+{
+  const c = contract({ start_date: "2025-01-01" });
+  const own = Array.from({ length: 6 }, (_, i) => pagamento({ ref_month: addMonthsKey("2025-01-01", i) }));
+  const mixed = [...own, pagamento({ contract_id: "outra-fonte", ref_month: "2025-12-01" })];
+  const expected = projetar({ contracts: [c], payments: own, hoje: HOJE, meses: 1 })[0];
+  const actual = projetar({ contracts: [c], payments: mixed, hoje: HOJE, meses: 1, horizons: new Map([[c.id, "2025-06-01"]]) })[0];
+  assert.deepEqual(actual, expected, "a fronteira da fonte mantém a projeção independente das emissões de terceiros");
+  assert.ok(projetar({ contracts: [c], payments: mixed, hoje: HOJE, meses: 1 })[0].esperado < actual.esperado);
+}
