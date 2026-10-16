@@ -29,7 +29,6 @@ import { OwnerSelection } from "@/components/gestao/operacional";
 import { shareOf, AMBITO_LABEL, type Ambito } from "@/lib/gestao";
 import { fmtEur, fmtNum, fmtPct } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
 
 export default async function MercadoPage({ searchParams }: { searchParams: Promise<{ ambito?: string; senhorio?: string }> }) {
   await getSession();
@@ -37,7 +36,7 @@ export default async function MercadoPage({ searchParams }: { searchParams: Prom
   // Fase 1: o marketView de cada fração já vem calculado no snapshot (PLANO.md §7.1).
   // P0-2c continua garantido: `correntes` exclui terrenos e imóveis vendidos.
   const q = await searchParams ?? {}; const { snap, raw } = await getSnapshotComRaw(); const scope: Ambito = ["carteira", "proprietario"].includes(q.ambito ?? "") ? q.ambito as Ambito : "inteiro";
-  if (scope === "proprietario" && !raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Valor estimado dos imóveis" q={q} landlords={raw.landlords} action="/relatorios" hidden={{ tab: "mercado" }} />;
+  if (scope === "proprietario" && !raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Valor estimado dos imóveis" q={q} landlords={raw.landlords} action="/rentabilidade" hidden={{ tab: "mercado" }} />;
   const share = (id: string) => shareOf(id, raw.owners, raw.landlords, scope, q.senhorio);
 
   const linhas = snap.correntes

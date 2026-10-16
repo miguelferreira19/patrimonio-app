@@ -58,7 +58,7 @@ export default async function Extrato({ searchParams }: { searchParams: Promise<
         <summary className="cursor-pointer text-acao">Como foram calculados os valores</summary>
         <p className="mt-3 max-w-[72ch] leading-relaxed">
           Um recibo emitido conta como renda paga. Um pagamento registado à mão substitui o recibo do mesmo mês, nunca se
-          soma. A renda é ilíquida; o recebido e o valor por pagar são líquidos da retenção na fonte do recibo. O mês em
+          soma. A renda é ilíquida; o recebido e o valor em atraso são líquidos da retenção na fonte do recibo. O mês em
           curso fica por receber até terminar. Sem recibos da fonte (recibos suspensos ou por importar) o mês fica sem
           informação.
         </p>

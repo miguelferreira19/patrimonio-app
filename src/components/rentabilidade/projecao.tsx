@@ -28,7 +28,6 @@ import { capacidadeDeInvestimento, projetar, resumoDaProjecao } from "@/lib/port
 import { concentracao, crescimento, rendasParadas, serieAnual } from "@/lib/portfolio/renda";
 import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
 
 const MESES_PROJETADOS = 24;
 
@@ -38,7 +37,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
 
   const q = await searchParams ?? {}; const original = await getSnapshotComRaw();
   const scope: Ambito = ["carteira", "proprietario"].includes(q.ambito ?? "") ? q.ambito as Ambito : "inteiro";
-  if (scope === "proprietario" && !original.raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Projeção de receitas · 24 meses" q={q} landlords={original.raw.landlords} action="/relatorios" hidden={{ tab: "analise" }} />;
+  if (scope === "proprietario" && !original.raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Projeção de receitas · 24 meses" q={q} landlords={original.raw.landlords} action="/rentabilidade" hidden={{ tab: "projecao" }} />;
   const scoped = scopeRaw(original.raw, scope, q.senhorio); const raw = scoped.raw; const today = original.today; const snap = scope === "inteiro" ? original.snap : buildSnapshot(raw, today);
   const horizons = horizontePorContrato(original.raw.receiptsRecentes.flatMap((r) => r.landlord_id ? [{ ...r, landlord_id: r.landlord_id, issue_date: r.issue_date ?? null }] : []), today).porContrato;
   const forecastContracts = raw.contracts.map((c) => c.status === "ativo" && c.term_kind === "prazo_certo" && c.terms_confirmed_at && c.term_source && c.expected_end_date ? { ...c, end_date: c.expected_end_date } : c);

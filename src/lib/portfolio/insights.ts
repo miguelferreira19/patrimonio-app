@@ -19,6 +19,30 @@ export const LIMIAR_ANUAL_EUR = 250;
 
 export type Grupo = "poupar" | "fazer" | "risco" | "saber";
 
+/** A ESPÉCIE do número de um insight (AUDITORIA_CLAREZA.md, ponto 1).
+ *
+ *  Era aqui que a fila mentia: `euros` estava documentado como "horizonte de um ano" e três
+ *  dos cinco cartões do Hoje não eram isso — uma dívida acumulada em 24 meses, um mês de
+ *  renda bruta e uma margem de erro apareciam no mesmo tamanho, ordenados pelo valor bruto.
+ *  Ordenar ou somar entre unidades diferentes é a origem dos "títulos de história por
+ *  detrás do KPI": o número não se explica sozinho, por isso precisava de uma frase.
+ *
+ *  Regra: a unidade mostra-se SEMPRE ao lado do número, e nunca se ordena nem se soma entre
+ *  unidades diferentes.
+ *
+ *  `sem_valor` não é um zero: é um facto real cujo valor a app NÃO consegue apurar.
+ *  Tratá-lo como 0 € produzia a linha absurda "1 abaixo de 250 €/ano, no total de 0 €" e
+ *  escondia a tarefa como se fosse ruído (AUDITORIA_CLAREZA.md, ponto 16). */
+export type Unidade = "por_ano" | "acumulado" | "este_mes" | "margem" | "sem_valor";
+
+export const UNIDADE_LABEL: Record<Unidade, string> = {
+  por_ano: "por ano",
+  acumulado: "acumulado",
+  este_mes: "este mês",
+  margem: "margem de erro",
+  sem_valor: "valor por apurar",
+};
+
 export const GRUPO_LABEL: Record<Grupo, string> = {
   poupar: "Dinheiro a poupar",
   fazer: "A fazer este mês",
@@ -43,8 +67,11 @@ export interface Insight {
   titulo: string;
   /** O porquê, com números. Sem isto o item não devia existir. */
   porque: string;
-  /** Valor em euros no horizonte de um ano. É o que ordena a fila e soma na linha de topo. */
+  /** Valor em euros. **Só é comparável com outro `euros` da MESMA `unidade`** — a fila
+   *  nunca ordena nem soma entre unidades diferentes. */
   euros: number;
+  /** A espécie do `euros`. Mostra-se sempre ao lado do número. */
+  unidade: Unidade;
   confianca: Nivel;
   /** A aritmética, em texto. Um valor sem conta visível não se mostra (PLANO.md §6.4). */
   conta?: string;
@@ -69,6 +96,7 @@ const GERADORES: Gerador[] = [
         titulo: `Emitir ${n} ${n === 1 ? "recibo" : "recibos"} de ${mesPorExtenso(s.meses[s.meses.length - 1])}`,
         porque: `${n} ${n === 1 ? "contrato ativo" : "contratos ativos"} ainda sem recibo do mês.`,
         euros: total,
+        unidade: "este_mes",
         confianca: "medido",
         conta: `Soma das rendas: ${fmtEur(total)}`,
         // Sem "Marcar pagamentos": o registo manual acabou em 2026-07-31, o dinheiro entra
@@ -93,6 +121,7 @@ const GERADORES: Gerador[] = [
         titulo: `Importar os recibos (a carteira está ${mesesAtras} meses atrás)`,
         porque: `A app só conhece até ${monthLabel(s.horizon)}. Até importares, todos os atrasos recentes são suspeitos.`,
         euros: emRisco,
+        unidade: "acumulado",
         confianca: "medido",
         conta: `${fmtEur(emRisco)} de dívida estimada que o import pode fazer desaparecer`,
         acoes: [{ label: "Importar", href: "/admin" }],
@@ -127,9 +156,10 @@ const GERADORES: Gerador[] = [
           .filter((v, i, arr) => arr.indexOf(v) === i)
           .join(" ou ")}.`,
         euros: elegiveis.reduce((acc, x) => acc + (x.r.annualSavings ?? 0), 0),
+        unidade: "por_ano",
         confianca: "estimado",
         conta: `(taxa autónoma − taxa reduzida) × renda anual, por contrato. Exige comunicação à AT (Portaria 110/2019).`,
-        acoes: [{ label: "Ver no IRS", href: "/relatorios?tab=irs" }],
+        acoes: [{ label: "Ver no IRS", href: "/impostos" }],
       });
     }
     if (porConfirmar.length > 0) {
@@ -141,6 +171,7 @@ const GERADORES: Gerador[] = [
         titulo: `Confirmar o prazo de ${n} ${n === 1 ? "contrato longo" : "contratos longos"} (art. 72.º)`,
         porque: `Habitação com 5 ou mais anos de casa e sem prazo registado. Se o prazo for de 5+ anos, a taxa desce.`,
         euros: ate,
+        unidade: "por_ano",
         confianca: "assumido",
         conta: `Até (28% − 15%) × renda anual, só se o prazo do contrato for de 5 anos ou mais.`,
         acoes: [{ label: "Ver contratos", href: "/contratos?estado=desconhecido" }],
@@ -174,6 +205,7 @@ const GERADORES: Gerador[] = [
               )}.`
             : `${n} contratos passaram os 12 meses desde a última atualização. Cada ano que não se atualiza compõe.`,
         euros: total,
+        unidade: "por_ano",
         confianca: "medido",
         conta: `Σ (renda sugerida − renda atual) × 12 = ${fmtEur(total)}/ano`,
         acoes: elegiveis
@@ -212,6 +244,7 @@ const GERADORES: Gerador[] = [
           .map((l) => `${nomeDaFracao(l.ativo.property)}${l.desde ? ` (desde ${monthLabel(l.desde.slice(0, 7) + "-01")})` : ""}`)
           .join(", "),
         euros: total,
+        unidade: "por_ano",
         confianca: linhas.some((l) => l.estimada || l.renda === null) ? "estimado" : "medido",
         conta: `Σ última renda de cada fração × 12; sem contrato anterior, mediana INE × área. ${linhas.filter((l) => l.renda === null).length} sem valor de referência, fora da soma.`,
         acoes: [{ label: "Ver vagas", href: "/imoveis?f=vagas" }],
@@ -230,12 +263,13 @@ const GERADORES: Gerador[] = [
         titulo: `${s.mercado.abaixo.length} ${s.mercado.abaixo.length === 1 ? "renda abaixo" : "rendas abaixo"} do mercado (na mudança de inquilino)`,
         porque: `A pior é ${nomeDaFracao(pior.property)}, ${fmtPct(pior.mercado.deviation ?? 0, 0)} face à mediana INE. Só se capta quando a fração muda de inquilino.`,
         euros: total,
+        unidade: "por_ano",
         // ASSUMIDO, e por isso fora do número de topo (2026-10-03): a mediana é de NOVOS
         // contratos e a um inquilino em casa só se aplica o coeficiente anual. Somar isto a
         // "a ganhar este ano" prometia 46.833 € que nenhuma decisão deste ano capta.
         confianca: "assumido",
         conta: `${fmtEur(s.mercado.potencialMes)}/mês × 12. Mediana INE de NOVOS contratos: não é o que se pode exigir a um contrato em vigor.`,
-        acoes: [{ label: "Ver mercado", href: "/mercado" }],
+        acoes: [{ label: "Ver mercado", href: "/rentabilidade?tab=mercado" }],
       },
     ];
   },
@@ -268,6 +302,7 @@ const GERADORES: Gerador[] = [
           .map((x) => `${nomeDaFracao(x.ativo.property)}: ${fmtEur(x.ativo.activeContract!.rent)} registados, ${fmtEur(x.obs!.valor)} nos recibos`)
           .join("; ") + ".",
         euros: porMes * 12,
+        unidade: "por_ano",
         confianca: "medido",
         conta: `${fmtEur(porMes)}/mês × 12. Causa típica: a renda foi inferida de um mês com apenas parte dos recibos emitidos.`,
         acoes: [{ label: "Ver na Saúde dos dados", href: "/saude" }],
@@ -305,6 +340,7 @@ const GERADORES: Gerador[] = [
           `Meses anteriores sem recibo emitido. ` +
           `Maiores: ${piores.join(", ")}${n > 3 ? `, e outros ${n - 3}` : ""}.`,
         euros: divida,
+        unidade: "acumulado",
         confianca: "medido",
         conta:
           "Meses em atraso × renda habitual (líquida de retenção), até 24 meses por contrato. " +
@@ -326,6 +362,7 @@ const GERADORES: Gerador[] = [
         porque: `Sem recibos há mais de 12 meses. Enquanto ficarem "ativos", poluem todas as métricas de cobrança.`,
         // Não vale dinheiro a receber: vale limpar dívida que provavelmente não existe.
         euros: zombies.reduce((a, r) => a + r.expectedRent * 12, 0),
+        unidade: "margem",
         confianca: "assumido",
         conta: `Renda de referência × 12 dos contratos parados. Se cessaram, este valor sai das métricas; se não, é dívida real.`,
         acoes: zombies
@@ -349,6 +386,7 @@ const GERADORES: Gerador[] = [
           .map((c) => `${c.property ? nomeDaFracao(c.property) : "?"} (${c.contract.end_date})`)
           .join(", "),
         euros: total,
+        unidade: "por_ano",
         confianca: "medido",
         conta: `Renda anual em jogo: ${fmtEur(total)}. Prazos legais de denúncia não são calculados: confirmar caso a caso.`,
         acoes: [{ label: "Ver imóveis", href: "/imoveis?f=atualizavel" }],
@@ -357,29 +395,23 @@ const GERADORES: Gerador[] = [
   },
 
   // ---------- POR SABER ----------
-  function fontesParadas(s) {
+  function recibosSuspensos(s) {
     // Um senhorio deixou de emitir (o avô, desde 27/07/2026). Os contratos dele não estão em
     // atraso, estão por saber: a app pára a fronteira deles na última emissão. Isto é o
     // lembrete de que esses meses existem e que alguém tem de os passar (os herdeiros).
-    return s.fontes
-      .filter((f) => f.parada && f.contratos > 0)
-      .map((f) => {
-        // Até à fronteira GLOBAL (o último mês que as outras fontes já cobrem), e não até ao
-        // mês corrente: esse ainda está em carência para toda a gente.
-        const meses = Math.max(1, mesesEntre(f.horizonte, s.horizon ?? f.horizonte));
-        const euros = f.renda * meses;
-        return {
-          kind: "fonte_parada",
-          subject: f.landlord.id,
-          grupo: "saber" as const,
-          titulo: `Recibos de ${f.landlord.name} parados desde ${mesPorExtenso(f.horizonte, true)}`,
-          porque: `${f.contratos} ${f.contratos === 1 ? "contrato" : "contratos"} sem recibo emitido depois de ${fmtDate(f.ultimaEmissao)}. Esses meses ficam sem informação, não em atraso, até os recibos serem emitidos.`,
-          euros,
-          confianca: "assumido" as const,
-          conta: `${fmtEur(f.renda)}/mês × ${meses} ${meses === 1 ? "mês" : "meses"} de rendas sem recibo.`,
-          acoes: [{ label: "Ver contratos", href: "/cobrancas#sem-informacao" }],
-        };
-      });
+    // O acumulado vem do `fontesParadas`, partilhado com as Cobranças (ponto 8).
+    return fontesParadas(s).map((f) => ({
+      kind: "fonte_parada",
+      subject: f.landlord.id,
+      grupo: "saber" as const,
+      titulo: `Recibos de ${f.landlord.name} parados desde ${mesPorExtenso(f.horizonte, true)}`,
+      porque: `${f.contratos} ${f.contratos === 1 ? "contrato" : "contratos"} sem recibo emitido depois de ${fmtDate(f.ultimaEmissao)}. Esses meses ficam sem informação, não em atraso, até os recibos serem emitidos.`,
+      euros: f.acumulado,
+      unidade: "acumulado" as const,
+      confianca: "assumido" as const,
+      conta: `${fmtEur(f.porMes)}/mês × ${f.meses} ${f.meses === 1 ? "mês" : "meses"} de rendas sem recibo.`,
+      acoes: [{ label: "Ver contratos", href: "/cobrancas#sem-informacao" }],
+    }));
   },
 
   function fichasIncompletas(s) {
@@ -403,6 +435,10 @@ const GERADORES: Gerador[] = [
         titulo: `Preencher ${incompletas.length} ${incompletas.length === 1 ? "ficha" : "fichas"} de fração`,
         porque: `Em falta: ${resumirCampos(incompletas.flatMap((a) => a.fichaEmFalta))}. Sem isto não há €/m² vs mercado nem elegibilidade ao art. 72.º.`,
         euros: desbloqueia,
+        // Sem nenhum contrato com 5+ anos não há poupança a calcular, e o valor desta ficha
+        // está em €/m² e valor de mercado, que não são quantificáveis sem a área. Isso é
+        // "por apurar", não "zero": a tarefa é real e não pode cair no balde do ruído.
+        unidade: desbloqueia > 0 ? "por_ano" : "sem_valor",
         confianca: "assumido",
         conta:
           desbloqueia > 0
@@ -414,9 +450,43 @@ const GERADORES: Gerador[] = [
   },
 ];
 
+/** O que fecha com uma AÇÃO e se repete todos os meses, ou tem prazo. Tudo o resto que não
+ *  seja oportunidade é INVESTIGAÇÃO: a app não sabe, e o trabalho é descobrir
+ *  (AUDITORIA_CLAREZA.md, ponto 2).
+ *
+ *  Misturadas numa lista só, e ordenadas por euros, a fila punha "confirmar o prazo de 11
+ *  contratos" (5 641 €/ano de poupança fiscal hipotética) acima de "emitir os 9 recibos do
+ *  mês" (3 260 € de um mês) — a única coisa que tem mesmo de acontecer ficava em quinto. */
+const ESTE_MES = new Set(["recibo_por_emitir", "import_em_atraso", "atraso", "contrato_a_terminar"]);
+
+/** A ordem DENTRO de cada lista: por urgência, nunca por euros (ver `Unidade`). O que não
+ *  estiver aqui vai para o fim, pela ordem dos geradores. */
+const PRIORIDADE: string[] = [
+  // Este mês
+  "recibo_por_emitir",
+  "import_em_atraso",
+  "atraso",
+  "contrato_a_terminar",
+  // A investigar
+  "fonte_parada",
+  "contrato_zombie",
+  "art72_prazo",
+  "ficha_incompleta",
+];
+
+const porPrioridade = (a: Insight, b: Insight) => {
+  const ia = PRIORIDADE.indexOf(a.kind);
+  const ib = PRIORIDADE.indexOf(b.kind);
+  return (ia === -1 ? PRIORIDADE.length : ia) - (ib === -1 ? PRIORIDADE.length : ib);
+};
+
 export interface Fila {
-  /** Itens acima do limiar, ordenados por valor. */
+  /** Itens acima do limiar. NÃO ordenados por valor: ver `esteMes` e `investigar`. */
   itens: Insight[];
+  /** Obrigações do mês, por urgência. A primeira lista do Hoje. */
+  esteMes: Insight[];
+  /** O que está por saber ou por confirmar. Lista separada: não é trabalho de rotina. */
+  investigar: Insight[];
   /** Quantos ficaram abaixo do limiar de materialidade, e quanto valiam ao todo. */
   residuais: { n: number; euros: number };
   /** Soma dos itens medidos e estimados, fora o grupo "fazer". É a linha de dinheiro do
@@ -429,6 +499,42 @@ export interface Fila {
   /** Adiadas e dispensadas, com a data. Não entram em `itens` nem em `total`, mas são
    *  mostradas dobradas no fim: uma decisão escondida sem rasto é uma decisão perdida. */
   silenciadas: Array<{ item: Insight; ate: string | null; dispensada: boolean }>;
+}
+
+export interface FonteParada {
+  landlord: Snapshot["fontes"][number]["landlord"];
+  horizonte: string;
+  ultimaEmissao: Snapshot["fontes"][number]["ultimaEmissao"];
+  contratos: number;
+  /** Renda mensal dos contratos dessa fonte. */
+  porMes: number;
+  /** Meses já passados sem recibo, até à fronteira que as OUTRAS fontes já cobrem. */
+  meses: number;
+  /** `porMes × meses`. É o comparável com a dívida em atraso; a taxa mensal não é. */
+  acumulado: number;
+}
+
+/** As fontes de recibos paradas, com o acumulado já feito.
+ *
+ *  UMA definição (AUDITORIA_CLAREZA.md, ponto 8): a tarefa do Hoje e a caixa das Cobranças
+ *  liam a mesma situação e mostravam números de espécies diferentes — uma o acumulado, a
+ *  outra a renda por mês, lado a lado com dívidas acumuladas. Quem lê comparava 6 845 com
+ *  7 162 e tirava a conclusão errada. */
+export function fontesParadas(s: Pick<Snapshot, "fontes" | "horizon">): FonteParada[] {
+  return s.fontes
+    .filter((f) => f.parada && f.contratos > 0)
+    .map((f) => {
+      const meses = Math.max(1, mesesEntre(f.horizonte, s.horizon ?? f.horizonte));
+      return {
+        landlord: f.landlord,
+        horizonte: f.horizonte,
+        ultimaEmissao: f.ultimaEmissao,
+        contratos: f.contratos,
+        porMes: f.renda,
+        meses,
+        acumulado: f.renda * meses,
+      };
+    });
 }
 
 /** Chave de um insight no `insight_state`. */
@@ -464,18 +570,32 @@ export function construirFila(s: Snapshot): Fila {
     }
   }
 
-  const itens = visiveis
-    .filter((i) => i.euros >= LIMIAR_ANUAL_EUR)
-    .sort((a, b) => b.euros - a.euros);
-  const abaixo = visiveis.filter((i) => i.euros < LIMIAR_ANUAL_EUR);
+  // O limiar de materialidade só se aplica ao que TEM valor apurado. Um item `sem_valor`
+  // passa sempre: não é pequeno, é por medir, e mandá-lo para os residuais era escondê-lo
+  // atrás de um "no total de 0 €" (auditoria, ponto 16).
+  // E só os ANUAIS podem ser agregados numa linha "abaixo de 250 €/ano, no total de X": a
+  // soma só quer dizer alguma coisa dentro da mesma unidade. Uma dívida acumulada pequena
+  // fica na fila, com a sua unidade à vista, em vez de ser somada a poupanças anuais.
+  const semValor = visiveis.filter((i) => i.unidade === "sem_valor");
+  // Um item quantificado que dá zero não diz nada a ninguém: ou tem valor positivo, ou
+  // declara-se `sem_valor`. É o que impede um "0 €" grande de voltar a aparecer.
+  const comValor = visiveis.filter((i) => i.unidade !== "sem_valor" && i.euros > 0);
+  const abaixo = comValor.filter((i) => i.unidade === "por_ano" && i.euros < LIMIAR_ANUAL_EUR);
+  const residual = new Set(abaixo);
+  const itens = [...semValor, ...comValor.filter((i) => !residual.has(i))].sort(porPrioridade);
+  // Os totais só somam `por_ano`: somar uma dívida acumulada, um mês de renda e uma margem
+  // de erro dava um número que não é de nada (AUDITORIA_CLAREZA.md, ponto 1).
+  const anuais = itens.filter((i) => i.unidade === "por_ano");
   return {
     itens,
+    esteMes: itens.filter((i) => ESTE_MES.has(i.kind)),
+    investigar: itens.filter((i) => !ESTE_MES.has(i.kind) && i.grupo !== "poupar"),
     residuais: { n: abaixo.length, euros: abaixo.reduce((a, i) => a + i.euros, 0) },
-    total: itens
+    total: anuais
       .filter((i) => i.confianca !== "assumido" && i.grupo !== "fazer")
       .reduce((a, i) => a + i.euros, 0),
-    totalAssumido: itens.filter((i) => i.confianca === "assumido").reduce((a, i) => a + i.euros, 0),
-    silenciadas: silenciadas.sort((a, b) => b.item.euros - a.item.euros),
+    totalAssumido: anuais.filter((i) => i.confianca === "assumido").reduce((a, i) => a + i.euros, 0),
+    silenciadas: silenciadas.sort((a, b) => porPrioridade(a.item, b.item)),
   };
 }
 
@@ -487,7 +607,9 @@ export function agrupar(itens: Insight[]): Array<{ grupo: Grupo; itens: Insight[
   return ordem
     .map((grupo) => {
       const doGrupo = itens.filter((i) => i.grupo === grupo);
-      return { grupo, itens: doGrupo, euros: doGrupo.reduce((a, i) => a + i.euros, 0) };
+      // Só os anuais somam: ver `Unidade`. Um grupo sem itens anuais soma zero, e é correto.
+      const euros = doGrupo.filter((i) => i.unidade === "por_ano").reduce((a, i) => a + i.euros, 0);
+      return { grupo, itens: doGrupo, euros };
     })
     .filter((g) => g.itens.length > 0);
 }

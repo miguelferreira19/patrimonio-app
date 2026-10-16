@@ -6,8 +6,9 @@
 //   1. a frase do mês e o cartão do mês em curso (mes.ts: a ÚNICA manchete);
 //   2. os últimos 12 meses FECHADOS (o mês em curso já está no cartão; desenhá-lo no
 //      gráfico era o "colapso" de outubro no dia 9);
-//   3. "Para fazer": a fila do insights.ts em cartões de tarefa, com a lista longa (os
-//      recibos por emitir) numa folha lateral em vez de na página;
+//   3. DUAS listas separadas (AUDITORIA_CLAREZA.md, ponto 2): "Este mês", o que fecha com
+//      uma ação e se repete, por ordem de urgência; e "A investigar", o que está por saber.
+//      Numa lista só, ordenadas por euros, a otimização fiscal ficava acima dos recibos;
 //   4. os prazos (agenda.ts);
 //   5. as oportunidades em duas linhas, porque a estratégia vive em Dinheiro.
 //
@@ -23,10 +24,11 @@ import { CartaoMes } from "@/components/hoje/cartao-mes";
 import { Cobertura, Confianca, Money } from "@/components/kit";
 import { Badge, buttonClass, Table, Th, Td } from "@/components/ui";
 import { getSession } from "@/lib/data";
-import { fmtEur, fmtPct, mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
+import { fmtEur, mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
 import { mesAbaixo } from "@/lib/monthcell";
 import { getAgenda, getSnapshotComRaw, type Snapshot } from "@/lib/portfolio";
-import { construirFila, emAtrasoDaCarteira, type Insight } from "@/lib/portfolio/insights";
+import { UNIDADE_LABEL, construirFila, fontesParadas, type Insight } from "@/lib/portfolio/insights";
+import { devedores } from "@/lib/portfolio/inquilinos";
 import { resumoDoSnapshot } from "@/lib/portfolio/mes";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
 
@@ -56,9 +58,20 @@ export default async function Hoje() {
     <div className="space-y-8 md:space-y-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
+          {/* A manchete é o MÊS e uma contagem, não uma frase (AUDITORIA_CLAREZA.md, ponto
+              13). Dizia "Faltam 9 rendas de outubro." — o título de história por detrás do
+              KPI. A explicação ("os recibos entram com a recolha do dia 15") passou para os
+              Detalhes do cartão, que é onde o PLANO_CLAREZA manda pôr explicações. */}
           <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">{dia}</p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-tinta md:text-[30px]">{mes.titulo}</h1>
-          <p className="mt-1.5 max-w-[62ch] text-sm text-tinta-2">{mes.contexto}</p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-tinta md:text-[30px]">
+            {mesPorExtenso(mes.mes).replace(/^./, (l) => l.toUpperCase())}
+          </h1>
+          <p className="mt-1.5 text-sm text-tinta-2">
+            <span className="font-medium tabular-nums text-tinta">
+              {mes.pagos} de {mes.total}
+            </span>{" "}
+            rendas recebidas
+          </p>
         </div>
         <div className="flex gap-2">
           <a href="/api/agenda" className={buttonClass({ variant: "outline" })}>
@@ -74,16 +87,73 @@ export default async function Hoje() {
         </div>
       </header>
 
+      <RecibosSuspensos snap={snap} />
+
       <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-5">
         <CartaoMes r={mes} />
         <Fluxo snap={snap} />
       </div>
 
-      {isAdmin ? <Tarefas snap={snap} /> : <Atrasados snap={snap} />}
+      {/* A MESMA composição para toda a gente (AUDITORIA_CLAREZA.md, ponto 6): a lista de
+          quem deve é a primeira leitura de qualquer pessoa da família. O administrador
+          recebe as suas listas A SEGUIR, num bloco próprio — sem `isAdmin ?` no meio da
+          árvore, que é o que a CLAUDE.md proíbe. */}
+      <Atrasados snap={snap} />
+
+      {isAdmin && <Tarefas snap={snap} />}
 
       <Agenda {...agenda} />
 
       <Cobertura factos={snap.cobertura} podeCorrigir={isAdmin} />
+    </div>
+  );
+}
+
+// ============================================================
+// Recibos suspensos: o maior facto da carteira
+// ============================================================
+
+/** O facto maior da carteira deixa de ser um crachá (AUDITORIA_CLAREZA.md, ponto 5).
+ *
+ *  21 contratos sem recibo desde julho valem muito mais do que a dívida conhecida, e a app
+ *  dizia-o num crachá pequeno ("Recibos de Miguel só até jul 2026") e num cartão no meio de
+ *  uma fila. Além disso mostrava a TAXA mensal, que não se compara com uma dívida acumulada.
+ *  Aqui está o acumulado, em primeiro lugar, pelo mesmo `fontesParadas` das Cobranças. */
+function RecibosSuspensos({ snap }: { snap: Snapshot }) {
+  const paradas = fontesParadas(snap);
+  if (paradas.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {paradas.map((f) => (
+        <section
+          key={f.landlord.id}
+          className="tecido-futuro flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3 rounded-2xl border border-regua bg-futuro-tenue px-5 py-4"
+        >
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Sem informação</p>
+            <p className="mt-1 text-[15px] font-semibold text-tinta">
+              Recibos de {nomeProprio(f.landlord.name)} parados desde {mesPorExtenso(f.horizonte, true)}
+            </p>
+            {/* Sem o `/mês`: a renda da FONTE (6 936 €) não é a mesma coisa que o balde
+                "Sem informação" do cartão ao lado (6 845 €, o que falta destes contratos em
+                outubro), e dois números parecidos para o que se lê como a mesma coisa é
+                exatamente o que esta auditoria anda a corrigir. O acumulado basta. */}
+            <p className="mt-0.5 text-sm text-tinta-2">
+              {f.contratos} {f.contratos === 1 ? "contrato" : "contratos"} · {f.meses}{" "}
+              {f.meses === 1 ? "mês" : "meses"} sem recibo
+            </p>
+          </div>
+          <div className="flex items-baseline gap-4">
+            <div className="text-right">
+              <Money value={f.acumulado} escala="xl" tom="futuro" />
+              <p className="mt-0.5 text-xs font-medium text-tinta-3">acumulado</p>
+            </div>
+            <Link href="/cobrancas#sem-informacao" className={buttonClass({ variant: "outline", size: "sm" })}>
+              Ver contratos
+            </Link>
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
@@ -106,7 +176,6 @@ function Fluxo({ snap }: { snap: Snapshot }) {
     }));
   const total = dados.reduce((s, d) => s + d.recebido, 0);
   const falhados = dados.filter(mesAbaixo).length;
-  const paradas = snap.fontes.filter((f) => f.parada && f.contratos > 0);
 
   return (
     <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
@@ -120,15 +189,6 @@ function Fluxo({ snap }: { snap: Snapshot }) {
       <p className="mt-1 text-xs text-tinta-3">
         Tracejado: renda esperada{falhados > 0 ? ` · ${falhados} ${falhados === 1 ? "mês abaixo" : "meses abaixo"}` : ""}
       </p>
-      {paradas.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {paradas.map((f) => (
-            <Link key={f.landlord.id} href="/cobrancas#sem-informacao">
-              <Badge tone="futuro">Recibos de {nomeProprio(f.landlord.name)} só até {monthLabel(f.horizonte)}</Badge>
-            </Link>
-          ))}
-        </div>
-      )}
       {dados.length > 0 && <details className="mt-3 text-xs text-tinta-2"><summary className="cursor-pointer py-2 font-medium">Ver valores mês a mês</summary><Table><thead><tr><Th>Mês</Th><Th className="text-right">Recebido</Th><Th className="text-right">Esperado</Th></tr></thead><tbody>{dados.map((d) => <tr key={d.month}><Td>{monthLabel(d.month)}</Td><Td className="text-right"><Money value={d.recebido} escala="sm" tom={mesAbaixo(d) ? "atencao" : "tinta"} />{mesAbaixo(d) && <span className="sr-only">, abaixo do esperado</span>}</Td><Td className="text-right"><Money value={d.esperado} escala="sm" tom="tinta-2" /></Td></tr>)}</tbody></Table><Link href="/carteira" className="mt-2 inline-flex min-h-11 items-center font-medium text-acao underline">Consultar o histórico por fração</Link></details>}
     </section>
   );
@@ -147,26 +207,27 @@ const ETIQUETA: Record<Insight["grupo"], { tom: "acao" | "perda" | "futuro" | "a
 
 function Tarefas({ snap }: { snap: Snapshot }) {
   const fila = construirFila(snap);
-  const tarefas = fila.itens.filter((i) => i.grupo !== "poupar");
-  // Só o que se pode realizar: a renda abaixo do mercado ("assumido") vive na Rentabilidade.
+  // DUAS listas, nunca intercaladas (AUDITORIA_CLAREZA.md, ponto 2): o que fecha com uma
+  // ação e se repete todos os meses, e o que é trabalho de descoberta. Juntas e ordenadas
+  // por euros, "confirmar o prazo de 11 contratos" ficava acima de "emitir os recibos".
   const oportunidades = fila.itens.filter((i) => i.grupo === "poupar" && i.confianca !== "assumido");
 
   return (
     <div className="space-y-8 md:space-y-10">
       <section>
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold tracking-[-0.01em]">Para fazer</h2>
+          <h2 className="text-lg font-semibold tracking-[-0.01em]">Este mês</h2>
           <Link href="/tarefas" className="text-sm font-medium text-acao hover:underline">
             Tarefas registadas
           </Link>
         </div>
-        {tarefas.length === 0 ? (
+        {fila.esteMes.length === 0 ? (
           <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">
             Nada para fazer este mês.
           </p>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:gap-4">
-            {tarefas.map((item) => (
+            {fila.esteMes.map((item) => (
               <CartaoTarefa key={item.kind + item.titulo} item={item} snap={snap} />
             ))}
           </ul>
@@ -192,6 +253,20 @@ function Tarefas({ snap }: { snap: Snapshot }) {
           </p>
         )}
       </section>
+
+      {fila.investigar.length > 0 && (
+        <section>
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold tracking-[-0.01em]">A investigar</h2>
+            <p className="text-sm text-tinta-3">O que a app não sabe, e alguém tem de descobrir</p>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+            {fila.investigar.map((item) => (
+              <CartaoTarefa key={item.kind + item.titulo} item={item} snap={snap} />
+            ))}
+          </ul>
+        </section>
+      )}
 
       {oportunidades.length > 0 && (
         <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
@@ -223,8 +298,21 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
   return (
     <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5">
       <div className="flex items-start justify-between gap-3">
-        <div><Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "atencao" : "tinta"} /><p className="mt-1 text-xs text-tinta-3">{item.grupo === "saber" ? "Renda sem informação" : item.kind === "recibo_por_emitir" ? "Renda bruta a documentar" : item.kind === "atraso" ? "Em atraso" : "Impacto estimado"}</p></div>
-        <Badge tone={et.tom}>{et.texto}</Badge>
+        {/* A UNIDADE ao lado do número, no mesmo peso (AUDITORIA_CLAREZA.md, ponto 1). A
+            legenda saía antes do `grupo`, e por isso uma poupança fiscal de 5 641 €/ano
+            aparecia rotulada "Renda sem informação". */}
+        <div>
+          {/* Sem valor apurado não se desenha um euro: um "0 €" grande mente mais do que
+              não ter número nenhum (auditoria, ponto 16). */}
+          {item.unidade === "sem_valor" ? (
+            <p className="text-xl font-semibold tracking-[-0.01em] text-tinta-2">Por apurar</p>
+          ) : (
+            <Money value={item.euros} escala="xl" tom={item.grupo === "risco" ? "atencao" : "tinta"} />
+          )}
+          <p className="mt-1 text-xs font-medium text-tinta-3">{UNIDADE_LABEL[item.unidade]}</p>
+        </div>
+        {/* Na secção "Este mês" o crachá repetia o título da secção. */}
+        {item.grupo !== "fazer" && <Badge tone={et.tom}>{et.texto}</Badge>}
       </div>
       <p className="text-[15px] font-semibold leading-snug text-tinta">{item.titulo}</p>
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
@@ -290,39 +378,41 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
 // Viewer: quem está em atraso
 // ============================================================
 
+// A MESMA lista das Cobranças, pela MESMA chave (AUDITORIA_CLAREZA.md, ponto 12). O Hoje
+// listava os devedores por FRAÇÃO e as Cobranças por INQUILINO: a mesma dívida com duas
+// chaves primárias e duas contagens. Quem paga é o inquilino, logo é essa a chave.
 function Atrasados({ snap }: { snap: Snapshot }) {
-  const ids = new Set(emAtrasoDaCarteira(snap).map((r) => r.propertyId));
-  const atrasados = snap.correntes
-    .filter((a) => ids.has(a.property.id))
-    .sort((a, b) => (b.arrears?.debt ?? 0) - (a.arrears?.debt ?? 0));
+  const lista = devedores(snap);
+  const contratos = lista.reduce((n, d) => n + d.contratos.length, 0);
   return (
     <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
       <h2 className="text-lg font-semibold tracking-[-0.01em]">Quem está em atraso</h2>
-      {atrasados.length === 0 ? (
+      {lista.length === 0 ? (
         <p className="mt-2 text-sm text-tinta-2">Os registos disponíveis dos meses anteriores estão completos.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-regua">
-          {atrasados.map((a) => (
-            <li key={a.property.id} className="flex items-baseline justify-between gap-4 py-3">
-              <div className="min-w-0">
-                <Link href={`/fracoes/${a.property.id}`} className="font-medium text-tinta hover:text-acao">
-                  {nomeDaFracao(a.property)}
-                </Link>
-                <p className="truncate text-sm text-tinta-2">
-                  {nomeProprio(a.activeContract?.tenant_name)}
-                  {a.arrears && `, ${a.arrears.streak} ${a.arrears.streak === 1 ? "mês" : "meses"} em atraso`}
-                </p>
-              </div>
-              <Money value={a.arrears?.debt ?? 0} tom="atencao" className="shrink-0" />
-            </li>
-          ))}
-        </ul>
-      )}
-      {atrasados.length > 0 && (
-        <p className="mt-2 text-xs text-tinta-3">
-          {fmtPct(atrasados.length / Math.max(1, snap.correntes.length), 0)} das frações com algum mês por pagar.{" "}
-          <Link href="/cobrancas" className="font-medium text-acao underline underline-offset-2">Ver em Cobranças</Link>
-        </p>
+        <>
+          <ul className="mt-2 divide-y divide-regua">
+            {lista.map((d) => (
+              <li key={d.chave} className="flex items-baseline justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <Link href={`/inquilinos/${encodeURIComponent(d.chave)}`} className="font-medium text-tinta hover:text-acao">
+                    {nomeProprio(d.nome)}
+                  </Link>
+                  <p className="truncate text-sm text-tinta-2">
+                    {d.contratos.map((c) => (c.property ? nomeDaFracao(c.property) : "fração")).join(", ")}
+                    {` · desde ${monthLabel(d.desde)}`}
+                  </p>
+                </div>
+                <Money value={d.divida} tom="atencao" className="shrink-0" />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-tinta-3">
+            {lista.length} {lista.length === 1 ? "inquilino" : "inquilinos"} · {contratos}{" "}
+            {contratos === 1 ? "contrato" : "contratos"}.{" "}
+            <Link href="/cobrancas" className="font-medium text-acao underline underline-offset-2">Ver em Cobranças</Link>
+          </p>
+        </>
       )}
     </section>
   );

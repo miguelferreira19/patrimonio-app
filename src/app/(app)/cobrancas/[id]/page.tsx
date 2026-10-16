@@ -70,7 +70,7 @@ export default async function MonthPage({
           ["Recibos (líquido)", s.documented],
           ["Registado à mão", s.confirmed],
           [
-            s.confirmedBalance !== null ? "Por pagar (conferido)" : "Por pagar",
+            s.confirmedBalance !== null ? "Em atraso (conferido)" : "Em atraso",
             s.confirmedBalance ?? s.pending,
           ],
         ].map(([label, value]) => (

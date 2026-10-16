@@ -81,7 +81,7 @@ export function prazosFiscais(ano: number, aimi: AimiDoSenhorio[] = []): Prazo[]
         "pronto a copiar para o Portal.",
       euros: null,
       confianca: "medido",
-      href: `/ano/${ano - 1}`,
+      href: `/impostos?ano=${ano - 1}`,
     },
     {
       data: `${ano}-08-31`,
@@ -106,7 +106,7 @@ export function prazosFiscais(ano: number, aimi: AimiDoSenhorio[] = []): Prazo[]
         ". Estimado pela app com tributação individual; o valor certo é o da nota de cobrança.",
       euros: total,
       confianca: "assumido",
-      href: `/ano/${ano}`,
+      href: `/impostos?ano=${ano}`,
     });
   }
   prazos.push({

@@ -6,7 +6,7 @@
 // Hoje (`insights.ts`), por isso um valor nunca aparece com dois números diferentes.
 
 import Link from "next/link";
-import { Lede, Money } from "@/components/kit";
+import { Confianca, Lede, Money } from "@/components/kit";
 import { Badge, cn } from "@/components/ui";
 import { getSession } from "@/lib/data";
 import { quotasDeclarantes, scopedExpense } from "@/lib/gestao";
@@ -15,9 +15,9 @@ import { getSnapshotComRaw } from "@/lib/portfolio";
 import { getReceiptsInPeriod } from "@/lib/portfolio/gestao-load";
 import { construirFila, type Insight } from "@/lib/portfolio/insights";
 import { rentabilidade, type LinhaRentabilidade, type PredioRentabilidade } from "@/lib/portfolio/rentabilidade";
-import AnalisePage from "../analise/page";
-import DespesasPage from "../despesas/page";
-import MercadoPage from "../mercado/page";
+import Projecao from "@/components/rentabilidade/projecao";
+import Despesas from "@/components/rentabilidade/despesas";
+import Mercado from "@/components/rentabilidade/mercado";
 
 export const dynamic = "force-dynamic";
 
@@ -58,9 +58,9 @@ export default async function Rentabilidade({
         ))}
       </nav>
       {tab === "resultado" && <Resultado ordem={(["renda", "rendimento", "vagos"].includes(sp.ordem ?? "") ? sp.ordem : "resultado") as Ordem} />}
-      {tab === "mercado" && <MercadoPage searchParams={Promise.resolve(sp)} />}
-      {tab === "despesas" && <DespesasPage searchParams={Promise.resolve(sp)} />}
-      {tab === "projecao" && <AnalisePage searchParams={Promise.resolve(sp)} />}
+      {tab === "mercado" && <Mercado searchParams={Promise.resolve(sp)} />}
+      {tab === "despesas" && <Despesas searchParams={Promise.resolve(sp)} />}
+      {tab === "projecao" && <Projecao searchParams={Promise.resolve(sp)} />}
     </div>
   );
 }
@@ -100,10 +100,21 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
         <Caixa rotulo="Renda recebida" valor={<Money value={r.totais.renda} escala="xl" />} />
         <Caixa rotulo="Custos" valor={<Money value={r.totais.custos} escala="xl" tom="atencao" />} />
         <Caixa rotulo="Resultado" valor={<Money value={r.totais.resultado} escala="xl" />} />
+        {/* Ponto 10: isto divide uma MEDIÇÃO (renda recebida) por uma ESTIMATIVA (o valor
+            de mercado). Vai marcado, como manda o princípio 8 do PLANO_CLAREZA. */}
         <Caixa
-          rotulo="Rende por ano"
-          valor={<span className="text-2xl font-semibold tabular-nums">{r.totais.rendimento === null ? "·" : fmtPct(r.totais.rendimento, 1)}</span>}
-          nota="do valor de mercado"
+          rotulo="% do valor"
+          valor={
+            <span className="text-2xl font-semibold tabular-nums">
+              {r.totais.rendimento === null ? "·" : fmtPct(r.totais.rendimento, 1)}
+            </span>
+          }
+          nota={
+            <>
+              resultado ÷ valor de mercado{" "}
+              <Confianca nivel="estimado" conta="O valor de mercado é estimado; a renda e os custos são medidos." />
+            </>
+          }
         />
       </div>
 
@@ -122,8 +133,8 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Top titulo="As 5 que mais rendem" linhas={comRenda.slice(0, 5)} />
-        <Top titulo="As 5 que menos rendem" linhas={comRenda.slice(-5).reverse()} tom="atencao" />
+        <Top titulo="As 5 de maior resultado" linhas={comRenda.slice(0, 5)} />
+        <Top titulo="As 5 de menor resultado" linhas={comRenda.slice(-5).reverse()} tom="atencao" />
       </div>
 
       {oportunidades.length > 0 && (
@@ -165,12 +176,12 @@ function Cabecalho({ titulo, children }: { titulo: string; children?: React.Reac
   );
 }
 
-function Caixa({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota?: string }) {
+function Caixa({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota?: React.ReactNode }) {
   return (
     <div className="min-w-0 rounded-2xl border border-regua bg-carta p-3 sm:p-5">
       <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</p>
       <div className="mt-1.5 sm:mt-2">{valor}</div>
-      {nota && <p className="mt-1 truncate text-xs text-tinta-2">{nota}</p>}
+      {nota && <p className="mt-1 text-xs text-tinta-2">{nota}</p>}
     </div>
   );
 }

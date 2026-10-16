@@ -16,6 +16,7 @@ import { getSession } from "@/lib/data";
 import { mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
 import { getSnapshotComRaw, type Ativo, type Snapshot } from "@/lib/portfolio";
 import { getManagement } from "@/lib/portfolio/gestao-load";
+import { fontesParadas } from "@/lib/portfolio/insights";
 import { devedores, type Devedor } from "@/lib/portfolio/inquilinos";
 import { resumoDoSnapshot } from "@/lib/portfolio/mes";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
@@ -39,25 +40,41 @@ export default async function Cobrancas() {
       .filter((c) => c.contract_id === contractId && c.status !== "concluido")
       .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))[0];
   const tira = snap.faixaMeses.slice(-MESES_NA_TIRA);
+  // As TRÊS caixas na mesma espécie (AUDITORIA_CLAREZA.md, ponto 8). "Sem informação"
+  // mostrava a renda POR MÊS ao lado de duas dívidas acumuladas, com a unidade escondida no
+  // detalhe: quem lia comparava 6 845 com 7 162 e concluía que o atraso era o maior problema.
+  const paradas = fontesParadas(snap);
+  const semInfo = paradas.reduce((a, f) => a + f.acumulado, 0);
+  const semInfoContratos = paradas.reduce((a, f) => a + f.contratos, 0);
+  const semInfoMeses = Math.max(0, ...paradas.map((f) => f.meses));
 
   return (
     <div className="space-y-8 md:space-y-10">
       <h1 className="text-2xl font-semibold tracking-[-0.02em] text-tinta md:text-[30px]">Cobranças</h1>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Caixa href="#em-atraso" rotulo="Em atraso" valor={total} tom="atencao" detalhe={`${nContratos} ${nContratos === 1 ? "contrato" : "contratos"}`} />
+        <Caixa
+          href="#em-atraso"
+          rotulo="Em atraso"
+          valor={total}
+          tom="atencao"
+          unidade="acumulado"
+          detalhe={`${nContratos} ${nContratos === 1 ? "contrato" : "contratos"}`}
+        />
         <Caixa
           href="#este-mes"
           rotulo="Por receber"
           valor={mes.porReceber}
-          detalhe={`${mes.porReceberContratos.length} · ${mesPorExtenso(mes.mes)}`}
+          unidade={mesPorExtenso(mes.mes)}
+          detalhe={`${mes.porReceberContratos.length} ${mes.porReceberContratos.length === 1 ? "contrato" : "contratos"}`}
         />
         <Caixa
           href="#sem-informacao"
           rotulo="Sem informação"
-          valor={mes.porSaber.valor}
+          valor={semInfo}
           tom="futuro"
-          detalhe={`${mes.porSaber.contratos} contratos · /mês`}
+          unidade="acumulado"
+          detalhe={`${semInfoContratos} contratos · ${semInfoMeses} ${semInfoMeses === 1 ? "mês" : "meses"}`}
         />
       </div>
 
@@ -124,12 +141,15 @@ function Caixa({
   rotulo,
   valor,
   detalhe,
+  unidade,
   tom = "tinta",
 }: {
   href: string;
   rotulo: string;
   valor: number;
   detalhe: string;
+  /** A espécie do número, à vista e nunca escondida no detalhe (ponto 8). */
+  unidade: string;
   tom?: "tinta" | "atencao" | "futuro";
 }) {
   return (
@@ -138,7 +158,8 @@ function Caixa({
       <div className="mt-1.5 sm:mt-2">
         <Money value={valor} escala="xl" tom={valor > 0 ? tom : "tinta"} />
       </div>
-      <p className="mt-1 truncate text-xs text-tinta-2">{detalhe}</p>
+      <p className="mt-1 truncate text-xs font-medium text-tinta-3">{unidade}</p>
+      <p className="truncate text-xs text-tinta-2">{detalhe}</p>
     </a>
   );
 }
@@ -202,7 +223,7 @@ function LinhaDevedor({
 
 /** As fontes de recibos paradas (a herança do avô): três números, e os contratos em caixas. */
 function SemInformacao({ snap }: { snap: Snapshot }) {
-  const paradas = snap.fontes.filter((f) => f.parada && f.contratos > 0);
+  const paradas = fontesParadas(snap);
   if (paradas.length === 0) return null;
   const ativoDe = new Map(snap.correntes.flatMap((a) => (a.activeContract ? [[a.activeContract.id, a] as const] : [])));
   return (
@@ -216,12 +237,15 @@ function SemInformacao({ snap }: { snap: Snapshot }) {
         const porMes = linhas.reduce((n, l) => n + l.valor, 0);
         return (
           <div key={f.landlord.id}>
-            <Cabecalho titulo="Sem informação" valor={<Money value={porMes} escala="lg" tom="futuro" />}>
+            {/* O acumulado é o número grande, como nas caixas do topo; a renda por mês fica
+                como facto rotulado, ao lado dos meses que a produziram (ponto 8). */}
+            <Cabecalho titulo="Sem informação" valor={<Money value={f.acumulado} escala="lg" tom="futuro" />}>
               <Badge tone="futuro">Recibos de {nomeProprio(f.landlord.name)} suspensos</Badge>
             </Cabecalho>
-            <dl className="grid grid-cols-3 gap-3">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Facto rotulo="Contratos" valor={String(linhas.length)} />
               <Facto rotulo="Por mês" valor={<Money value={porMes} escala="xl" tom="futuro" />} />
+              <Facto rotulo="Meses sem recibo" valor={String(f.meses)} />
               <Facto rotulo="Último recibo" valor={monthLabel(f.horizonte)} />
             </dl>
             <details className="mt-3">

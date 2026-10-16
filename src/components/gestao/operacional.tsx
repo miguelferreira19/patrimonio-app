@@ -104,7 +104,7 @@ export function ScopeFilters({
                 <Select name="ordem" defaultValue={q.ordem ?? "imovel"}>
                   <option value="imovel">Imóvel e mês</option>
                   <option value="inquilino">Inquilino</option>
-                  <option value="saldo">Valor por pagar</option>
+                  <option value="saldo">Valor em atraso</option>
                 </Select>
               </Field>
             </>
@@ -135,7 +135,7 @@ export function OperationalTable({
   const contexto = `${back}?${new URLSearchParams(filtros)}`;
   const mesHref = (contractId: string, month: string) =>
     `/cobrancas/${contractId}?mes=${month.slice(0, 7)}&voltar=${encodeURIComponent(contexto)}`;
-  const colunas = ["Imóvel / mês", "Inquilino", "Renda (ilíquida)", "Recebido (líquido)", "Por pagar", "Estado", "Próxima ação"];
+  const colunas = ["Imóvel / mês", "Inquilino", "Renda (ilíquida)", "Recebido (líquido)", "Em atraso", "Estado", "Próxima ação"];
 
   return (
     <div>

@@ -21,14 +21,13 @@ import { AIMI_THRESHOLD_COUPLE, AIMI_THRESHOLD_SINGLE } from "@/lib/irs";
 import { fmtEur, fmtPct } from "@/lib/format";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
 
-export const dynamic = "force-dynamic";
 
 export default async function AnoPage({
   params,
   searchParams,
 }: {
   params: Promise<{ ano: string }>;
-  searchParams: Promise<{ senhorio?: string; emDinheiro?: string }>;
+  searchParams: Promise<{ senhorio?: string }>;
 }) {
   const [{ ano: anoParam }, sp, { isAdmin }] = await Promise.all([
     params,
@@ -36,7 +35,6 @@ export default async function AnoPage({
     getSession(),
   ]);
   const dados = await carregarAno(parseInt(anoParam, 10));
-  const emDinheiro = sp.emDinheiro === "1";
 
   if (dados.senhorios.length === 0) {
     return (
@@ -52,9 +50,10 @@ export default async function AnoPage({
   const { fy, aimi, anexoF, elegiveisArt72, poupancaArt72, prazoPorConfirmar } = escolhido;
 
   const nomePorFracao = new Map(dados.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
-  const destino = (ano: number, senhorio?: string) => emDinheiro
-    ? `/impostos?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`
-    : `/ano/${ano}${senhorio ? `?senhorio=${senhorio}` : ""}`;
+  // UMA morada. O `emDinheiro` escolhia entre `/impostos` e `/ano/<ano>` e estava fixo a
+  // "1" pelo unico chamador: era o resto de quando as duas rotas viviam em paralelo.
+  const destino = (ano: number, senhorio?: string) =>
+    `/impostos?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`;
   const poupancaRegime = Math.abs(fy.autonomousTax - fy.englobedTax);
   const sobra = fy.netIncome - fy.bestTax;
 

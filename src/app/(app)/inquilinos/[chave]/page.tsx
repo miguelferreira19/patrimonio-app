@@ -75,7 +75,7 @@ export default async function InquilinoPage({ params }: { params: Promise<{ chav
           />
         </dl>
         <p className="mt-3 max-w-[72ch] text-xs leading-relaxed text-tinta-2">
-          O estado conta os meses seguidos por pagar no contrato ativo: atenção com 1 mês, atraso com 2 ou 3,
+          O estado conta os meses seguidos em atraso no contrato ativo: atenção com 1 mês, atraso com 2 ou 3,
           crítico com 4 ou mais. Um mês conta quando termina sem recibo emitido.
         </p>
       </Seccao>

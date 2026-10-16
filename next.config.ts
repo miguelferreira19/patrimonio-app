@@ -45,6 +45,14 @@ const nextConfig: NextConfig = {
       { source: "/gestao", destination: "/tarefas", permanent: false },
       { source: "/manutencao", destination: "/tarefas?tipo=manutencao", permanent: false },
       { source: "/vagas", destination: "/tarefas?tipo=vaga", permanent: false },
+      // Separadores da Rentabilidade e corpo dos Impostos (AUDITORIA_CLAREZA.md, ponto 4).
+      // Eram rotas a sério, vivas ao mesmo tempo que os separadores que mostram o mesmo
+      // ecrã: duas moradas para o mesmo conteúdo. Aqui, e não num `redirect()` de página,
+      // porque com streaming esse devolve 200 e só se resolve no cliente.
+      { source: "/mercado", destination: "/rentabilidade?tab=mercado", permanent: false },
+      { source: "/despesas", destination: "/rentabilidade?tab=despesas", permanent: false },
+      { source: "/analise", destination: "/rentabilidade?tab=projecao", permanent: false },
+      { source: "/ano/:ano", destination: "/impostos?ano=:ano", permanent: false },
     ];
   },
   async headers() {

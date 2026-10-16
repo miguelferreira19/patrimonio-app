@@ -455,7 +455,7 @@ export default async function FracaoPage({
                 </div>
               </ProximoPasso>
             ) : active && emFalta12 > 0 ? (
-              <ProximoPasso titulo={`${emFalta12} ${emFalta12 === 1 ? "mês" : "meses"} por pagar`}>
+              <ProximoPasso titulo={`${emFalta12} ${emFalta12 === 1 ? "mês" : "meses"} em atraso`}>
                 <p>Nos últimos 12 meses. A interpelação é a carta que antecede qualquer passo formal.</p>
                 <a href={`/api/minuta/interpelacao/${active.id}`} className={buttonClass({ size: "sm", className: "mt-3" })}>
                   Interpelação em Word
@@ -506,8 +506,8 @@ export default async function FracaoPage({
         <div className="space-y-5">
           <p className={cn("rounded-xl px-4 py-3 text-sm", missingOutside12 > 0 ? "bg-atencao-tenue text-atencao" : "bg-vellum text-tinta-2")}>
             {missingOutside12 > 0
-              ? `${missingOutside12} ${missingOutside12 === 1 ? "mês em falta" : "meses em falta"} antes dos últimos 12 meses${referenceRent !== null ? ` (cerca de ${fmtEur(missingOutside12 * referenceRent)} à renda atual)` : ""}.`
-              : "Nenhum mês em falta antes dos últimos 12 meses."}
+              ? `${missingOutside12} ${missingOutside12 === 1 ? "mês em atraso" : "meses em atraso"} antes dos últimos 12 meses${referenceRent !== null ? ` (cerca de ${fmtEur(missingOutside12 * referenceRent)} à renda atual)` : ""}.`
+              : "Nenhum mês em atraso antes dos últimos 12 meses."}
             {cessadosOcultos > 0 && ` ${cessadosOcultos} contratos cessados têm consulta financeira preservada em Cobranças, incluindo saldos verificados.`}
           </p>
           {histories.length === 0 ? (

@@ -13,49 +13,22 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  Building2,
   ChevronUp,
-  CircleDot,
   FolderOpen,
   LogOut,
   Settings,
   Stethoscope,
   Users,
   ClipboardList,
-  Landmark,
-  ReceiptText,
-  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
+import { DESTINOS, type Destino } from "./destinos";
 import { cn } from "./ui";
 import { Pesquisa } from "./pesquisa";
 import { Ajuda } from "./ajuda";
 import { createClient } from "@/lib/supabase/client";
 import type { Role } from "@/lib/types";
 
-interface Destino {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  /** Prefixos de rota que pertencem a este destino (as antigas incluídas). */
-  dono: string[];
-}
-
-// Cinco destinos, os mesmos no computador e no telemóvel (PLANO_CLAREZA.md §4). Eram nove,
-// três deles vazios, mais um separador "Gestão" só no telemóvel. Cada destino responde a uma
-// pergunta; as rotas antigas continuam a acender o destino certo (`dono`).
-const DESTINOS: Destino[] = [
-  { href: "/", label: "Hoje", icon: CircleDot, dono: ["/tarefas", "/gestao"] },
-  { href: "/cobrancas", label: "Cobranças", icon: ReceiptText, dono: ["/cobrancas", "/pagamentos", "/atrasos", "/inquilinos"] },
-  {
-    href: "/imoveis",
-    label: "Imóveis",
-    icon: Building2,
-    dono: ["/imoveis", "/carteira", "/fracoes", "/contratos", "/carta", "/arquivo", "/documentos", "/vagas", "/manutencao"],
-  },
-  { href: "/rentabilidade", label: "Rentabilidade", icon: TrendingUp, dono: ["/rentabilidade", "/analise", "/mercado", "/despesas"] },
-  { href: "/impostos", label: "Impostos", icon: Landmark, dono: ["/impostos", "/ano", "/irs", "/dinheiro", "/relatorios", "/senhorios"] },
-];
 const MOBILE = DESTINOS;
 
 const ADMIN: Array<{ href: string; label: string; icon: LucideIcon }> = [

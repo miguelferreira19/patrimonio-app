@@ -12,7 +12,6 @@ import { ExpenseFormButton, DeleteExpenseButton } from "@/components/forms";
 import { Card, buttonClass } from "@/components/ui";
 import { fmtDate, endOfMonthISO } from "@/lib/format";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
-export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
 }: {
@@ -30,8 +29,8 @@ export default async function Page({
         title="Despesas"
         q={q}
         landlords={raw.landlords}
-        action="/despesas"
-        hidden={{ imovel: q.imovel ?? "" }}
+        action="/rentabilidade"
+        hidden={{ tab: "despesas", imovel: q.imovel ?? "" }}
       />
     );
   const declarantes = quotasDeclarantes(raw.expenses, raw.owners);
@@ -64,8 +63,8 @@ export default async function Page({
       <ScopeFilters
         q={q}
         landlords={raw.landlords}
-        action="/despesas"
-        hidden={{ imovel: q.imovel ?? "" }}
+        action="/rentabilidade"
+        hidden={{ tab: "despesas", imovel: q.imovel ?? "" }}
         ambito={false}
       />
       <p className="text-sm text-tinta-2">
@@ -141,8 +140,8 @@ export default async function Page({
           neste total. A data do registo é usada sem redistribuir despesas anuais por meses.
         </p>
       </details>
-      <Link href="/relatorios" className={buttonClass({ variant: "outline" })}>
-        Consultar relatórios fiscais
+      <Link href="/impostos" className={buttonClass({ variant: "outline" })}>
+        Consultar impostos do ano
       </Link>
     </div>
   );

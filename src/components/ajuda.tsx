@@ -1,15 +1,39 @@
 import Link from "next/link";
 import { Folha } from "./folha";
+import { DESTINOS, type DestinoHref } from "./destinos";
+
+// Uma descrição por destino, indexada pelo href. É um `Record` da união literal de propósito:
+// tirar ou acrescentar um destino em destinos.ts sem mexer aqui não compila, e foi assim que
+// a Ajuda deixou de poder descrever uma navegação que já não existe (auditoria, ponto 14).
+const DESCRICAO: Record<DestinoHref, string> = {
+  "/": "O mês em curso repartido entre o que entrou, o que falta entrar e o que não se sabe. Por baixo, o que há a fazer este mês e os prazos.",
+  "/cobrancas": "Quem deve, quanto e desde quando, por inquilino.",
+  "/imoveis":
+    "Os prédios, e dentro de cada um as frações. Filtra por atraso, recibos parados ou vagas. Daqui chega-se aos contratos, ao histórico mensal e ao arquivo de documentos.",
+  "/rentabilidade": "O que rende e o que custa, por prédio e por fração. O Mercado e as Despesas estão em separadores.",
+  "/impostos": "O IRS do ano, por senhorio: Anexo F, taxa do art. 72.º e AIMI.",
+};
+
+/** Só para administradores, por destino. Fica à parte da descrição que toda a gente vê. */
+const SO_ADMIN: Partial<Record<DestinoHref, string>> = {
+  "/rentabilidade": "A Projeção reúne cenários e conselhos.",
+};
 
 export function Ajuda({ admin }: { admin: boolean }) {
   return (
     <Folha rotulo="Ajuda" titulo="Orientação rápida" subtitulo="Da visão geral ao detalhe, em poucos passos.">
       <ol className="space-y-5 text-sm leading-relaxed">
-        <li><Link href="/" className="font-semibold text-acao">Hoje</Link><p className="mt-1 text-tinta-2">Consulta o mês em curso, as tarefas e os prazos. Os valores «por receber» ainda podem incluir rendas pagas cujo recibo não foi importado.</p></li>
-        <li><Link href="/cobrancas" className="font-semibold text-acao">Cobranças</Link><p className="mt-1 text-tinta-2">Quem deve, quanto e desde quando, por inquilino.</p></li>
-        <li><Link href="/imoveis" className="font-semibold text-acao">Imóveis</Link><p className="mt-1 text-tinta-2">Filtra por atraso, recibos parados ou vagas. Abre um prédio e depois uma fração para consultar pagamentos, contrato e documentos.</p></li>
-        <li><Link href="/dinheiro" className="font-semibold text-acao">Dinheiro</Link><p className="mt-1 text-tinta-2">Escolhe o ano e o senhorio no IRS. O Mercado compara rendas com o INE.{admin && " A Projeção reúne cenários e conselhos."}</p></li>
-        <li><Link href="/arquivo" className="font-semibold text-acao">Arquivo</Link><p className="mt-1 text-tinta-2">Procura um documento pelo nome ou pela rua e abre-o. As cartas disponíveis estão no Contrato de cada fração.</p></li>
+        {DESTINOS.map((d) => (
+          <li key={d.href}>
+            <Link href={d.href} className="font-semibold text-acao">
+              {d.label}
+            </Link>
+            <p className="mt-1 text-tinta-2">
+              {DESCRICAO[d.href]}
+              {admin && SO_ADMIN[d.href] ? ` ${SO_ADMIN[d.href]}` : ""}
+            </p>
+          </li>
+        ))}
       </ol>
       <section className="mt-6 border-t border-regua pt-5 text-sm leading-relaxed">
         <h3 className="font-semibold">Como ler os estados</h3>

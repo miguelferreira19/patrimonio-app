@@ -22,6 +22,7 @@ import {
   Bar,
   Cell,
   ComposedChart,
+  LabelList,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -207,9 +208,21 @@ export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
  * não do negócio — ver V3.md, achado 7 da auditoria de 2026-07-29.
  */
 export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
+  // A FALTA passa a ser DESENHADA, não deduzida (pedido do utilizador, 16/10: os gráficos
+  // eram pouco fáceis de ler). Antes via-se a barra do recebido e uma linha tracejada por
+  // cima, e cabia a quem lia medir a olho a distância entre as duas — justamente a parte
+  // que interessa. Agora a barra sobe sempre até ao esperado: o que entrou a tinta cheia, o
+  // que faltou em âmbar esbatido por cima. A altura total é a meta, e o bloco claro é o
+  // buraco. Mantém-se a linha do esperado, que é a única coisa que ainda diz alguma coisa
+  // nos meses em que se recebeu MAIS do que a referência.
+  //
+  // Sem grelha de fundo, de propósito (ver o cabeçalho deste ficheiro): em vez de obrigar a
+  // seguir uma linha até ao eixo, os meses que ficaram aquém trazem o valor em falta
+  // escrito por cima. São poucos — é esse o ponto —, por isso não se amontoam.
+  const comFalta = data.map((d) => ({ ...d, falta: Math.max(0, d.esperado - d.recebido) }));
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+    <ResponsiveContainer width="100%" height={260}>
+      <ComposedChart accessibilityLayer data={comFalta} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
         <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
@@ -219,14 +232,24 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
           width={72}
         />
         <ReferenceLine y={0} stroke={REGUA} />
-        <Bar dataKey="recebido" name="Recebido" isAnimationActive={false} radius={[3, 3, 0, 0]} maxBarSize={38}>
-          {data.map((d) => (
-            <Cell
-              key={d.month}
-              fill={mesAbaixo(d) ? ATENCAO : TINTA}
-              fillOpacity={mesAbaixo(d) ? 0.85 : 1}
-            />
+        <Bar dataKey="recebido" stackId="mes" name="Recebido" isAnimationActive={false} maxBarSize={38}>
+          {comFalta.map((d) => (
+            // Cantos redondos só quando o recebido é o topo da barra; com falta por cima,
+            // arredondar aqui abria um entalhe a meio da coluna.
+            <Cell key={d.month} fill={TINTA} radius={d.falta > 0 ? 0 : ([3, 3, 0, 0] as never)} />
           ))}
+        </Bar>
+        <Bar
+          dataKey="falta"
+          stackId="mes"
+          name="Faltou"
+          isAnimationActive={false}
+          radius={[3, 3, 0, 0]}
+          maxBarSize={38}
+          fill={ATENCAO}
+          fillOpacity={0.22}
+        >
+          <LabelList dataKey="falta" content={<EtiquetaFalta />} />
         </Bar>
         <Line
           dataKey="esperado"
@@ -243,6 +266,25 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
         <Tooltip content={<FlowTooltip />} cursor={{ fill: REGUA, fillOpacity: 0.35 }} />
       </ComposedChart>
     </ResponsiveContainer>
+  );
+}
+
+/** O que faltou, escrito por cima da coluna. Só aparece quando faltou alguma coisa. */
+function EtiquetaFalta({ x, y, width, value }: { x?: number; y?: number; width?: number; value?: number }) {
+  if (!value || value <= 0 || x === undefined || y === undefined || width === undefined) return null;
+  return (
+    <text
+      x={x + width / 2}
+      y={y - 6}
+      textAnchor="middle"
+      className="tabular-nums"
+      fontSize={11}
+      fontWeight={500}
+      fill={ATENCAO}
+    >
+      {"−"}
+      {fmtEur(value)}
+    </text>
   );
 }
 

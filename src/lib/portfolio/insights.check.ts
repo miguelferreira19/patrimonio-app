@@ -74,39 +74,77 @@ const raw: RawData = {
 const snap = buildSnapshot(raw, TODAY);
 const fila = construirFila(snap);
 
-// A — o gate de materialidade separa, não esconde.
+// A — o gate de materialidade separa, não esconde. Desde a auditoria (ponto 16) o limiar só
+// se aplica ao que é ANUAL e tem valor apurado: um `sem_valor` passa sempre, e uma dívida
+// acumulada pequena fica na fila com a sua unidade à vista em vez de ser somada a poupanças.
 {
   assert.ok(
-    fila.itens.every((i) => i.euros >= LIMIAR_ANUAL_EUR),
-    "nenhum item na fila abaixo do limiar",
+    fila.itens.every((i) => i.unidade !== "por_ano" || i.euros >= LIMIAR_ANUAL_EUR),
+    "nenhum item ANUAL na fila abaixo do limiar",
+  );
+  assert.ok(
+    fila.itens.every((i) => i.unidade === "sem_valor" || i.euros > 0),
+    "um item quantificado com 0 € nunca entra na fila",
+  );
+  assert.ok(
+    !fila.itens.some((i) => i.unidade === "sem_valor" && i.euros > 0),
+    "`sem_valor` não traz euros escondidos",
+  );
+  assert.ok(
+    fila.residuais.euros > 0 || fila.residuais.n === 0,
+    "a linha dos residuais nunca diz 'no total de 0 €'",
   );
   const todos = fila.itens.length + fila.residuais.n;
   assert.ok(todos > 0, "há sinais");
   assert.ok(fila.residuais.n >= 0);
 }
 
-// B — ordem por valor decrescente: a fila é uma priorização, não uma lista.
+// B — a fila NÃO se ordena por euros (AUDITORIA_CLAREZA.md, pontos 1 e 2). Ordenar valores
+// de espécies diferentes punha uma poupança fiscal hipotética acima da obrigação do mês.
 {
-  const euros = fila.itens.map((i) => i.euros);
-  assert.deepEqual(euros, euros.slice().sort((a, b) => b - a), "ordenada por euros desc");
+  assert.ok(
+    fila.itens.every((i) => typeof i.unidade === "string"),
+    "todo o insight declara a unidade do seu número",
+  );
+  // A obrigação que se repete todos os meses vem primeiro, valha ela o que valer.
+  const primeiro = fila.esteMes[0];
+  if (fila.esteMes.some((i) => i.kind === "recibo_por_emitir")) {
+    assert.equal(primeiro?.kind, "recibo_por_emitir", "emitir os recibos é a primeira tarefa do mês");
+  }
+  // As duas listas são disjuntas e nenhuma apanha oportunidades.
+  const nasDuas = fila.esteMes.filter((i) => fila.investigar.includes(i));
+  assert.equal(nasDuas.length, 0, "um item não está nas duas listas");
+  assert.ok(
+    fila.investigar.every((i) => i.grupo !== "poupar"),
+    "oportunidades não entram na lista de investigar",
+  );
 }
 
 // C — os valores ASSUMIDOS não entram na linha de dinheiro do topo (risco C3 do PLANO.md:
 // prometer euros que dependem de uma premissa não confirmada destrói a confiança de uma vez).
 {
-  const assumidos = fila.itens.filter((i) => i.confianca === "assumido");
+  // E os totais só somam `por_ano`: somar uma dívida acumulada com um mês de renda e uma
+  // margem de erro dava um número que não é de coisa nenhuma (ponto 1 da auditoria).
+  const anuais = fila.itens.filter((i) => i.unidade === "por_ano");
   assert.equal(
     fila.totalAssumido,
-    assumidos.reduce((a, i) => a + i.euros, 0),
-    "assumidos somados à parte",
+    anuais.filter((i) => i.confianca === "assumido").reduce((a, i) => a + i.euros, 0),
+    "assumidos somados à parte, e só os anuais",
   );
   assert.equal(
     fila.total,
-    fila.itens
+    anuais
       .filter((i) => i.confianca !== "assumido" && i.grupo !== "fazer")
       .reduce((a, i) => a + i.euros, 0),
-    "total só com medido e estimado, e sem as obrigações do mês",
+    "total só com medido e estimado, anual, e sem as obrigações do mês",
   );
+  const naoAnuais = fila.itens.filter((i) => i.unidade !== "por_ano");
+  for (const i of naoAnuais) {
+    assert.ok(
+      !Number.isNaN(i.euros),
+      `${i.kind} tem euros válidos apesar de não ser anual`,
+    );
+  }
 }
 
 // D — um gerador end-to-end: sem recibos emitidos, a checklist do mês vale a soma das rendas.
@@ -165,7 +203,6 @@ const fila = construirFila(snap);
 // A prova de que o estado filtra a fila sem apagar o facto: o gerador continua a correr,
 // o item aparece em `silenciadas` com a mesma soma de euros.
 {
-  // O primeiro que soma no topo: um item do grupo "fazer" não mexe no total.
   const alvo = fila.itens.find((i) => i.grupo !== "fazer" && i.confianca !== "assumido");
   assert.ok(alvo, "há pelo menos um item para silenciar");
   if (!alvo) throw new Error("sem alvo");
@@ -182,7 +219,13 @@ const fila = construirFila(snap);
     "item adiado sai da fila",
   );
   assert.equal(comAdiar.silenciadas.length, 1, "e aparece em silenciadas");
-  assert.ok(comAdiar.total < fila.total, "e deixa de somar no numero de topo");
+  // O total só soma `por_ano` (auditoria, ponto 1): silenciar um acumulado não o mexe, e é
+  // isso que tem de acontecer. Um anual tem mesmo de o baixar.
+  if (alvo.unidade === "por_ano") {
+    assert.ok(comAdiar.total < fila.total, "silenciar um anual baixa o numero de topo");
+  } else {
+    assert.equal(comAdiar.total, fila.total, "silenciar um nao-anual nao mexe no numero de topo");
+  }
 
   const comExpirado = construirFila(
     buildSnapshot(

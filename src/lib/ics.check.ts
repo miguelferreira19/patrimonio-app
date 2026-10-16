@@ -28,7 +28,7 @@ assert.equal(escaparTexto("a; b, c\\d\ne"), "a\\; b\\, c\\\\d\\ne");
         detalhe: "Regra; ver nota",
         euros: null,
         confianca: "assumido",
-        href: "/ano/2026",
+        href: "/impostos?ano=2026",
       },
     ],
     new Date("2026-10-03T10:20:30.123Z"),
@@ -42,7 +42,7 @@ assert.equal(escaparTexto("a; b, c\\d\ne"), "a\\; b\\, c\\\\d\\ne");
   assert.ok(ics.includes("DTSTAMP:20261003T102030Z"));
   assert.ok(ics.includes("UID:x-1@patrimonio-app"));
   assert.ok(ics.includes("SUMMARY:IMI\\, 3.ª prestação"));
-  assert.ok(ics.replace(/\r\n /g, "").includes("https://exemplo.pt/ano/2026"));
+  assert.ok(ics.replace(/\r\n /g, "").includes("https://exemplo.pt/impostos?ano=2026"));
   assert.ok(ics.includes("TRIGGER:-P2DT15H"), "alarme às 9h de três dias antes, não à meia-noite");
 }
 

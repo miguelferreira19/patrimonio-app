@@ -94,7 +94,14 @@ export default async function Imoveis({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">Imóveis</h1>
-          <p className="mt-1.5 text-sm text-tinta-2">{visiveis.length} prédios · {fracoes} frações</p>
+          {/* UM denominador (AUDITORIA_CLAREZA.md, ponto 7). O cabeçalho dizia "61 frações"
+              e o KPI ao lado "42 de 53": os terrenos e vendidos entravam numa conta e não na
+              outra. Toda a métrica desta página corre sobre as ARRENDÁVEIS (`correntes`), por
+              isso é esse o número do cabeçalho, e os outros nomeiam-se uma vez, à parte. */}
+          <p className="mt-1.5 text-sm text-tinta-2">
+            {visiveis.length} prédios · {correntes} frações arrendáveis
+            {terrenos > 0 && <span className="text-tinta-3"> · {terrenos} terrenos e vendidos</span>}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/contratos" className={buttonClass({ variant: "outline" })}>
@@ -118,7 +125,7 @@ export default async function Imoveis({
         <Kpi
           rotulo="Ocupação"
           valor={<span className="text-2xl font-semibold tabular-nums">{arrendadas} de {correntes}</span>}
-          nota={`${correntes - arrendadas} por arrendar${terrenos > 0 ? ` · ${terrenos} terrenos e vendidos à parte` : ""}`}
+          nota={`${correntes - arrendadas} por arrendar`}
         />
         <Link href="/cobrancas#em-atraso" className="rounded-2xl transition-colors duration-150 hover:bg-vellum">
           <Kpi
