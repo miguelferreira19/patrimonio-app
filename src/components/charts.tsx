@@ -105,41 +105,7 @@ function FlowTooltip({ active, payload, label }: TooltipProps<number, string>) {
   );
 }
 
-export interface AcumuladoDatum {
-  label: string;
-  esteAno: number | null;
-  anoAnterior: number;
-}
 
-function AcumuladoTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  if (!active || !payload || payload.length === 0) return null;
-  const este = payload.find((p) => p.dataKey === "esteAno")?.value;
-  const anterior = payload.find((p) => p.dataKey === "anoAnterior")?.value;
-  const delta = este != null && anterior != null ? este - anterior : null;
-  return (
-    <Balao>
-      <p className="mb-1.5 font-medium text-tinta">Até {label}</p>
-      <div className="space-y-1">
-        <div className="flex items-center gap-3">
-          <SeriesSwatch color={TINTA} />
-          <span className="flex-1 text-tinta-2">Este ano</span>
-          <span className="font-medium tabular-nums text-tinta">{fmtEur(este)}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <SeriesSwatch color={TINTA_3} dashed />
-          <span className="flex-1 text-tinta-2">Ano anterior</span>
-          <span className="tabular-nums text-tinta-2">{fmtEur(anterior)}</span>
-        </div>
-        {delta != null && (
-          <p className="border-t border-regua pt-1 tabular-nums" style={{ color: delta < 0 ? PERDA : undefined }}>
-            {delta >= 0 ? "+" : ""}
-            {fmtEur(delta)} face ao ano passado
-          </p>
-        )}
-      </div>
-    </Balao>
-  );
-}
 
 /**
  * O ano civil acumulado contra o mesmo ponto do ano anterior. Responde à pergunta que os
@@ -149,49 +115,6 @@ function AcumuladoTooltip({ active, payload, label }: TooltipProps<number, strin
  * corrente pára no mês em curso: os meses por vir vêm a `null` de propósito, para a linha
  * não cair a pique até zero e sugerir uma quebra que não existe.
  */
-export function AcumuladoChart({ data }: { data: AcumuladoDatum[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={240}>
-      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
-        <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
-        <YAxis
-          tickFormatter={(v: number) => fmtEur(v)}
-          tick={EIXO}
-          axisLine={false}
-          tickLine={false}
-          width={72}
-        />
-        <ReferenceLine y={0} stroke={REGUA} />
-        <Area
-          dataKey="esteAno"
-          isAnimationActive={false}
-          name="Este ano"
-          type="monotone"
-          stroke={TINTA}
-          strokeWidth={2}
-          fill={TINTA}
-          fillOpacity={0.1}
-          connectNulls={false}
-          dot={false}
-          activeDot={{ r: 3, fill: TINTA, stroke: "none" }}
-        />
-        <Line
-          dataKey="anoAnterior"
-          isAnimationActive={false}
-          name="Ano anterior"
-          type="monotone"
-          stroke={TINTA_3}
-          strokeWidth={1.5}
-          strokeDasharray="4 3"
-          strokeLinecap="round"
-          dot={false}
-          activeDot={false}
-        />
-        <Tooltip content={<AcumuladoTooltip />} cursor={{ stroke: REGUA }} />
-      </ComposedChart>
-    </ResponsiveContainer>
-  );
-}
 
 /**
  * O dinheiro que ENTROU, mês a mês. Barras, não linha: cada mês é uma medição fechada, e
@@ -219,7 +142,18 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
   // Sem grelha de fundo, de propósito (ver o cabeçalho deste ficheiro): em vez de obrigar a
   // seguir uma linha até ao eixo, os meses que ficaram aquém trazem o valor em falta
   // escrito por cima. São poucos — é esse o ponto —, por isso não se amontoam.
-  const comFalta = data.map((d) => ({ ...d, falta: Math.max(0, d.esperado - d.recebido) }));
+  // A falta só se desenha quando o mês ficou MESMO aquém (`mesAbaixo`, a tolerância de 90%
+  // de cada contrato). Com `esperado - recebido > 0` cru, 10 dos 11 meses levavam tampa e
+  // etiqueta, e as etiquetas sobrepunham-se num borrão — que é o mesmo alarme cego que o
+  // `mesAbaixo` já tinha sido criado para matar ("era 1 € abaixo, e com 40 contratos há
+  // sempre um inquilino atrasado"). Assim ficam três, e as barras voltam a ter a forma do
+  // que entrou em vez de chegarem todas à meta.
+  const comFalta = data.map((d) => ({ ...d, falta: mesAbaixo(d) ? Math.max(0, d.esperado - d.recebido) : 0 }));
+  // UMA etiqueta, no pior mês. Com três, duas calharam em meses seguidos e sobrepuseram-se:
+  // numa coluna de ~45 px não cabe "−1 200" ao lado de outro. Os restantes meses abaixo
+  // continuam a ver-se pela tampa âmbar, e os valores exatos estão a um toque, em "Ver
+  // valores mês a mês". Um número que se lê vale mais do que três que se atropelam.
+  const pior = comFalta.reduce((melhor, d, i) => (d.falta > (comFalta[melhor]?.falta ?? 0) ? i : melhor), -1);
   return (
     <ResponsiveContainer width="100%" height={260}>
       <ComposedChart accessibilityLayer data={comFalta} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
@@ -247,9 +181,9 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
           radius={[3, 3, 0, 0]}
           maxBarSize={38}
           fill={ATENCAO}
-          fillOpacity={0.22}
+          fillOpacity={0.38}
         >
-          <LabelList dataKey="falta" content={<EtiquetaFalta />} />
+          <LabelList dataKey="falta" content={<EtiquetaFalta pior={pior} />} />
         </Bar>
         <Line
           dataKey="esperado"
@@ -269,21 +203,60 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
   );
 }
 
+/** O valor do ÚLTIMO ponto de uma linha, escrito ao lado dele. Um rótulo por série, logo
+ *  sem risco de sobreposição — ao contrário de etiquetar todos os pontos. */
+function EtiquetaFimDeLinha({
+  x,
+  y,
+  value,
+  index,
+  ultimo,
+}: {
+  x?: number;
+  y?: number;
+  value?: number;
+  index?: number;
+  ultimo?: number;
+}) {
+  if (index !== ultimo || !value || x === undefined || y === undefined) return null;
+  return (
+    <text x={x} y={y - 8} textAnchor="end" className="tabular-nums" fontSize={11} fontWeight={600} fill={TINTA}>
+      {fmtEur(value)}
+    </text>
+  );
+}
+
 /** O que faltou, escrito por cima da coluna. Só aparece quando faltou alguma coisa. */
-function EtiquetaFalta({ x, y, width, value }: { x?: number; y?: number; width?: number; value?: number }) {
-  if (!value || value <= 0 || x === undefined || y === undefined || width === undefined) return null;
+function EtiquetaFalta({
+  x,
+  y,
+  width,
+  value,
+  index,
+  pior,
+}: {
+  x?: number;
+  y?: number;
+  width?: number;
+  value?: number;
+  index?: number;
+  pior?: number;
+}) {
+  if (index !== pior || !value || value <= 0 || x === undefined || y === undefined || width === undefined)
+    return null;
   return (
     <text
       x={x + width / 2}
       y={y - 6}
       textAnchor="middle"
       className="tabular-nums"
-      fontSize={11}
+      fontSize={10}
       fontWeight={500}
       fill={ATENCAO}
     >
+      {/* Sem o "€": o eixo já o diz, e a etiqueta tem de caber na largura de uma coluna. */}
       {"−"}
-      {fmtEur(value)}
+      {Math.round(value).toLocaleString("pt-PT")}
     </text>
   );
 }
@@ -338,9 +311,13 @@ function ProjecaoTooltip({ active, payload, label }: TooltipProps<number, string
  * onde tudo o que está além da fronteira dos dados é ardósia e hachura.
  */
 export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
+  // O mesmo princípio do gráfico do Hoje (16/10): o número onde interessa, em vez de se
+  // seguir a linha até ao eixo. Aqui o que interessa é ONDE a projeção aterra, por isso a
+  // etiqueta vai no último ponto — um só rótulo, que nunca se pode sobrepor a outro.
+  const ultimo = data.length - 1;
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
         <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} interval="preserveStartEnd" />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
@@ -379,7 +356,9 @@ export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
           strokeWidth={2}
           dot={false}
           activeDot={{ r: 3, fill: TINTA, stroke: "none" }}
-        />
+        >
+          <LabelList dataKey="esperado" content={<EtiquetaFimDeLinha ultimo={ultimo} />} />
+        </Line>
         <Tooltip content={<ProjecaoTooltip />} cursor={{ stroke: REGUA }} />
       </ComposedChart>
     </ResponsiveContainer>
