@@ -127,7 +127,7 @@ export default async function Imoveis({
           valor={<span className="text-2xl font-semibold tabular-nums">{arrendadas} de {correntes}</span>}
           nota={`${correntes - arrendadas} por arrendar`}
         />
-        <Link href="/cobrancas#em-atraso" className="rounded-2xl transition-colors duration-150 hover:bg-vellum">
+        <Link href="/cobrancas#em-atraso" className="cartao-link block rounded-2xl">
           <Kpi
             rotulo="Em atraso"
             valor={<Money value={divida} escala="xl" tom={divida > 0 ? "atencao" : "tinta"} />}
@@ -162,7 +162,7 @@ export default async function Imoveis({
                 key={k}
                 href={href({ o: k === "estado" ? undefined : k })}
                 aria-current={ordem === k ? "true" : undefined}
-                className={cn("rounded-full px-2 py-0.5", ordem === k ? "bg-vellum font-medium text-tinta" : "hover:text-tinta-2")}
+                className={cn("inline-flex min-h-11 items-center rounded-full px-2.5 transition-colors duration-150 md:min-h-7", ordem === k ? "bg-vellum font-medium text-tinta" : "hover:text-tinta-2")}
               >
                 {rotulo}
               </Link>
@@ -172,14 +172,14 @@ export default async function Imoveis({
       </div>
 
       {visiveis.length === 0 ? (
-        <p className="rounded-2xl border border-regua bg-carta px-5 py-8 text-center text-sm text-tinta-2">
+        <p className="vazio">
           Nenhum imóvel com este filtro.{" "}
           <Link href="/imoveis" className="font-medium text-acao hover:underline">
             Ver todos
           </Link>
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+        <ul className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
           {visiveis.map((p) => (
             <li key={p.chave} className="min-w-0">
               <CartaoPredio p={p} back={currentUrl} />

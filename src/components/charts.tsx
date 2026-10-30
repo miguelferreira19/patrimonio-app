@@ -33,6 +33,16 @@ import {
 import type { TooltipProps } from "recharts";
 import { fmtEur, fmtPct } from "@/lib/format";
 import { mesAbaixo } from "@/lib/monthcell";
+import { useReducedMotion } from "./use-reduced-motion";
+
+/** Os gráficos desenham-se UMA vez, ao montar (420ms, ease-out), e nunca com
+ *  reduced-motion. Os dados não mudam depois do mount, por isso não voltam a animar. */
+function useAnim() {
+  const reduzir = useReducedMotion();
+  return reduzir
+    ? { isAnimationActive: false as const }
+    : { isAnimationActive: true as const, animationDuration: 420, animationEasing: "ease-out" as const };
+}
 
 // Os tokens, tal como estão em globals.css. Trocam de par com o tema sozinhos.
 const TINTA = "var(--s-tinta)";
@@ -153,10 +163,17 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
   // numa coluna de ~45 px não cabe "−1 200" ao lado de outro. Os restantes meses abaixo
   // continuam a ver-se pela tampa âmbar, e os valores exatos estão a um toque, em "Ver
   // valores mês a mês". Um número que se lê vale mais do que três que se atropelam.
+  const anim = useAnim();
   const pior = comFalta.reduce((melhor, d, i) => (d.falta > (comFalta[melhor]?.falta ?? 0) ? i : melhor), -1);
   return (
     <ResponsiveContainer width="100%" height={260}>
       <ComposedChart accessibilityLayer data={comFalta} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
+        <defs>
+          <linearGradient id="tinta-barra" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={TINTA} stopOpacity={0.82} />
+            <stop offset="1" stopColor={TINTA} stopOpacity={1} />
+          </linearGradient>
+        </defs>
         <XAxis dataKey="label" tick={EIXO} axisLine={false} tickLine={false} />
         <YAxis
           tickFormatter={(v: number) => fmtEur(v)}
@@ -166,19 +183,19 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
           width={72}
         />
         <ReferenceLine y={0} stroke={REGUA} />
-        <Bar dataKey="recebido" stackId="mes" name="Recebido" isAnimationActive={false} maxBarSize={38}>
+        <Bar dataKey="recebido" stackId="mes" name="Recebido" {...anim} maxBarSize={38}>
           {comFalta.map((d) => (
             // Cantos redondos só quando o recebido é o topo da barra; com falta por cima,
             // arredondar aqui abria um entalhe a meio da coluna.
-            <Cell key={d.month} fill={TINTA} radius={d.falta > 0 ? 0 : ([3, 3, 0, 0] as never)} />
+            <Cell key={d.month} fill="url(#tinta-barra)" radius={d.falta > 0 ? 0 : ([7, 7, 0, 0] as never)} />
           ))}
         </Bar>
         <Bar
           dataKey="falta"
           stackId="mes"
           name="Faltou"
-          isAnimationActive={false}
-          radius={[3, 3, 0, 0]}
+          {...anim}
+          radius={[7, 7, 0, 0]}
           maxBarSize={38}
           fill={ATENCAO}
           fillOpacity={0.38}
@@ -187,7 +204,7 @@ export function FluxoMensalChart({ data }: { data: MonthlyFlowDatum[] }) {
         </Bar>
         <Line
           dataKey="esperado"
-          isAnimationActive={false}
+          {...anim}
           name="Esperado"
           type="monotone"
           stroke={TINTA_3}
@@ -315,6 +332,7 @@ export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
   // seguir a linha até ao eixo. Aqui o que interessa é ONDE a projeção aterra, por isso a
   // etiqueta vai no último ponto — um só rótulo, que nunca se pode sobrepor a outro.
   const ultimo = data.length - 1;
+  const anim = useAnim();
   return (
     <ResponsiveContainer width="100%" height={260}>
       <ComposedChart accessibilityLayer data={data} margin={{ top: 22, right: 16, left: 4, bottom: 0 }}>
@@ -327,18 +345,18 @@ export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
           width={72}
         />
         <ReferenceLine y={0} stroke={REGUA} />
-        <Area dataKey="p10" stackId="banda" stroke="none" fill="none" isAnimationActive={false} />
+        <Area dataKey="p10" stackId="banda" stroke="none" fill="none" {...anim} />
         <Area
           dataKey="banda"
           stackId="banda"
           stroke="none"
           fill={FUTURO}
           fillOpacity={0.18}
-          isAnimationActive={false}
+          {...anim}
         />
         <Line
           dataKey="contratado"
-          isAnimationActive={false}
+          {...anim}
           name="Contratado"
           type="monotone"
           stroke={TINTA_3}
@@ -349,7 +367,7 @@ export function ProjecaoChart({ data }: { data: ProjecaoDatum[] }) {
         />
         <Line
           dataKey="esperado"
-          isAnimationActive={false}
+          {...anim}
           name="Esperado"
           type="monotone"
           stroke={TINTA}

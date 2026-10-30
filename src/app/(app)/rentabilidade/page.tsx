@@ -96,6 +96,11 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
         {monthLabel(meses[0])} a {monthLabel(fim)} · imóveis por inteiro
       </Lede>
 
+      <p className="text-sm text-tinta-2">
+        Os custos só são de confiar no total da carteira: uma despesa nem sempre é lançada na
+        fração onde foi feita. Por isso a percentagem do valor usa só a renda.
+      </p>
+
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <Caixa rotulo="Renda recebida" valor={<Money value={r.totais.renda} escala="xl" />} />
         <Caixa rotulo="Custos" valor={<Money value={r.totais.custos} escala="xl" tom="atencao" />} />
@@ -111,8 +116,8 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
           }
           nota={
             <>
-              resultado ÷ valor de mercado{" "}
-              <Confianca nivel="estimado" conta="O valor de mercado é estimado; a renda e os custos são medidos." />
+              renda ÷ valor de mercado{" "}
+              <Confianca nivel="estimado" conta="Renda recebida a dividir pelo valor de mercado estimado. Não entra em custos: uma despesa nem sempre é lançada na fração onde foi feita." />
             </>
           }
         />
@@ -125,7 +130,7 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
             <i className="inline-block size-2.5 rounded-[3px] bg-atencao" /> custos
           </span>
         </Cabecalho>
-        <ul className="divide-y divide-regua overflow-hidden rounded-2xl border border-regua bg-carta">
+        <ul className="stagger divide-y divide-regua overflow-hidden rounded-2xl border border-regua bg-carta">
           {r.predios.map((p) => (
             <BarraDePredio key={p.chave} p={p} maior={Math.max(1, ...r.predios.map((x) => x.renda))} />
           ))}
@@ -133,8 +138,8 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Top titulo="As 5 de maior resultado" linhas={comRenda.slice(0, 5)} />
-        <Top titulo="As 5 de menor resultado" linhas={comRenda.slice(-5).reverse()} tom="atencao" />
+        <Top titulo="As 5 de maior renda" linhas={comRenda.slice(0, 5)} />
+        <Top titulo="As 5 de menor renda" linhas={comRenda.slice(-5).reverse()} tom="atencao" />
       </div>
 
       {oportunidades.length > 0 && (
@@ -142,7 +147,7 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
           <Cabecalho titulo="Oportunidades">
             <span className="text-xs text-tinta-3">por ano</span>
           </Cabecalho>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {oportunidades.map((o) => (
               <Oportunidade key={o.kind} o={o} />
             ))}
@@ -203,7 +208,7 @@ function BarraDePredio({ p, maior }: { p: PredioRentabilidade; maior: number }) 
         </span>
       </div>
       <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-vellum" aria-hidden="true">
-        <div className="flex h-full" style={{ width: `${Math.max(2, largura)}%` }}>
+        <div className="barra-cresce flex h-full" style={{ width: `${Math.max(2, largura)}%` }}>
           {p.resultado >= 0 ? (
             <>
               <span className="h-full bg-tinta" style={{ width: `${100 - parteCustos}%` }} />
@@ -233,7 +238,7 @@ function Top({ titulo, linhas, tom = "tinta" }: { titulo: string; linhas: LinhaR
               {l.nome}
             </Link>
             <span className="shrink-0">
-              <Money value={l.resultado} escala="md" tom={l.resultado < 0 ? "perda" : tom} />
+              <Money value={l.renda} escala="md" tom={tom} />
               <span className="text-xs text-tinta-3">/ano</span>
             </span>
           </li>

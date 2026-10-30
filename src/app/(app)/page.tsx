@@ -21,7 +21,7 @@ import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
 import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
 import { Folha } from "@/components/folha";
 import { CartaoMes } from "@/components/hoje/cartao-mes";
-import { Cobertura, Confianca, Money } from "@/components/kit";
+import { Cobertura, Confianca, Iniciais, Money } from "@/components/kit";
 import { Badge, buttonClass, Table, Th, Td } from "@/components/ui";
 import { getSession } from "@/lib/data";
 import { fmtEur, mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
@@ -222,11 +222,11 @@ function Tarefas({ snap }: { snap: Snapshot }) {
           </Link>
         </div>
         {fila.esteMes.length === 0 ? (
-          <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">
+          <p className="vazio">
             Nada para fazer este mês.
           </p>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+          <ul className="stagger grid gap-3 sm:grid-cols-2 lg:gap-4">
             {fila.esteMes.map((item) => (
               <CartaoTarefa key={item.kind + item.titulo} item={item} snap={snap} />
             ))}
@@ -260,7 +260,7 @@ function Tarefas({ snap }: { snap: Snapshot }) {
             <h2 className="text-lg font-semibold tracking-[-0.01em]">A investigar</h2>
             <p className="text-sm text-tinta-3">O que a app não sabe, e alguém tem de descobrir</p>
           </div>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+          <ul className="stagger grid gap-3 sm:grid-cols-2 lg:gap-4">
             {fila.investigar.map((item) => (
               <CartaoTarefa key={item.kind + item.titulo} item={item} snap={snap} />
             ))}
@@ -296,7 +296,7 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
   const et = ETIQUETA[item.grupo];
   const recibos = item.kind === "recibo_por_emitir" ? snap.recibosPorEmitir : null;
   return (
-    <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5">
+    <li className="flex flex-col gap-3 rounded-2xl border border-regua bg-carta p-5 transition-colors duration-150 hover:border-regua-forte">
       <div className="flex items-start justify-between gap-3">
         {/* A UNIDADE ao lado do número, no mesmo peso (AUDITORIA_CLAREZA.md, ponto 1). A
             legenda saía antes do `grupo`, e por isso uma poupança fiscal de 5 641 €/ano
@@ -393,8 +393,9 @@ function Atrasados({ snap }: { snap: Snapshot }) {
         <>
           <ul className="mt-2 divide-y divide-regua">
             {lista.map((d) => (
-              <li key={d.chave} className="flex items-baseline justify-between gap-4 py-3">
-                <div className="min-w-0">
+              <li key={d.chave} className="flex items-center gap-3.5 py-3">
+                <Iniciais nome={nomeProprio(d.nome)} />
+                <div className="min-w-0 flex-1">
                   <Link href={`/inquilinos/${encodeURIComponent(d.chave)}`} className="font-medium text-tinta hover:text-acao">
                     {nomeProprio(d.nome)}
                   </Link>

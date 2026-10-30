@@ -62,7 +62,7 @@ export async function CasesPage({ q }: { q: CaseQuery }) {
       {isAdmin && <CaseForm kind={kind ?? "tarefa"} properties={properties} contracts={contracts} />}
 
       {cases.length === 0 ? (
-        <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">Nada em aberto.</p>
+        <p className="vazio">Nada em aberto.</p>
       ) : (
         <ul className="divide-y divide-regua overflow-hidden rounded-2xl border border-regua bg-carta">
           {cases.map((c) => (

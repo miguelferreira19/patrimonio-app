@@ -26,7 +26,7 @@ export function CartaoPredio({ p, back, scopeLabel }: { p: ResumoPredio; back?: 
   return (
     <Link
       href={destinoDoPredio(p) + (back ? `?voltar=${encodeURIComponent(back)}` : "")}
-      className="group block overflow-hidden rounded-2xl border border-regua bg-carta transition-[border-color,transform] duration-150 hover:border-regua-forte active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao"
+      className="cartao-link group block overflow-hidden rounded-2xl border border-regua bg-carta"
     >
       <div className="relative h-[88px] bg-vellum">
         <Fachada chave={p.chave} fracoes={n} terreno={p.tipo === "terrenos" || p.estado === "terreno"} />

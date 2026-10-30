@@ -9,7 +9,7 @@
 // tira dos últimos 12 meses; as frases explicativas saíram. A tabela antiga é o Extrato.
 
 import Link from "next/link";
-import { Money } from "@/components/kit";
+import { Iniciais, Money } from "@/components/kit";
 import { Meses, MesesLegenda } from "@/components/imoveis/meses";
 import { Badge, buttonClass } from "@/components/ui";
 import { getSession } from "@/lib/data";
@@ -87,10 +87,10 @@ export default async function Cobrancas() {
           )}
         </Cabecalho>
         {lista.length === 0 ? (
-          <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">Ninguém em atraso.</p>
+          <p className="vazio">Ninguém em atraso.</p>
         ) : (
           <>
-            <ul className="divide-y divide-regua overflow-hidden rounded-2xl border border-regua bg-carta">
+            <ul className="stagger divide-y divide-regua overflow-hidden rounded-2xl border border-regua bg-carta">
               {lista.map((d) => (
                 <LinhaDevedor key={d.chave} d={d} maior={maior} ativoDe={ativoDe} isAdmin={isAdmin} diligencia={diligencia} />
               ))}
@@ -109,7 +109,7 @@ export default async function Cobrancas() {
           <span className="text-xs text-tinta-3">recolhas a 15 e no último dia</span>
         </Cabecalho>
         {mes.porReceberContratos.length === 0 ? (
-          <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">Tudo recebido.</p>
+          <p className="vazio">Tudo recebido.</p>
         ) : (
           <GrelhaDeContratos linhas={mes.porReceberContratos} ativoDe={ativoDe} />
         )}
@@ -153,7 +153,7 @@ function Caixa({
   tom?: "tinta" | "atencao" | "futuro";
 }) {
   return (
-    <a href={href} className="min-w-0 rounded-2xl border border-regua bg-carta p-3 transition-colors duration-150 hover:bg-vellum sm:p-5">
+    <a href={href} className="cartao-link min-w-0 rounded-2xl border border-regua bg-carta p-3 sm:p-5">
       <p className="truncate text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</p>
       <div className="mt-1.5 sm:mt-2">
         <Money value={valor} escala="xl" tom={valor > 0 ? tom : "tinta"} />
@@ -179,14 +179,15 @@ function LinhaDevedor({
 }) {
   return (
     <li className="px-4 py-4 md:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <Link href={`/inquilinos/${encodeURIComponent(d.chave)}`} className="min-w-0 truncate text-[15px] font-semibold text-tinta hover:text-acao">
+      <div className="flex items-center gap-3.5">
+        <Iniciais nome={nomeProprio(d.nome)} />
+        <Link href={`/inquilinos/${encodeURIComponent(d.chave)}`} className="min-w-0 flex-1 truncate text-[15px] font-semibold text-tinta hover:text-acao">
           {nomeProprio(d.nome)}
         </Link>
         <Money value={d.divida} escala="lg" tom="atencao" />
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-vellum" aria-hidden="true">
-        <div className="h-full rounded-full bg-atencao" style={{ width: `${(d.divida / maior) * 100}%` }} />
+        <div className="barra-cresce h-full rounded-full bg-atencao" style={{ width: `${(d.divida / maior) * 100}%` }} />
       </div>
       <ul className="mt-3 space-y-2.5">
         {d.contratos.map((c) => {
@@ -272,7 +273,7 @@ function Facto({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
 
 function GrelhaDeContratos({ linhas, ativoDe }: { linhas: Array<{ id: string; valor: number }>; ativoDe: Map<string, Ativo> }) {
   return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <ul className="stagger grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {linhas.map(({ id, valor }) => {
         const a = ativoDe.get(id);
         if (!a) return null;
@@ -280,7 +281,7 @@ function GrelhaDeContratos({ linhas, ativoDe }: { linhas: Array<{ id: string; va
           <li key={id}>
             <Link
               href={`/fracoes/${a.property.id}`}
-              className="block h-full rounded-xl border border-regua bg-carta px-3 py-2.5 transition-colors duration-150 hover:bg-vellum"
+              className="cartao-link block h-full rounded-xl border border-regua bg-carta px-3 py-2.5"
             >
               <p className="truncate text-[13px] font-medium text-tinta">{nomeDaFracao(a.property)}</p>
               <Money value={valor} escala="md" tom="tinta-2" />

@@ -113,7 +113,17 @@ Tudo em `src/app/globals.css` (Tailwind v4, `@theme`; não existe tailwind.confi
 - Código novo usa só tokens semânticos (`bg-papel bg-carta bg-elevado bg-vellum`, `text-tinta(-2/-3)`,
   `border-regua(-forte)`, `acao atencao perda futuro`). `zinc/teal/emerald/amber/red/sky` são legado.
 - Tipografia Inter; Geist Mono para códigos. Cartões `rounded-2xl`, botões `rounded-full`.
-  Separação por hairline; sombra só em overlay. Movimento ≤ 420 ms, sem loops; reduced-motion desliga.
+  Separação por hairline MAIS uma elevação suave nos cartões (`--sombra-carta`, aplicada por uma só regra
+  a `.rounded-2xl.border.bg-carta`, sem tocar nas páginas) e uma luz subtil no fundo do `body`
+  (`--luz-a/b`); a sombra forte continua só nos overlays. `kit/Iniciais` dá corpo às listas de pessoas
+  (círculo neutro, nunca cor: a cor é significado). Movimento ≤ 420 ms, sem loops; reduced-motion desliga.
+- **Movimento (PLANO_VISUAL_RESULTADO.md), tudo em `globals.css`, só transform/opacity, uma vez no mount:**
+  `.pagina` (no `shell.tsx`) põe os blocos de topo de cada página a entrar em cascata, sem props;
+  `.stagger` faz o mesmo numa lista; `.cartao-link` (cartões/linhas clicáveis: hover só com rato);
+  `.barra-cresce` (barras de quantidade); `.celula-in` + `style={{"--c": i}}` (faixa e tira de meses);
+  `.esqueleto` + `components/esqueleto.tsx` nos `loading.tsx` (estáticos); `.vazio` (estado vazio /
+  "tudo em dia"); `.destaque` (UM cartão principal por página). Gráficos: `useAnim()` em `charts.tsx`
+  (`use-reduced-motion.ts`). Reduced-motion corta também o `animation-delay`; a impressão corta tudo.
 - **Todo o euro passa pelo `<Money>`**; percentagens pelo `<Figure>`/`fmtPct`; `tabular-nums` sempre.
 - Proibido na UI: travessões "—", emojis, gradientes néon, animações infinitas.
 

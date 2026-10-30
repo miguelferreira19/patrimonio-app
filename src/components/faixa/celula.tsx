@@ -42,7 +42,10 @@ export function Celula({
   showMonth = true,
   label,
   className,
+  coluna,
 }: {
+  /** Índice da coluna: liga a entrada em cascata da esquerda para a direita. */
+  coluna?: number;
   cell: MonthCellData;
   onClick?: () => void;
   /** Mostra quanto falta, dentro da célula. Usado na grelha de 24 meses dos Atrasos. */
@@ -82,12 +85,14 @@ export function Celula({
     "relative flex flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[3px]",
     SUPERFICIE[cell.status],
     ROTULO[cell.status],
+    coluna !== undefined && "celula-in",
     className,
   );
+  const style = coluna !== undefined ? ({ "--c": coluna } as React.CSSProperties) : undefined;
 
   if (!onClick) {
     return (
-      <div className={classes} title={titulo}>
+      <div className={classes} title={titulo} style={style}>
         {conteudo}
       </div>
     );
@@ -98,6 +103,7 @@ export function Celula({
       type="button"
       onClick={onClick}
       title={titulo}
+      style={style}
       aria-label={`${label ? `${label} · ` : ""}${monthLabel(cell.month)}: ${MONTH_CELL_LABEL[cell.status].toLowerCase()}; abrir detalhe`}
       className={cn(
         classes,

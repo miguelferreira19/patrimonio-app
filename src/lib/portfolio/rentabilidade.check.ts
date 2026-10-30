@@ -52,7 +52,11 @@ assert.equal(A.renda, 6_000, "12 recibos da janela, o de julho de 2025 fica de f
 assert.equal(A.mesesPagos, 12);
 assert.equal(A.custos, 200 + 1_000, "IMI do ano + obras a 1/3");
 assert.equal(A.resultado, 4_800);
-assert.equal(A.rendimento, 0.048);
+// O rendimento é RENDA ÷ valor, não resultado ÷ valor: uma despesa nem sempre está lançada
+// na fração onde foi feita, por isso dividir custos por fração mede o lançamento e não o
+// imóvel (decisão do utilizador, 2026-10-16; ver o cabeçalho do módulo).
+assert.equal(A.rendimento, 6_000 / 100_000, "renda / valor, sem custos");
+assert.notEqual(A.rendimento, A.resultado / 100_000, "e NÃO resultado / valor");
 
 const B = r.fracoes.find((l) => l.property.id === "B")!;
 assert.equal(B.renda, 500, "o recibo anulado não conta");
@@ -68,6 +72,6 @@ const predio = r.predios[0];
 assert.equal(predio.resultado, 4_800 + 500);
 assert.equal(predio.valor, 200_000);
 assert.equal(r.totais.resultado, 4_800 + 500 - 700);
-assert.equal(r.totais.rendimento, (4_800 + 500) / 200_000, "só sobre as frações com valor");
+assert.equal(r.totais.rendimento, (6_000 + 500) / 200_000, "renda das frações com valor, sobre esse valor");
 
 console.log("rentabilidade.check.ts: OK");

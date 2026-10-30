@@ -9,6 +9,17 @@
 // Renda = recibos emitidos (ilíquido): é o rendimento, e a retenção é imposto adiantado,
 // não um custo. Custos = despesas por inteiro (a regra sem duplicar, gestao.ts) com as
 // obras pela média de 3 anos, como na projeção (futuro.ts).
+//
+// O RENDIMENTO é `renda ÷ valor`, e NÃO `resultado ÷ valor` (2026-10-16, decisão do
+// utilizador). Razão de domínio, não de código: uma despesa nem sempre é lançada na fração
+// onde foi feita — obras num apartamento vago entram muitas vezes numa fração que tem renda,
+// porque é essa que as pode deduzir no Anexo F. Os custos POR FRAÇÃO são, por isso, uma
+// atribuição contabilística e não uma medição do imóvel; dividi-los pelo valor media o
+// lançamento, não a rentabilidade.
+//
+// `custos` e `resultado` continuam a calcular-se e a mostrar-se, mas só são de confiar no
+// TOTAL da carteira, onde o lançamento trocado se anula. Quem os usar por fração ou por
+// prédio tem de saber disto.
 
 import { lastMonthsKeys } from "../format";
 import { contractActiveInMonth } from "../calc";
@@ -28,7 +39,7 @@ export interface LinhaRentabilidade {
   mesesVagos: number;
   /** Valor de mercado estimado (área × mediana do INE); null sem área ou sem mediana. */
   valor: number | null;
-  /** resultado ÷ valor estimado. */
+  /** RENDA ÷ valor estimado (bruto). Não usa custos: ver o cabeçalho deste ficheiro. */
   rendimento: number | null;
 }
 
@@ -98,7 +109,7 @@ export function rentabilidade({
       mesesPagos,
       mesesVagos,
       valor,
-      rendimento: valor && valor > 0 ? resultado / valor : null,
+      rendimento: valor && valor > 0 ? renda / valor : null,
     };
   });
 
@@ -107,16 +118,17 @@ export function rentabilidade({
     const comValor = p.fracoes.every((l) => l.valor !== null);
     const valor = comValor ? soma((l) => l.valor ?? 0) : null;
     const resultado = soma((l) => l.resultado);
+    const rendaDoPredio = soma((l) => l.renda);
     return {
       chave: p.chave,
       nome: p.nome,
       fracoes: p.fracoes,
-      renda: soma((l) => l.renda),
+      renda: rendaDoPredio,
       custos: soma((l) => l.custos),
       resultado,
       mesesVagos: p.fracoes.reduce((n, l) => n + l.mesesVagos, 0),
       valor,
-      rendimento: valor && valor > 0 ? resultado / valor : null,
+      rendimento: valor && valor > 0 ? rendaDoPredio / valor : null,
     };
   });
 
@@ -125,8 +137,10 @@ export function rentabilidade({
   const valor = comValor.reduce((n, l) => n + (l.valor ?? 0), 0);
   return {
     meses,
-    fracoes: fracoes.sort((a, b) => b.resultado - a.resultado),
-    predios: predios.sort((a, b) => b.resultado - a.resultado),
+    // Ordenadas pela RENDA, que é fiável por fração. Por `resultado` era o lançamento das
+    // despesas a decidir quem aparece no topo.
+    fracoes: fracoes.sort((a, b) => b.renda - a.renda),
+    predios: predios.sort((a, b) => b.renda - a.renda),
     totais: {
       renda: total((l) => l.renda),
       custos: total((l) => l.custos),
@@ -134,7 +148,7 @@ export function rentabilidade({
       mesesVagos: fracoes.reduce((n, l) => n + l.mesesVagos, 0),
       valor,
       // Só sobre as frações com valor: misturar as que não o têm baixava o rendimento.
-      rendimento: valor > 0 ? comValor.reduce((n, l) => n + l.resultado, 0) / valor : null,
+      rendimento: valor > 0 ? comValor.reduce((n, l) => n + l.renda, 0) / valor : null,
     },
   };
 }

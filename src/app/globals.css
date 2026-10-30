@@ -265,6 +265,37 @@ body:has(dialog[open]) { overflow: hidden; }
 ::selection { background: var(--s-acao-tenue); color: var(--s-tinta); }
 input, textarea { caret-color: var(--s-acao); }
 a { text-underline-offset: 3px; }
+
+/* ---------------------------------------------------------------------------
+   PROFUNDIDADE E ATMOSFERA ("cofre claro", 2026-10-30)
+   Antes: papel liso e cartões só com hairline, tudo ao mesmo nível. Agora o fundo tem uma
+   luz muito suave (verde-cofre ao canto superior esquerdo, ardósia ao direito) e os
+   cartões levantam-se dele com uma sombra de duas camadas: um contacto fino e uma
+   difusão larga e baixa. A regra apanha o cartão de toda a app de uma vez (todos são
+   `rounded-2xl border bg-carta`), por isso nenhuma página precisa de ser tocada. `:where`
+   deixa-a com especificidade zero: qualquer `shadow-*` explícito ganha-lhe.
+   --------------------------------------------------------------------------- */
+:root {
+  --sombra-carta: 0 1px 2px rgba(15, 21, 23, 0.04), 0 14px 30px -22px rgba(15, 21, 23, 0.2);
+  --luz-a: color-mix(in srgb, var(--s-acao) 8%, transparent);
+  --luz-b: color-mix(in srgb, var(--s-futuro) 7%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sombra-carta: 0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 16px 34px -24px rgba(0, 0, 0, 0.7);
+    --luz-a: color-mix(in srgb, var(--s-acao) 11%, transparent);
+    --luz-b: color-mix(in srgb, var(--s-futuro) 9%, transparent);
+  }
+}
+body {
+  background-image:
+    radial-gradient(900px 520px at 14% -6%, var(--luz-a), transparent 70%),
+    radial-gradient(720px 440px at 100% 0%, var(--luz-b), transparent 70%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+:where(.rounded-2xl.border.bg-carta) { box-shadow: var(--sombra-carta); }
+:where(p) { text-wrap: pretty; }
 nav.overflow-x-auto { overflow-y: hidden; }
 :where(a, button, summary, select, [tabindex]):focus-visible {
   outline: 2px solid var(--s-acao);
@@ -400,10 +431,105 @@ main { scroll-margin-top: 80px; }
 }
 
 @keyframes page-in {
-  from { transform: translateY(4px); }
-  to { transform: none; }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 .animate-page-in { animation: page-in var(--t-base) var(--e-out); }
+
+/* ---------------------------------------------------------------------------
+   MOVIMENTO "BANCA CALMA, VIVA" (PLANO_VISUAL_RESULTADO.md)
+   Uma só gramática: o que entra SOBE 8px e aparece (ease-out forte), em cascata curta;
+   o que é quantidade CRESCE a partir da origem (barras da esquerda, células de baixo).
+   Tudo uma vez, no mount, só transform/opacity, e nunca acima de ~420ms no total.
+   --------------------------------------------------------------------------- */
+
+/* Cascata automática da página: os blocos de topo de cada página (filhos do elemento
+   raiz dentro do <main>) entram um a seguir ao outro. `.stagger` faz o mesmo numa lista.
+   O índice sai do nth-child, por isso funciona em server components sem props. */
+:where(.pagina > * > *, .stagger > *) {
+  animation: rise var(--t-slow) var(--e-out) both;
+}
+:where(.pagina > * > *, .stagger > *):nth-child(2) { animation-delay: 35ms; }
+:where(.pagina > * > *, .stagger > *):nth-child(3) { animation-delay: 70ms; }
+:where(.pagina > * > *, .stagger > *):nth-child(4) { animation-delay: 105ms; }
+:where(.pagina > * > *, .stagger > *):nth-child(5) { animation-delay: 140ms; }
+:where(.pagina > * > *, .stagger > *):nth-child(n + 6) { animation-delay: 160ms; }
+/* Uma lista em cascata dentro de um bloco que já entra em cascata: passo mais curto. */
+.stagger > * { animation-duration: var(--t-base); }
+
+/* Cartões e linhas clicáveis: levantam 1px e a régua escurece. Só com rato; no toque
+   o hover "cola" depois do toque. */
+.cartao-link {
+  transition:
+    transform var(--t-fast) var(--e-out),
+    border-color var(--t-fast) var(--e-out),
+    background-color var(--t-fast) var(--e-out),
+    box-shadow var(--t-fast) var(--e-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cartao-link:hover {
+    transform: translateY(-1px);
+    border-color: var(--s-regua-forte);
+    box-shadow: 0 6px 18px -14px rgba(15, 21, 23, 0.35);
+  }
+}
+.cartao-link:active { transform: translateY(0) scale(0.995); }
+.cartao-link:focus-visible { outline: 2px solid var(--s-acao); outline-offset: 3px; }
+
+/* Barras de quantidade: crescem da esquerda, uma vez. */
+@keyframes barra-cresce {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+.barra-cresce {
+  transform-origin: left center;
+  animation: barra-cresce var(--t-count) var(--e-out) 80ms both;
+}
+
+/* Células da faixa e da tira de meses: sobem de baixo, coluna a coluna (--c). */
+@keyframes celula-in {
+  from { opacity: 0; transform: scaleY(0.4); }
+  to { opacity: 1; transform: none; }
+}
+.celula-in {
+  transform-origin: bottom center;
+  animation: celula-in 240ms var(--e-out) both;
+  animation-delay: calc(min(var(--c, 0), 24) * 6ms);
+}
+
+/* Esqueletos de carregamento: aparecem só se a espera passar de ~150ms, para uma
+   navegação rápida não piscar cinzento. Estáticos (sem shimmer, que é um loop). */
+.esqueleto { animation: overlay-in var(--t-base) var(--e-out) 150ms both; }
+
+/* Estado vazio / "tudo em dia": um momento tipográfico calmo, não uma caixa de aviso.
+   Tinta (é um facto confirmado), sem ilustração e sem verde de "ok". */
+.vazio {
+  border-radius: 1rem;
+  border: 1px solid var(--s-regua);
+  background: var(--s-carta);
+  padding: 1.75rem 1.25rem;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--s-tinta);
+}
+.vazio::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.625rem;
+  border-radius: 9999px;
+  background: var(--s-tinta);
+  vertical-align: 0.1em;
+}
+
+/* O cartão-destaque de cada página: a coisa principal pesa mais que o resto, sem sombra
+   (a sombra é só de overlays): régua forte e um filete de tinta no topo. */
+.destaque {
+  border-color: var(--s-regua-forte);
+  box-shadow: inset 0 2px 0 0 var(--s-tinta), var(--sombra-carta);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
@@ -414,13 +540,17 @@ main { scroll-margin-top: 80px; }
     animation: none;
   }
   .animate-page-in { animation: none; }
-  /* Mudanças de estado ficam instantâneas em vez de transitadas. */
+  /* Mudanças de estado ficam instantâneas em vez de transitadas. O atraso também se
+     corta: com `both`, um item em cascata ficava invisível durante o atraso. */
   *,
   *::before,
   *::after {
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
+    animation-delay: 0s !important;
   }
+  .cartao-link:hover,
+  .cartao-link:active { transform: none; }
 }
 
 /* ============================================================
@@ -442,6 +572,15 @@ main { scroll-margin-top: 80px; }
     --s-regua: #dddddd;
     --s-regua-forte: #bbbbbb;
   }
+
+  /* Papel não se anima: sem isto, um bloco em cascata podia sair a meio da entrada. */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .destaque { box-shadow: none; }
 
   nav,
   aside,
@@ -475,4 +614,8 @@ main { scroll-margin-top: 80px; }
   a[href^="/"]::after {
     content: "";
   }
+
+  /* Papel branco liso: sem a luz do fundo nem a sombra dos cartões. */
+  body { background-image: none; }
+  :where(.rounded-2xl.border.bg-carta) { box-shadow: none; }
 }

@@ -29,10 +29,10 @@ export default async function LoginPage() {
         </div>
 
         <div className="flex flex-1 flex-col justify-center">
-          <p className="max-w-sm text-2xl font-medium leading-snug text-white">
+          <p className="animate-rise max-w-sm text-[28px] font-semibold leading-tight tracking-[-0.02em] text-white">
             Rendas, contratos e património da família, num só lugar.
           </p>
-          <ul className="mt-8 space-y-3">
+          <ul className="stagger mt-8 space-y-3">
             {HIGHLIGHTS.map(({ icon: Icon, label }) => (
               <li key={label} className="flex items-center gap-2.5 text-sm text-white/60">
                 <Icon size={16} strokeWidth={1.75} className="shrink-0 text-[#6cc6b2]" />
@@ -45,7 +45,7 @@ export default async function LoginPage() {
 
       {/* Formulário */}
       <div className="flex flex-1 items-center justify-center bg-papel p-6">
-        <div className="w-full max-w-sm">
+        <div className="stagger w-full max-w-sm">
           <div className="mb-8 lg:hidden"><Marca /></div>
           <div className="mb-8">
             <h1 className="text-2xl font-semibold tracking-tight text-tinta">Entrar</h1>

@@ -141,8 +141,8 @@ export function Faixa({
                 </div>
 
                 <div className="relative grid flex-1 gap-[2px]" style={grelha}>
-                  {l.celulas.map((c) => (
-                    <Celula key={c.month} cell={c} className="h-11" showMonth={false} label={l.nome} onClick={l.contractId ? () => router.push(`/cobrancas/${l.contractId}?mes=${c.month.slice(0, 7)}&voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`) : undefined} />
+                  {l.celulas.map((c, ci) => (
+                    <Celula key={c.month} cell={c} coluna={ci} className="h-11" showMonth={false} label={l.nome} onClick={l.contractId ? () => router.push(`/cobrancas/${l.contractId}?mes=${c.month.slice(0, 7)}&voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`) : undefined} />
                   ))}
                   <Fronteira i={iFronteira} n={meses.length} />
                 </div>
@@ -163,8 +163,8 @@ export function Faixa({
                 Carteira
               </div>
               <div className="relative grid flex-1 gap-[2px]" style={grelha}>
-                {carteira.map((c) => (
-                  <Celula key={c.month} cell={c} className="h-7" showMonth={false} />
+                {carteira.map((c, ci) => (
+                  <Celula key={c.month} cell={c} coluna={ci} className="h-7" showMonth={false} />
                 ))}
                 <Fronteira i={iFronteira} n={meses.length} />
               </div>

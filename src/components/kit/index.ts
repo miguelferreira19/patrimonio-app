@@ -5,4 +5,5 @@ export { Lede } from "./lede";
 export { Seccao } from "./seccao";
 export { Confianca, type Nivel } from "./confianca";
 export { Cobertura, type CoberturaFactos } from "./cobertura";
+export { Iniciais } from "./iniciais";
 export { DeviationBadge, PropertyStatusBadge } from "./badges";

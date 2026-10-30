@@ -56,7 +56,7 @@ export function LoginForm() {
           required
         />
       </Field>
-      {error && <p role="alert" className="text-sm text-perda">{error}</p>}
+      {error && <p role="alert" className="animate-rise rounded-lg bg-perda-tenue px-3 py-2 text-sm text-perda">{error}</p>}
       <Button type="submit" disabled={loading} className="w-full">
         {loading ? "A entrar…" : "Entrar"}
       </Button>

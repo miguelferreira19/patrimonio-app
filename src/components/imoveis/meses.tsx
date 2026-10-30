@@ -35,7 +35,12 @@ export function Meses({ meses, className }: { meses: EstadoMes[]; className?: st
       aria-label={`Últimos meses: ${meses.map((m) => NOME[m]).join(", ")}`}
     >
       {meses.map((m, i) => (
-        <i key={i} className={cn("block size-3.5 rounded-[4px]", COR[m])} title={NOME[m]} />
+        <i
+          key={i}
+          className={cn("celula-in block size-3.5 rounded-[4px]", COR[m])}
+          style={{ "--c": i } as React.CSSProperties}
+          title={NOME[m]}
+        />
       ))}
     </span>
   );

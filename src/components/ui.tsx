@@ -111,7 +111,7 @@ export function buttonClass({
 } = {}) {
   return cn(
     "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150",
-    "active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
+    "active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
     "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
     TAMANHOS[size],
     VARIANTES[variant],
@@ -362,7 +362,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 rounded-lg border border-dashed border-regua-forte bg-vellum/40 px-4 py-10 text-center",
+        "flex flex-col items-center gap-3 rounded-2xl border border-regua bg-carta px-4 py-10 text-center",
         className,
       )}
     >
@@ -371,7 +371,7 @@ export function EmptyState({
           <Icon size={20} strokeWidth={1.75} />
         </span>
       )}
-      <p className="max-w-sm text-sm text-tinta-2">{children}</p>
+      <p className="max-w-sm text-[15px] font-medium text-tinta">{children}</p>
       {action}
     </div>
   );

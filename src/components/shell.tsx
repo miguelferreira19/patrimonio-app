@@ -79,11 +79,19 @@ export function Shell({
                 href={d.href}
                 aria-current={on ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-colors duration-150",
+                  "relative flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-colors duration-150",
                   on ? "bg-acao-tenue text-tinta" : "text-tinta-2 hover:bg-vellum hover:text-tinta",
                 )}
               >
-                <d.icon size={18} strokeWidth={1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
+                {/* Filete do destino ativo: cresce na vertical quando se chega à página. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute -left-3.5 top-1.5 bottom-1.5 w-[3px] origin-center rounded-r-full bg-acao transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                    on ? "scale-y-100" : "scale-y-0",
+                  )}
+                />
+                <d.icon size={18} strokeWidth={on ? 2.1 : 1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
                 {d.label}
               </Link>
             );
@@ -111,7 +119,9 @@ export function Shell({
         tabIndex={-1}
         className="mx-auto w-full min-w-0 max-w-[1280px] px-4 pb-28 pt-5 md:px-10 md:pb-16 md:pt-9"
       >
-        <div key={pathname} className="animate-page-in">{children}</div>
+        {/* `pagina`: os blocos de topo da página entram em cascata (globals.css). A key
+            reinicia a entrada em cada navegação, e só nela (não nos ?separadores). */}
+        <div key={pathname} className="pagina">{children}</div>
       </main>
 
       {/* ---------- Telemóvel: separadores em baixo ---------- */}
@@ -127,12 +137,20 @@ export function Shell({
               href={d.href}
               aria-current={on ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium transition-colors duration-150",
-                on ? "text-tinta" : "text-tinta-3",
+                "flex min-h-11 flex-col items-center gap-0.5 py-1 text-[11px] transition-colors duration-150 active:scale-[0.97]",
+                on ? "font-semibold text-tinta" : "font-medium text-tinta-3",
               )}
             >
-              <d.icon size={22} strokeWidth={1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
-              {d.label}
+              {/* Pílula atrás do ícone ativo (a mesma linguagem dos botões em pílula). */}
+              <span
+                className={cn(
+                  "grid h-7 w-12 place-items-center rounded-full transition-[background-color,transform] duration-200",
+                  on ? "scale-100 bg-acao-tenue" : "scale-90 bg-transparent",
+                )}
+              >
+                <d.icon size={21} strokeWidth={on ? 2.1 : 1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
+              </span>
+              <span className="max-w-full truncate px-0.5">{d.label}</span>
             </Link>
           );
         })}

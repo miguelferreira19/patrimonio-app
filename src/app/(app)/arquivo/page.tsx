@@ -55,7 +55,7 @@ export default async function Arquivo({ searchParams }: { searchParams: Promise<
         </p>
       </header>
       {arquivo.erro ? (
-        <p className="rounded-2xl border border-regua bg-carta px-5 py-6 text-sm text-tinta-2">
+        <p className="vazio">
           Não foi possível carregar o arquivo. Atualiza a página para tentar novamente.{isAdmin && " Se o problema persistir, confirma o acesso ao arquivo na administração do Supabase."}
         </p>
       ) : (
