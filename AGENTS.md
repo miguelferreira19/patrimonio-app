@@ -14,7 +14,7 @@ vive em **`CLAUDE.md`** — lê-o inteiro antes de tocar em código; este fichei
 - Live: https://patrimonio-app-beryl.vercel.app · Supabase `iidvzcgtfbpzhjbsrqql` · repo privado `miguelferreira19/patrimonio-app`.
 - Node: bundled da Logitech (`start.cmd` mete o PATH). Gates: `npm run build` + `npm run check` (27 self-checks puros numa compilação só; um `*.check.ts` novo em `src/lib` é descoberto sozinho, nunca framework novo).
 - Deploy é manual por CLI: **"faz deploy" = build + check verdes → `npx vercel@latest deploy --prod --yes` → commit + push.** Gate vermelho = não deployar nem commitar. Fora de um deploy, sem commits sem pedido.
-- `dados/` tem dados pessoais reais (gitignored) — nunca commitar, nunca expor. Recolha automática de recibos a correr no Agendador do Windows (dias 15 e último).
+- `dados/` tem dados pessoais reais (gitignored) — nunca commitar, nunca expor. Recolha automática de recibos a correr no portátil HP (`ssh hp-coletor`, tarefa `patrimonio-recibos`, segunda e quinta 09:00).
 - PostgREST corta a 1000 linhas → `paginateAll`. Smoke sem login não valida páginas com dados.
 - `src/components/ui.tsx` **nunca** leva `"use client"`. A faixa (`components/faixa/`) é a única grelha mensal. Recibo emitido = renda paga; pagamento sem recibo regista-se no extrato do mês.
 - Design "banca calma": tokens semânticos, sem verde de "ok", sem travessões, sem emojis, sem sombras fora de overlays. Visual (caixas, barras) e não prosa: é o que a família pediu.

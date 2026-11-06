@@ -59,7 +59,7 @@ storytelling; explicações só dentro de "Detalhes". Ver PLANO_CLAREZA.md §3.
   Lei 56/2023). Taxa reduzida do art. 72.º pela DURAÇÃO DO PRAZO do contrato, nunca pelos anos de
   casa; sem prazo registado não há redução (`prazoDesconhecido`). **AIMI**: fora os rústicos (`-R-`)
   e os urbanos de comércio/serviços (`classifyUso`); taxas no VPT.
-- Import: (a) pipeline SQL e recolha automática dias 15 e último (`dados/recolher_recibos.py` →
+- Import: (a) pipeline SQL e recolha automática à segunda e à quinta no portátil HP (`ssh hp-coletor`, tarefa `patrimonio-recibos`) (`dados/recolher_recibos.py` →
   `scripts/importar_recibos_automatico.py`, só recibos novos); (b) largar ficheiro em `/admin` com
   diff. **O caminho (b) nunca faz update/delete nem cria frações ou contratos.** A recolha corre na
   máquina local (o Portal barra IPs de datacenter); segredos em `dados/.env`.
