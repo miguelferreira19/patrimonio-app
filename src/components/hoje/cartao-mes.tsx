@@ -44,7 +44,7 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
   const retencao = contratado.iliquido > 0 ? contratado.iliquido - total : 0;
 
   return (
-    <section className="destaque rounded-2xl border border-regua bg-carta p-5 md:p-6">
+    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
       <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">
         {mesPorExtenso(r.mes)}, em curso
       </p>
@@ -95,7 +95,7 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
               {r.atraso.contratos === 1 ? "contrato" : "contratos"}
             </span>
             <span className="shrink-0">
-              <Money value={r.atraso.valor} escala="sm" tom="atencao" />{" "}
+              <Money value={r.atraso.valor} escala="sm" tom="perda" />{" "}
               <span className="text-xs text-tinta-3">acumulado</span>
             </span>
           </Link>

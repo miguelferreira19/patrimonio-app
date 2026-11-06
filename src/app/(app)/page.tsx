@@ -1,33 +1,30 @@
-// HOJE (V4, REDESENHO.md §4.1, 2026-10-09). Substitui o "Agora" da V2/V3.
+// HOJE (V4, REDESENHO.md §4.1, 2026-10-09; reordenado a 2026-11-06).
 //
-// A pergunta de quem abre a app é "está tudo pago? o que tenho de fazer?", e era isso que
-// a página não respondia primeiro: abria com "12 259 € a ganhar com as decisões", um
-// número de estratégia, e despejava 8 blocos com o mesmo peso. Agora a ordem é:
-//   1. a frase do mês e o cartão do mês em curso (mes.ts: a ÚNICA manchete);
-//   2. os últimos 12 meses FECHADOS (o mês em curso já está no cartão; desenhá-lo no
-//      gráfico era o "colapso" de outubro no dia 9);
-//   3. DUAS listas separadas (AUDITORIA_CLAREZA.md, ponto 2): "Este mês", o que fecha com
-//      uma ação e se repete, por ordem de urgência; e "A investigar", o que está por saber.
-//      Numa lista só, ordenadas por euros, a otimização fiscal ficava acima dos recibos;
-//   4. os prazos (agenda.ts);
-//   5. as oportunidades em duas linhas, porque a estratégia vive em Dinheiro.
-//
-// As duas leituras continuam separadas: `Tarefas` para o admin, `Atrasados` para o viewer.
+// A pergunta de quem abre a app é "quem não pagou? o que tenho de fazer?". A ordem é:
+//   1. o mês e a contagem de rendas recebidas;
+//   2. QUEM NÃO PAGOU (`EmAtraso`): o total em vermelho e cada inquilino com a tira dos últimos
+//      12 meses. Era a pergunta que a família fazia e a página não respondia à vista;
+//   3. o cartão do mês em curso e, ao lado, o que FALTOU em cada mês fechado e a quem
+//      (`FaltaPorMes`; o mês em curso já está no cartão);
+//   4. DUAS listas separadas (AUDITORIA_CLAREZA.md, ponto 2), só para o administrador: "Este
+//      mês", o que fecha com uma ação e se repete, e "A investigar", o que está por saber;
+//   5. os prazos (agenda.ts) e a cobertura dos dados.
 
 import Link from "next/link";
 import { CalendarPlus, Download } from "lucide-react";
 import { Agenda } from "@/components/agora/agenda";
 import { DecisaoAcoes, ReporDecisao } from "@/components/agora/decisao-acoes";
-import { FluxoMensalChart, type MonthlyFlowDatum } from "@/components/charts";
 import { Folha } from "@/components/folha";
 import { CartaoMes } from "@/components/hoje/cartao-mes";
-import { Cobertura, Confianca, Iniciais, Money } from "@/components/kit";
-import { Badge, buttonClass, Table, Th, Td } from "@/components/ui";
+import { EmAtraso } from "@/components/hoje/em-atraso";
+import { FaltaPorMes } from "@/components/hoje/falta-por-mes";
+import { Cobertura, Confianca, Money } from "@/components/kit";
+import { Badge, buttonClass } from "@/components/ui";
 import { getSession } from "@/lib/data";
-import { fmtEur, mesPorExtenso, monthLabel, nomeProprio } from "@/lib/format";
-import { mesAbaixo } from "@/lib/monthcell";
+import { fmtEur, mesPorExtenso, nomeProprio } from "@/lib/format";
 import { getAgenda, getSnapshotComRaw, type Snapshot } from "@/lib/portfolio";
 import { UNIDADE_LABEL, construirFila, fontesParadas, type Insight } from "@/lib/portfolio/insights";
+import { faltasPorMes } from "@/lib/portfolio/faltas";
 import { devedores } from "@/lib/portfolio/inquilinos";
 import { resumoDoSnapshot } from "@/lib/portfolio/mes";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
@@ -47,6 +44,9 @@ export default async function Hoje() {
   if (snap.ativos.length === 0) return <Vazio />;
 
   const mes = resumoDoSnapshot(snap);
+  const lista = devedores(snap);
+  const ativoDe = new Map(snap.ativos.flatMap((a) => (a.activeContract ? [[a.activeContract.id, a] as const] : [])));
+  const meses12 = snap.faixaMeses.slice(-12);
   const dia = new Date(`${snap.hoje}T12:00:00Z`).toLocaleDateString("pt-PT", {
     weekday: "long",
     day: "numeric",
@@ -87,18 +87,17 @@ export default async function Hoje() {
         </div>
       </header>
 
+      {/* QUEM NÃO PAGOU vem primeiro, para toda a gente (06/11): era a pergunta que a página
+          não respondia, e no telemóvel o aviso de "sem informação" empurrava-a para fora do
+          ecrã. O administrador recebe as suas listas A SEGUIR, num bloco próprio, sem
+          `isAdmin ?` no meio da árvore, que é o que a CLAUDE.md proíbe. */}
+      <EmAtraso lista={lista} ativoDe={ativoDe} meses={meses12} />
+
       <RecibosSuspensos snap={snap} />
-
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr] lg:gap-5">
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.45fr] lg:gap-5">
         <CartaoMes r={mes} />
-        <Fluxo snap={snap} />
+        <FaltaPorMes dados={faltasPorMes(snap, 12)} />
       </div>
-
-      {/* A MESMA composição para toda a gente (AUDITORIA_CLAREZA.md, ponto 6): a lista de
-          quem deve é a primeira leitura de qualquer pessoa da família. O administrador
-          recebe as suas listas A SEGUIR, num bloco próprio — sem `isAdmin ?` no meio da
-          árvore, que é o que a CLAUDE.md proíbe. */}
-      <Atrasados snap={snap} />
 
       {isAdmin && <Tarefas snap={snap} />}
 
@@ -155,42 +154,6 @@ function RecibosSuspensos({ snap }: { snap: Snapshot }) {
         </section>
       ))}
     </div>
-  );
-}
-
-// ============================================================
-// Os últimos 12 meses fechados
-// ============================================================
-
-function Fluxo({ snap }: { snap: Snapshot }) {
-  const mesCorrente = `${snap.hoje.slice(0, 7)}-01`;
-  // Só meses FECHADOS e conhecidos: o corrente está no cartão do lado, e um mês além da
-  // fronteira dos dados tem recebido zero porque a app ainda não sabe (bug B2, gráfico).
-  const dados: MonthlyFlowDatum[] = snap.fluxo
-    .filter((m) => m.month < mesCorrente && (!snap.horizon || m.month <= snap.horizon))
-    .map((m) => ({
-      month: m.month,
-      label: monthLabel(m.month, false),
-      esperado: m.esperadoReferencia,
-      recebido: m.recebido,
-    }));
-  const total = dados.reduce((s, d) => s + d.recebido, 0);
-  const falhados = dados.filter(mesAbaixo).length;
-
-  return (
-    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Meses fechados</p>
-        <p className="text-sm text-tinta-2">
-          <Money value={total} escala="md" /> registados em {dados.length} meses
-        </p>
-      </div>
-      <div className="mt-2">{dados.length > 0 ? <FluxoMensalChart data={dados} /> : <p className="py-10 text-center text-sm text-tinta-2">Ainda não há meses fechados com recibos importados.</p>}</div>
-      <p className="mt-1 text-xs text-tinta-3">
-        Tracejado: renda esperada{falhados > 0 ? ` · ${falhados} ${falhados === 1 ? "mês abaixo" : "meses abaixo"}` : ""}
-      </p>
-      {dados.length > 0 && <details className="mt-3 text-xs text-tinta-2"><summary className="cursor-pointer py-2 font-medium">Ver valores mês a mês</summary><Table><thead><tr><Th>Mês</Th><Th className="text-right">Recebido</Th><Th className="text-right">Esperado</Th></tr></thead><tbody>{dados.map((d) => <tr key={d.month}><Td>{monthLabel(d.month)}</Td><Td className="text-right"><Money value={d.recebido} escala="sm" tom={mesAbaixo(d) ? "atencao" : "tinta"} />{mesAbaixo(d) && <span className="sr-only">, abaixo do esperado</span>}</Td><Td className="text-right"><Money value={d.esperado} escala="sm" tom="tinta-2" /></Td></tr>)}</tbody></Table><Link href="/carteira" className="mt-2 inline-flex min-h-11 items-center font-medium text-acao underline">Consultar o histórico por fração</Link></details>}
-    </section>
   );
 }
 
@@ -371,51 +334,6 @@ function CartaoTarefa({ item, snap }: { item: Insight; snap: Snapshot }) {
         </details>
       </div>
     </li>
-  );
-}
-
-// ============================================================
-// Viewer: quem está em atraso
-// ============================================================
-
-// A MESMA lista das Cobranças, pela MESMA chave (AUDITORIA_CLAREZA.md, ponto 12). O Hoje
-// listava os devedores por FRAÇÃO e as Cobranças por INQUILINO: a mesma dívida com duas
-// chaves primárias e duas contagens. Quem paga é o inquilino, logo é essa a chave.
-function Atrasados({ snap }: { snap: Snapshot }) {
-  const lista = devedores(snap);
-  const contratos = lista.reduce((n, d) => n + d.contratos.length, 0);
-  return (
-    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
-      <h2 className="text-lg font-semibold tracking-[-0.01em]">Quem está em atraso</h2>
-      {lista.length === 0 ? (
-        <p className="mt-2 text-sm text-tinta-2">Os registos disponíveis dos meses anteriores estão completos.</p>
-      ) : (
-        <>
-          <ul className="mt-2 divide-y divide-regua">
-            {lista.map((d) => (
-              <li key={d.chave} className="flex items-center gap-3.5 py-3">
-                <Iniciais nome={nomeProprio(d.nome)} />
-                <div className="min-w-0 flex-1">
-                  <Link href={`/inquilinos/${encodeURIComponent(d.chave)}`} className="font-medium text-tinta hover:text-acao">
-                    {nomeProprio(d.nome)}
-                  </Link>
-                  <p className="truncate text-sm text-tinta-2">
-                    {d.contratos.map((c) => (c.property ? nomeDaFracao(c.property) : "fração")).join(", ")}
-                    {` · desde ${monthLabel(d.desde)}`}
-                  </p>
-                </div>
-                <Money value={d.divida} tom="atencao" className="shrink-0" />
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-tinta-3">
-            {lista.length} {lista.length === 1 ? "inquilino" : "inquilinos"} · {contratos}{" "}
-            {contratos === 1 ? "contrato" : "contratos"}.{" "}
-            <Link href="/cobrancas" className="font-medium text-acao underline underline-offset-2">Ver em Cobranças</Link>
-          </p>
-        </>
-      )}
-    </section>
   );
 }
 
