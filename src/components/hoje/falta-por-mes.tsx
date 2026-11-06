@@ -42,7 +42,7 @@ export function FaltaPorMes({ dados }: { dados: FaltaDoMes[] }) {
     .join("; ");
 
   return (
-    <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
+    <section className="min-w-0 rounded-2xl border border-regua bg-carta p-5 md:p-6">
       <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Últimos {dados.length} meses fechados</p>
       <p className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-tinta">
         {ultimo.falta > 0 ? (
@@ -56,12 +56,14 @@ export function FaltaPorMes({ dados }: { dados: FaltaDoMes[] }) {
       </p>
       <p className="mt-1 text-[13px] text-tinta-2">A altura de cada coluna é o que ficou por receber nesse mês.</p>
 
-      <ol className="mt-5 flex items-end gap-1.5" role="img" aria-label={resumo}>
+      <ol className="mt-5 flex items-end gap-1 sm:gap-1.5" role="img" aria-label={resumo}>
         {dados.map((d, i) => {
           const pctFalta = (d.falta / maxFalta) * 100;
           return (
             <li key={d.month} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-              <span className="h-4 whitespace-nowrap text-[11px] font-semibold tabular-nums text-perda">
+              {/* No telemóvel 12 valores de 4 dígitos não cabem lado a lado: ficam só os do
+                  título e do "Detalhes". A coluna e a pílula com o nº de contratos mantêm-se. */}
+              <span className="h-4 whitespace-nowrap text-[11px] font-semibold tabular-nums text-perda max-sm:hidden">
                 {d.falta > 0 ? Math.round(d.falta) : ""}
               </span>
               <div
@@ -70,7 +72,7 @@ export function FaltaPorMes({ dados }: { dados: FaltaDoMes[] }) {
               >
                 {d.falta > 0 && <span className="block w-full bg-perda" style={{ height: `${pctFalta}%`, minHeight: 4 }} />}
               </div>
-              <span className="text-xs text-tinta-2">{monthLabel(d.month, false)}</span>
+              <span className="text-[10px] text-tinta-2 sm:text-xs">{monthLabel(d.month, false)}</span>
               <span
                 className={
                   d.contratos.length > 0
@@ -88,7 +90,7 @@ export function FaltaPorMes({ dados }: { dados: FaltaDoMes[] }) {
       <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-tinta-2">
         <li className="flex items-center gap-1.5">
           <i aria-hidden="true" className="size-3 rounded-[4px] bg-perda" />
-          Em falta (€, por cima da coluna)
+          Em falta<span className="max-sm:hidden"> (€, por cima da coluna)</span>
         </li>
         <li className="flex items-center gap-1.5">
           <span aria-hidden="true" className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-perda-tenue text-[10.5px] font-bold text-perda">

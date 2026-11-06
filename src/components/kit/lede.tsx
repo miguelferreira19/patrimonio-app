@@ -36,7 +36,9 @@ export function Lede({
         className,
       )}
     >
-      <div className="min-w-0 flex-1">
+      {/* Base de 16rem: com `flex-1` (base 0) o título nunca quebrava linha antes dos botões e,
+          no telemóvel, ficava numa coluna estreita com o "Exportar" ao lado. */}
+      <div className="min-w-0 flex-[1_1_16rem]">
         {eyebrow && (
           <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-acao">{eyebrow}</p>
         )}

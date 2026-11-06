@@ -130,7 +130,8 @@ export default async function Imoveis({
         <Link href="/cobrancas#em-atraso" className="cartao-link block rounded-2xl">
           <Kpi
             rotulo="Em atraso"
-            valor={<Money value={divida} escala="xl" tom={divida > 0 ? "atencao" : "tinta"} />}
+            tom={divida > 0 ? "perda" : "tinta"}
+            valor={<Money value={divida} escala="xl" tom={divida > 0 ? "perda" : "tinta"} />}
             nota={`${atraso.length} ${atraso.length === 1 ? "contrato" : "contratos"}`}
           />
         </Link>
@@ -155,7 +156,7 @@ export default async function Imoveis({
         </nav>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <MesesLegenda />
-          <p className="flex items-center gap-1 text-xs text-tinta-3">
+          <p className="flex items-center gap-1 text-xs text-tinta-2">
             Ordenar:
             {ORDENS.map(([k, rotulo]) => (
               <Link
@@ -191,12 +192,16 @@ export default async function Imoveis({
   );
 }
 
-function Kpi({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota: string }) {
+function Kpi({ rotulo, valor, nota, tom = "tinta" }: { rotulo: string; valor: React.ReactNode; nota: string; tom?: "tinta" | "perda" }) {
+  const perda = tom === "perda";
   return (
-    <div className="rounded-2xl border border-regua bg-carta px-4 py-3.5">
-      <p className="text-xs font-medium text-tinta-2">{rotulo}</p>
-      <div className="mt-1.5">{valor}</div>
-      <p className="mt-1 text-xs text-tinta-3">{nota}</p>
+    <div className={cn("h-full rounded-2xl border px-4 py-4", perda ? "border-perda/25 bg-perda-tenue" : "border-regua bg-carta")}>
+      <p className={cn("flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]", perda ? "text-perda" : "text-tinta-3")}>
+        {perda && <i aria-hidden="true" className="size-2 rounded-full bg-perda" />}
+        {rotulo}
+      </p>
+      <div className="mt-2">{valor}</div>
+      <p className="mt-1 text-xs text-tinta-2">{nota}</p>
     </div>
   );
 }

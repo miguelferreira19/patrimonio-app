@@ -28,6 +28,8 @@ export const DESTINOS = [
   {
     href: "/rentabilidade",
     label: "Rentabilidade",
+    // Nome curto da barra de baixo: abaixo de 380 px "Rentabilidade" cortava-se em "Rentabilid...".
+    curto: "Rentab.",
     icon: TrendingUp,
     dono: ["/rentabilidade", "/analise", "/mercado", "/despesas"],
   },
@@ -40,6 +42,8 @@ export const DESTINOS = [
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;
+  /** Nome para ecrãs estreitos (a barra de baixo do telemóvel), quando o `label` não cabe. */
+  curto?: string;
   icon: LucideIcon;
   /** Prefixos de rota que pertencem a este destino (as antigas incluídas). */
   dono: string[];

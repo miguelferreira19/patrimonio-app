@@ -94,7 +94,9 @@ export default async function Hoje() {
       <EmAtraso lista={lista} ativoDe={ativoDe} meses={meses12} />
 
       <RecibosSuspensos snap={snap} />
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.45fr] lg:gap-5">
+      {/* `grid-cols-1` e `minmax(0, ...)`: sem isto a coluna ganhava o tamanho mínimo do gráfico
+          (12 colunas com rótulos) e o ecrã do telemóvel ficava mais largo do que o aparelho. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)] lg:gap-5">
         <CartaoMes r={mes} />
         <FaltaPorMes dados={faltasPorMes(snap, 12)} />
       </div>

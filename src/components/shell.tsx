@@ -150,7 +150,16 @@ export function Shell({
               >
                 <d.icon size={21} strokeWidth={on ? 2.1 : 1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
               </span>
-              <span className="max-w-full truncate px-0.5">{d.label}</span>
+              <span className="max-w-full truncate px-0.5">
+                {"curto" in d ? (
+                  <>
+                    <span className="min-[380px]:hidden">{d.curto}</span>
+                    <span className="hidden min-[380px]:inline">{d.label}</span>
+                  </>
+                ) : (
+                  d.label
+                )}
+              </span>
             </Link>
           );
         })}

@@ -97,58 +97,47 @@ export default async function AnoPage({
           : `Não houve retenção na fonte. O regime mais barato é ${fy.bestRegime === "autonoma" ? "a taxa autónoma" : "o englobamento"}, por ${fmtEur(poupancaRegime)}.`}
       </Lede>
 
-      <dl className="grid gap-4 rounded-2xl border border-regua bg-carta p-5 sm:grid-cols-3">
-        <div><dt className="text-sm text-tinta-2">Rendas ilíquidas</dt><dd className="mt-2"><Money value={fy.grossRent} escala="xl" /></dd><p className="mt-2 text-xs text-tinta-3">Recibos emitidos em {dados.ano}</p></div>
-        <div><dt className="text-sm text-tinta-2">Imposto estimado</dt><dd className="mt-2"><Money value={fy.bestTax} escala="xl" /></dd><p className="mt-2 text-xs text-tinta-3">{fy.bestRegime === "autonoma" ? "Taxa autónoma" : "Englobamento"} · antes de abater a retenção</p></div>
-        <div><dt className="text-sm text-tinta-2">Depois do imposto</dt><dd className="mt-2"><Money value={sobra} escala="xl" /></dd><p className="mt-2 text-xs text-tinta-3">Com as despesas dedutíveis registadas</p></div>
-      </dl>
-
-      {/* Seletores: ano e senhorio, ambos como links. Fora da impressão: em papel são
-          botões mortos, e o ano já está no cabeçalho do documento. */}
-      <div
-        data-print="none"
-        className="flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-regua py-2"
-      >
-        <div className="flex flex-wrap gap-1">
+      {/* Seletores: ano e senhorio, ambos como links, em pílulas do tamanho de um dedo (06/11:
+          eram `text-xs` e quase ninguém via que havia outros anos). Fora da impressão: em
+          papel são botões mortos, e o ano já está no cabeçalho do documento. */}
+      <div data-print="none" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
           {dados.anos.map((a) => (
-            <Link
-              key={a}
-              href={destino(a, sp.senhorio)}
-              aria-current={a === dados.ano ? "page" : undefined}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-xs tabular-nums transition-colors",
-                a === dados.ano
-                  ? "bg-acao-tenue font-medium text-acao"
-                  : "text-tinta-2 hover:bg-elevado hover:text-tinta",
-              )}
-            >
+            <Pilula key={a} href={destino(a, sp.senhorio)} ativa={a === dados.ano} className="tabular-nums">
               {a}
-            </Link>
+            </Pilula>
           ))}
         </div>
         {dados.porSenhorio.length > 1 && (
           <>
-            <span className="h-4 w-px bg-regua" />
-            <div className="flex flex-wrap gap-1">
+            <span aria-hidden="true" className="hidden h-5 w-px bg-regua md:block" />
+            <div className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
               {dados.porSenhorio.map((s) => (
-                <Link
-                  key={s.landlord.id}
-                  href={destino(dados.ano, s.landlord.id)}
-                  aria-current={s.landlord.id === escolhido.landlord.id ? "page" : undefined}
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-xs transition-colors",
-                    s.landlord.id === escolhido.landlord.id
-                      ? "bg-acao-tenue font-medium text-acao"
-                      : "text-tinta-2 hover:bg-elevado hover:text-tinta",
-                  )}
-                >
+                <Pilula key={s.landlord.id} href={destino(dados.ano, s.landlord.id)} ativa={s.landlord.id === escolhido.landlord.id}>
                   {s.landlord.name}
-                </Link>
+                </Pilula>
               ))}
             </div>
           </>
         )}
       </div>
+
+      <dl className="grid gap-3 sm:grid-cols-3 lg:gap-4">
+        <Resumo rotulo="Rendas ilíquidas" nota={`Recibos emitidos em ${dados.ano}`}>
+          <Money value={fy.grossRent} escala="xl" />
+        </Resumo>
+        <Resumo
+          rotulo="Imposto estimado"
+          nota={`${fy.bestRegime === "autonoma" ? "Taxa autónoma" : "Englobamento"} · antes de abater a retenção`}
+        >
+          <Money value={fy.bestTax} escala="xl" tom="atencao" />
+        </Resumo>
+        {/* O resultado do ano é o único com ênfase (tamanho e fundo), e não cor: o documento
+            imprime-se, e a cor de fundo não sai em papel. */}
+        <Resumo rotulo="Depois do imposto" nota="Com as despesas dedutíveis registadas" destaque>
+          <Money value={sobra} escala="hero" />
+        </Resumo>
+      </dl>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Seccao titulo="Como o dinheiro do ano se decompõe">
@@ -291,16 +280,72 @@ function Decisao({
   conta: string;
 }) {
   return (
-    <li className="border-l-2 border-regua pl-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[15px] font-medium text-tinta">
-          <span className="mr-1.5 font-mono text-xs text-tinta-3">{n}.</span>
-          {titulo}
-        </p>
-        {euros > 0 && <Money value={euros} escala="sm" tom="acao" className="shrink-0" />}
+    <li className="flex gap-3 rounded-xl border border-regua p-4">
+      <span
+        aria-hidden="true"
+        className="grid size-7 shrink-0 place-items-center rounded-full bg-vellum text-[13px] font-semibold text-tinta-2 ring-1 ring-regua"
+      >
+        {n}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <p className="text-[15px] font-semibold leading-snug text-tinta">{titulo}</p>
+          {euros > 0 && (
+            <span className="shrink-0 rounded-full bg-acao-tenue px-2.5 py-0.5">
+              <Money value={euros} escala="md" tom="acao" />
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-tinta-2">{porque}</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-tinta-3">{conta}</p>
       </div>
-      <p className="mt-0.5 text-sm text-tinta-2">{porque}</p>
-      <p className="mt-1 text-xs text-tinta-3">{conta}</p>
     </li>
+  );
+}
+
+/** Um total do topo: etiqueta, valor e a origem. `destaque` dá-lhe fundo e o valor maior. */
+function Resumo({
+  rotulo,
+  nota,
+  destaque = false,
+  children,
+}: {
+  rotulo: string;
+  nota: string;
+  destaque?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("min-w-0 rounded-2xl border p-5", destaque ? "border-regua-forte bg-vellum" : "border-regua bg-carta")}>
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-tinta-3">{rotulo}</dt>
+      <dd className="mt-2">{children}</dd>
+      <p className="mt-2 text-xs text-tinta-2">{nota}</p>
+    </div>
+  );
+}
+
+function Pilula({
+  href,
+  ativa,
+  className,
+  children,
+}: {
+  href: string;
+  ativa: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={ativa ? "page" : undefined}
+      className={cn(
+        "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[13px] font-medium transition-colors duration-150 md:min-h-9",
+        ativa ? "border-tinta bg-tinta text-papel" : "border-regua bg-carta text-tinta-2 hover:border-regua-forte hover:text-tinta",
+        className,
+      )}
+    >
+      {children}
+    </Link>
   );
 }

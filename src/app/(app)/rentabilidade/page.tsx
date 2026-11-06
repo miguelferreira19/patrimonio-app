@@ -42,15 +42,19 @@ export default async function Rentabilidade({
 
   return (
     <div className="space-y-6">
-      <nav aria-label="Rentabilidade" className="-mx-4 flex gap-1 overflow-x-auto border-b border-regua px-4 md:mx-0 md:px-0">
+      {/* Separadores em pílula, como os filtros dos Imóveis: o sublinhado fino de 14 px lia-se
+          como texto solto e quase ninguém via que havia quatro vistas (06/11). */}
+      <nav aria-label="Rentabilidade" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
         {tabs.map(([k, nome]) => (
           <Link
             key={k}
             href={k === "resultado" ? "/rentabilidade" : `/rentabilidade?tab=${k}`}
             aria-current={tab === k ? "page" : undefined}
             className={cn(
-              "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors duration-150",
-              tab === k ? "border-tinta text-tinta" : "border-transparent text-tinta-3 hover:text-tinta-2",
+              "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium transition-colors duration-150 md:min-h-10",
+              tab === k
+                ? "border-tinta bg-tinta text-papel"
+                : "border-regua bg-carta text-tinta-2 hover:border-regua-forte hover:text-tinta",
             )}
           >
             {nome}
@@ -88,6 +92,8 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
     .itens.filter((i) => i.grupo === "poupar")
     .sort((x, y) => Number(x.confianca === "assumido") - Number(y.confianca === "assumido"));
   const comRenda = r.fracoes.filter((l) => l.renda > 0);
+  // A mesma escala nas duas listas: a barra da menor renda tem de parecer pequena ao lado da maior.
+  const maiorRenda = Math.max(1, ...comRenda.map((l) => l.renda));
   const ordenadas = [...r.fracoes].sort(ORDENACAO[ordem]);
 
   return (
@@ -101,10 +107,8 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
         fração onde foi feita. Por isso a percentagem do valor usa só a renda.
       </p>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        <Caixa rotulo="Renda recebida" valor={<Money value={r.totais.renda} escala="xl" />} />
-        <Caixa rotulo="Custos" valor={<Money value={r.totais.custos} escala="xl" tom="atencao" />} />
-        <Caixa rotulo="Resultado" valor={<Money value={r.totais.resultado} escala="xl" />} />
+      <div className="grid gap-3 lg:grid-cols-[1.7fr_1fr] lg:gap-4">
+        <ResultadoHero renda={r.totais.renda} custos={r.totais.custos} resultado={r.totais.resultado} />
         {/* Ponto 10: isto divide uma MEDIÇÃO (renda recebida) por uma ESTIMATIVA (o valor
             de mercado). Vai marcado, como manda o princípio 8 do PLANO_CLAREZA. */}
         <Caixa
@@ -138,8 +142,8 @@ async function Resultado({ ordem }: { ordem: Ordem }) {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Top titulo="As 5 de maior renda" linhas={comRenda.slice(0, 5)} />
-        <Top titulo="As 5 de menor renda" linhas={comRenda.slice(-5).reverse()} tom="atencao" />
+        <Top titulo="As 5 de maior renda" linhas={comRenda.slice(0, 5)} maximo={maiorRenda} />
+        <Top titulo="As 5 de menor renda" linhas={comRenda.slice(-5).reverse()} maximo={maiorRenda} tom="atencao" />
       </div>
 
       {oportunidades.length > 0 && (
@@ -227,23 +231,89 @@ function BarraDePredio({ p, maior }: { p: PredioRentabilidade; maior: number }) 
   );
 }
 
-function Top({ titulo, linhas, tom = "tinta" }: { titulo: string; linhas: LinhaRentabilidade[]; tom?: "tinta" | "atencao" }) {
+function Top({
+  titulo,
+  linhas,
+  maximo,
+  tom = "tinta",
+}: {
+  titulo: string;
+  linhas: LinhaRentabilidade[];
+  /** A maior renda da carteira: a mesma escala nas duas listas. */
+  maximo: number;
+  tom?: "tinta" | "atencao";
+}) {
   return (
     <section className="rounded-2xl border border-regua bg-carta p-4 md:p-5">
       <h2 className="text-sm font-semibold text-tinta">{titulo}</h2>
       <ol className="mt-2 divide-y divide-regua">
         {linhas.map((l) => (
-          <li key={l.property.id} className="flex items-baseline justify-between gap-3 py-2.5">
-            <Link href={`/fracoes/${l.property.id}`} className="min-w-0 truncate text-sm text-tinta hover:text-acao">
-              {l.nome}
-            </Link>
-            <span className="shrink-0">
-              <Money value={l.renda} escala="md" tom={tom} />
-              <span className="text-xs text-tinta-3">/ano</span>
-            </span>
+          <li key={l.property.id} className="py-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <Link href={`/fracoes/${l.property.id}`} className="min-w-0 truncate text-sm text-tinta hover:text-acao">
+                {l.nome}
+              </Link>
+              <span className="shrink-0">
+                <Money value={l.renda} escala="md" tom={tom} />
+                <span className="text-xs text-tinta-3">/ano</span>
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-vellum" aria-hidden="true">
+              <div
+                className={cn("barra-cresce h-full rounded-full", tom === "atencao" ? "bg-atencao" : "bg-tinta")}
+                style={{ width: `${Math.max(2, (l.renda / maximo) * 100)}%` }}
+              />
+            </div>
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+/** O resultado dos 12 meses em grande, com a conta à vista: o que sobra a tinta e os custos a
+ *  âmbar, numa barra que vale a renda toda. Um resultado negativo fica a vermelho. */
+function ResultadoHero({ renda, custos, resultado }: { renda: number; custos: number; resultado: number }) {
+  const parteCustos = renda > 0 ? Math.min(100, (custos / renda) * 100) : 0;
+  return (
+    <section className="destaque rounded-2xl border border-regua bg-carta p-5 md:p-6">
+      <p className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">Resultado dos últimos 12 meses</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <Money value={resultado} escala="hero" tom={resultado < 0 ? "perda" : "tinta"} />
+        {renda > 0 && (
+          <span className="mb-1.5 rounded-full bg-vellum px-3 py-1 text-[13px] font-semibold tabular-nums text-tinta-2 ring-1 ring-regua">
+            {Math.round(parteCustos)}% da renda vai em custos
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-sm text-tinta-2">
+        renda recebida <Money value={renda} escala="sm" tom="tinta-2" /> menos custos{" "}
+        <Money value={custos} escala="sm" tom="tinta-2" />
+      </p>
+      {renda > 0 && (
+        <div className="mt-4 h-3.5 overflow-hidden rounded-full bg-vellum ring-1 ring-inset ring-regua" aria-hidden="true">
+          {/* A animação vai no conjunto e não em cada fatia: cada uma a crescer da sua própria
+              esquerda dava uma barra cortada a meio da entrada. */}
+          <div className="barra-cresce flex h-full w-full">
+            {resultado >= 0 ? (
+              <>
+                <span className="h-full bg-tinta" style={{ width: `${100 - parteCustos}%` }} />
+                <span className="h-full bg-atencao" style={{ width: `${parteCustos}%` }} />
+              </>
+            ) : (
+              <span className="h-full w-full bg-perda" />
+            )}
+          </div>
+        </div>
+      )}
+      <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-tinta-2">
+        <li className="flex items-center gap-1.5">
+          <i aria-hidden="true" className="size-3 rounded-[4px] bg-tinta" /> Resultado
+        </li>
+        <li className="flex items-center gap-1.5">
+          <i aria-hidden="true" className="size-3 rounded-[4px] bg-atencao" /> Custos
+        </li>
+      </ul>
     </section>
   );
 }

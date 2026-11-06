@@ -261,6 +261,11 @@ body {
 }
 
 html { scrollbar-gutter: stable; }
+/* Rede de segurança do telemóvel (06/11): o ecrã nunca anda para o lado. Uma página que
+   passe da largura do aparelho (foi o gráfico novo do Hoje) cortava o cabeçalho e obrigava a
+   arrastar. As tabelas largas já têm a sua própria caixa com scroll, por isso nada se perde;
+   `clip`, e não `hidden`, para o `sticky` do cabeçalho continuar a funcionar. */
+body { overflow-x: clip; }
 body:has(dialog[open]) { overflow: hidden; }
 ::selection { background: var(--s-acao-tenue); color: var(--s-tinta); }
 input, textarea { caret-color: var(--s-acao); }
@@ -297,6 +302,12 @@ body {
 :where(.rounded-2xl.border.bg-carta) { box-shadow: var(--sombra-carta); }
 :where(p) { text-wrap: pretty; }
 nav.overflow-x-auto { overflow-y: hidden; }
+/* Fileiras de pílulas que deslizam para o lado (filtros, separadores, anos): sem a barra de
+   scroll por baixo, que num ecrã estreito desenhava uma linha cinzenta solta. */
+nav.overflow-x-auto,
+.sem-barra { scrollbar-width: none; }
+nav.overflow-x-auto::-webkit-scrollbar,
+.sem-barra::-webkit-scrollbar { display: none; }
 :where(a, button, summary, select, [tabindex]):focus-visible {
   outline: 2px solid var(--s-acao);
   outline-offset: 3px;
