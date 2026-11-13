@@ -3,7 +3,10 @@
 // uma oposição à renovação que é ineficaz ou uma interpelação a quem está em dia — e uma
 // carta destas produz efeitos jurídicos.
 import assert from "node:assert/strict";
-import { ANOS_ATE_OPOSICAO, enquadrarMinutas, type FactosDaFracao } from "./minutas";
+import {
+  ANOS_ATE_OPOSICAO, MINUTAS, MINUTA_RENDA, MINUTA_TIPOS, enquadrarMinutas,
+  isMinutaTipo, minutaAtualizacaoRenda, type FactosDaFracao, type MinutaDados,
+} from "./minutas";
 
 const BASE: FactosDaFracao = {
   hoje: "2026-07-30",
@@ -62,7 +65,18 @@ function disponiveis(f: Partial<FactosDaFracao>): string[] {
 //    erro que fica por escrito.
 {
   assert.equal(bloqueio({ mesesEmAtraso: 0 }, "interpelacao") !== null, true);
-  assert.equal(bloqueio({ mesesEmAtraso: 1 }, "interpelacao"), null);
+  assert.notEqual(bloqueio({ mesesEmAtraso: 1 }, "interpelacao"), null);
+  assert.equal(bloqueio({ mesesEmAtraso: 2 }, "interpelacao"), null);
+  assert.equal(bloqueio({ mesesEmAtraso: 1 }, "lembrete"), null);
+  assert.equal(bloqueio({ mesesEmAtraso: 2 }, "acordo"), null);
+  const cartas = [{ tipo: "lembrete" as const, dia: "2026-07-15" }];
+  assert.equal(bloqueio({ mesesEmAtraso: 1, cartas }, "interpelacao"), null);
+  assert.notEqual(bloqueio({ mesesEmAtraso: 1, cartas }, "lembrete"), null);
+  assert.notEqual(bloqueio({ mesesEmAtraso: 3 }, "resolucao"), null);
+  assert.equal(bloqueio({ mesesEmAtraso: 3,
+    cartas: [{ tipo: "interpelacao", dia: "2026-07-21" }] }, "resolucao"), null);
+  assert.notEqual(bloqueio({ mesesEmAtraso: 3,
+    cartas: [{ tipo: "interpelacao", dia: "2026-07-22" }] }, "resolucao"), null);
 }
 
 // D) Oposição à renovação: artigo 1097.º n.º 3, três anos de contrato. A fronteira é o
@@ -89,7 +103,8 @@ function disponiveis(f: Partial<FactosDaFracao>): string[] {
 //    quem quiser mostrar a razão tem de as receber.
 {
   const todas = enquadrarMinutas(BASE).map((m) => m.chave);
-  assert.deepEqual(todas, ["renda", "interpelacao", "oposicao", "revogacao", "cessao"]);
+  assert.deepEqual(todas,
+    ["renda", "lembrete", "interpelacao", "resolucao", "acordo", "oposicao", "revogacao", "cessao"]);
   assert.deepEqual(enquadrarMinutas({ ...BASE, temContratoAtivo: false }).map((m) => m.chave), todas);
   for (const m of enquadrarMinutas(BASE)) {
     assert.ok(m.label.length > 0 && m.descricao.length > 0 && m.base.length > 0, m.chave);
@@ -103,6 +118,50 @@ function disponiveis(f: Partial<FactosDaFracao>): string[] {
     disponiveis({ inicioContrato: "2025-06-01", hoje: "2026-01-10", rendaElegivel: false, rendaElegivelDesde: "2026-06-01" }),
     ["revogacao", "cessao"],
   );
+}
+
+const DADOS: MinutaDados = {
+  senhorio: "Senhorio de ensaio", senhorioNif: null, inquilino: "Arrendatário de ensaio",
+  inquilinoNif: null, morada: "Rua de Ensaio, 1", fracaoRef: "1.º esquerdo",
+  contratoNo: null, inicio: null, renda: 500, hoje: "2026-11-13",
+};
+
+// H) Todos os tipos continuam editáveis com dados mínimos e completos.
+{
+  const completos: MinutaDados = {
+    ...DADOS, senhorioNif: "100000000", inquilinoNif: "200000000", contratoNo: "ENSAIO-1",
+    inicio: "2020-02-01", fimContrato: "2027-02-01", antecedenciaDias: 120,
+    divida: { meses: [{ mes: "2026-09-01", valor: 500 }], total: 500 },
+  };
+  for (const d of [DADOS, completos]) {
+    const cartas = MINUTA_TIPOS.map((tipo) => MINUTAS[tipo].construir(d));
+    cartas.push(minutaAtualizacaoRenda(d,
+      { ano: 2027, coeficiente: 1.02, novaRenda: 510, desde: "2027-02-01" }));
+    for (const m of cartas) {
+      const texto = [m.assunto, ...m.paragrafos, ...m.assinaturas, m.nota].join("\n");
+      assert.doesNotMatch(texto, /—|undefined|NaN|null| {2}/, m.assunto);
+      assert.ok(m.paragrafos.every((p) => !p.includes("Rever com advogado antes de enviar.")));
+    }
+    const renda = minutaAtualizacaoRenda(d,
+      { ano: 2027, coeficiente: 1.02, novaRenda: 510, desde: "2027-02-01" });
+    assert.match(renda.paragrafos.join("\n"), /1 de fevereiro de 2027/);
+  }
+  for (const tipo of MINUTA_TIPOS) {
+    assert.equal(isMinutaTipo(tipo), true);
+    assert.ok(MINUTAS[tipo].nota.length > 0);
+    assert.ok(["simples", "registada"].includes(MINUTAS[tipo].envio));
+  }
+  assert.equal(isMinutaTipo("desconhecida"), false);
+  for (const tipo of ["resolucao", "oposicao"] as const) {
+    assert.ok(MINUTAS[tipo].nota.includes("Rever com advogado antes de enviar."));
+  }
+  assert.equal(MINUTA_RENDA.envio, "registada");
+  assert.ok(MINUTA_RENDA.nota.includes("24.º"));
+  const oposicao = MINUTAS.oposicao.construir(completos).paragrafos.join("\n");
+  assert.match(oposicao, /1097.º/);
+  assert.match(oposicao, /120 dias/);
+  assert.match(oposicao, /1 de fevereiro de 2027/);
+  assert.doesNotMatch(oposicao, /\d{2}\/\d{2}\/\d{4}/);
 }
 
 console.log("minutas.check: OK");

@@ -4,17 +4,21 @@
 // artigos do Código Civil lá dentro, e vai ser lido e corrigido por quem percebe de
 // arrendamento, não por quem percebe de JSX. Separado, lê-se de uma sentada.
 //
-// A carta de atualização de renda NÃO está aqui: essa depende do coeficiente do ano e da
-// elegibilidade, tem cálculo próprio, e já vive em `/carta/[contractId]`. Estas quatro são
-// as que um senhorio precisa e a app não tinha.
-//
 // Todas saem com espaços em branco onde a app não sabe (o novo arrendatário de uma cessão,
 // os meses em dívida). Preencher à mão é honesto; inventar um número numa carta que produz
 // efeitos jurídicos não é.
 
 import { fmtDate, fmtEur } from "./format";
+import {
+  NOTAS_COBRANCA, dataPorExtenso, identificaLocado, minutaAcordoPorPreencher,
+  minutaInterpelacao, minutaLembrete, minutaResolucao, passoDaEscada,
+  type CartaEnviada, type DividaDaCarta,
+} from "./minutas-cobranca";
+export { minutaAcordo, passoDaEscada, textoCurto } from "./minutas-cobranca";
+export type { CartaEnviada, DividaDaCarta, PassoDaEscada } from "./minutas-cobranca";
 
-export type MinutaTipo = "cessao" | "oposicao" | "interpelacao" | "revogacao";
+export type MinutaTipo = "cessao" | "oposicao" | "interpelacao" | "revogacao" |
+  "lembrete" | "resolucao" | "acordo";
 
 export interface MinutaDados {
   senhorio: string;
@@ -30,6 +34,10 @@ export interface MinutaDados {
   renda: number;
   /** Hoje, ISO. */
   hoje: string;
+  divida?: DividaDaCarta;
+  /** Termo do prazo em curso e antecedência usada, quando confirmados no contrato. */
+  fimContrato?: string | null;
+  antecedenciaDias?: number | null;
 }
 
 export interface Minuta {
@@ -47,23 +55,21 @@ export interface MinutaSpec {
   descricao: string;
   /** Base legal, mostrada no ecrã (não na carta impressa). */
   base: string;
-  construir(d: MinutaDados): Minuta;
+  /** Apenas para o rodapé da página da app, nunca para o corpo da carta. */
+  nota: string;
+  envio: "simples" | "registada";
+  construir(d: MinutaDados, divida?: DividaDaCarta): Minuta;
 }
 
 const LINHA = "________________________";
 
-/** "com o n.º 123456 no Portal das Finanças, " ou nada. Repete-se nas quatro minutas. */
 function refContrato(d: MinutaDados): string {
   return d.contratoNo ? `, com o n.º ${d.contratoNo} no Portal das Finanças,` : "";
 }
 
-function identificaLocado(d: MinutaDados): string {
-  const desde = d.inicio ? ` e com início em ${fmtDate(d.inicio)}` : "";
-  return (
-    `contrato de arrendamento da fração sita em ${d.morada}${refContrato(d)}` +
-    `${desde}, cuja renda mensal em vigor é de ${fmtEur(d.renda, 2)}`
-  );
-}
+const NOTA_OPOSICAO = "Art. 1097.º do Código Civil: antecedência conforme o prazo do contrato, " +
+  "com respeito pelo limite dos três anos do n.º 3. Confirmar o prazo em curso e a antecedência " +
+  "indicada. Enviar por carta registada com aviso de receção. Rever com advogado antes de enviar.";
 
 export const MINUTAS: Record<MinutaTipo, MinutaSpec> = {
   // ----------------------------------------------------------------
@@ -71,6 +77,8 @@ export const MINUTAS: Record<MinutaTipo, MinutaSpec> = {
     label: "Cessão da posição contratual",
     descricao: "O arrendatário sai e outra pessoa entra no mesmo contrato, com o acordo do senhorio.",
     base: "Artigos 424.º e seguintes, 1038.º alínea f) e 1059.º n.º 2 do Código Civil",
+    nota: "Arts. 424.º e seguintes, 1038.º, alínea f), e 1059.º, n.º 2, do Código Civil: a cessão exige autorização do senhorio.",
+    envio: "simples",
     construir: (d) => ({
       assunto: `Cessão da posição contratual no arrendamento da fração ${d.fracaoRef}`,
       paragrafos: [
@@ -106,17 +114,18 @@ export const MINUTAS: Record<MinutaTipo, MinutaSpec> = {
     label: "Oposição à renovação",
     descricao: "Comunicação do senhorio a impedir que o contrato se renove no fim do prazo.",
     base: "Artigo 1097.º do Código Civil",
+    nota: NOTA_OPOSICAO,
+    envio: "registada",
     construir: (d) => ({
       assunto: `Oposição à renovação do contrato de arrendamento da fração ${d.fracaoRef}`,
       paragrafos: [
         `Ex.mo(a) Senhor(a) ${d.inquilino},`,
         `Na qualidade de senhorio no ${identificaLocado(d)}, venho comunicar a minha OPOSIÇÃO À ` +
           `RENOVAÇÃO do referido contrato, nos termos do artigo 1097.º do Código Civil.`,
-        `Em consequência, o contrato cessa os seus efeitos em ${LINHA}, data em que deverá ` +
+        `Em consequência, o contrato cessa os seus efeitos em ${dataPorExtenso(d.fimContrato)}, data em que deverá ` +
           `entregar o locado livre de pessoas e bens, no estado em que o recebeu, salvo as ` +
           `deteriorações inerentes a uma utilização normal.`,
-        `A presente comunicação é feita com a antecedência legalmente exigida face ao termo do ` +
-          `prazo em curso.`,
+        `A antecedência usada nesta comunicação é de ${d.antecedenciaDias ?? LINHA} dias em relação ao termo do prazo em curso, nos termos do art. 1097.º do Código Civil.`,
         `Até à data da entrega mantém-se a obrigação de pagamento pontual da renda, bem como dos ` +
           `encargos que sejam da sua responsabilidade.`,
         `Solicita-se que confirme a receção da presente comunicação e que acorde comigo a data e a ` +
@@ -124,11 +133,7 @@ export const MINUTAS: Record<MinutaTipo, MinutaSpec> = {
         `Com os melhores cumprimentos,`,
       ],
       assinaturas: ["O Senhorio"],
-      nota:
-        "A antecedência depende da duração do contrato (artigo 1097.º n.º 1): 240 dias se o prazo " +
-        "for igual ou superior a seis anos, 120 dias entre um e seis anos, 60 dias entre seis meses " +
-        "e um ano. O senhorio não pode opor-se à renovação antes de decorridos três anos sobre o " +
-        "início do contrato (n.º 3). Enviar por carta registada com aviso de receção.",
+      nota: NOTA_OPOSICAO,
     }),
   },
 
@@ -136,35 +141,34 @@ export const MINUTAS: Record<MinutaTipo, MinutaSpec> = {
   interpelacao: {
     label: "Interpelação por rendas em atraso",
     descricao: "Aviso formal de rendas não pagas, com o prazo e as consequências.",
-    base: "Artigos 1041.º, 1083.º n.º 3 e 1084.º n.º 3 do Código Civil",
-    construir: (d) => ({
-      assunto: `Rendas em atraso no arrendamento da fração ${d.fracaoRef}`,
-      paragrafos: [
-        `Ex.mo(a) Senhor(a) ${d.inquilino},`,
-        `Na qualidade de senhorio no ${identificaLocado(d)}, venho por este meio interpelá-lo(a) ` +
-          `para o pagamento das rendas vencidas e não pagas.`,
-        `Encontram-se em dívida as rendas dos meses de ${LINHA}, no valor total de ${LINHA}, a que ` +
-          `acresce a indemnização de 20% sobre o valor em dívida prevista no n.º 1 do artigo 1041.º ` +
-          `do Código Civil.`,
-        `Fica desde já notificado(a) de que dispõe do prazo legal para proceder ao pagamento ` +
-          `integral do montante em dívida, acrescido daquela indemnização, sob pena de o contrato ` +
-          `poder ser resolvido.`,
-        `Recorda-se que a mora superior a três meses no pagamento da renda, ou o atraso superior a ` +
-          `oito dias no pagamento por mais de quatro vezes seguidas ou interpoladas num período de ` +
-          `doze meses, constitui fundamento de resolução do contrato pelo senhorio, nos termos do ` +
-          `n.º 3 do artigo 1083.º do Código Civil.`,
-        `O pagamento deverá ser feito por transferência para o IBAN ${LINHA}, indicando o mês a que ` +
-          `respeita cada renda.`,
-        `Caso o pagamento já tenha sido efetuado entretanto, solicita-se que ignore a presente ` +
-          `comunicação e que me envie o comprovativo.`,
-        `Com os melhores cumprimentos,`,
-      ],
-      assinaturas: ["O Senhorio"],
-      nota:
-        "Enviar por carta registada com aviso de receção: sem prova de receção a interpelação não " +
-        "serve num processo. O pagamento do arrendatário no prazo do n.º 3 do artigo 1084.º faz " +
-        "caducar o direito de resolução.",
-    }),
+    base: "Artigo 1041.º, n.º 1, do Código Civil",
+    nota: NOTAS_COBRANCA.interpelacao,
+    envio: "registada",
+    construir: minutaInterpelacao,
+  },
+  lembrete: {
+    label: "Lembrete de rendas em atraso",
+    descricao: "Pedido cordial de regularização, com convite a contactar em caso de dificuldade.",
+    base: "Regularização amigável de rendas vencidas",
+    nota: NOTAS_COBRANCA.lembrete,
+    envio: "simples",
+    construir: minutaLembrete,
+  },
+  resolucao: {
+    label: "Aviso de resolução",
+    descricao: "Intenção de resolver o contrato por mora igual ou superior a três meses.",
+    base: "Artigos 1083.º e 1084.º do Código Civil e artigo 9.º, n.º 7, do NRAU",
+    nota: NOTAS_COBRANCA.resolucao,
+    envio: "registada",
+    construir: minutaResolucao,
+  },
+  acordo: {
+    label: "Acordo de pagamento",
+    descricao: "Plano de regularização da dívida em prestações, além da renda corrente.",
+    base: "Artigos 405.º e 781.º do Código Civil",
+    nota: NOTAS_COBRANCA.acordo,
+    envio: "simples",
+    construir: minutaAcordoPorPreencher,
   },
 
   // ----------------------------------------------------------------
@@ -172,6 +176,8 @@ export const MINUTAS: Record<MinutaTipo, MinutaSpec> = {
     label: "Revogação por acordo",
     descricao: "As duas partes acordam terminar o contrato numa data certa.",
     base: "Artigo 1082.º do Código Civil",
+    nota: "Art. 1082.º do Código Civil: cessação do contrato por acordo entre senhorio e arrendatário.",
+    envio: "simples",
     construir: (d) => ({
       assunto: `Revogação por acordo do contrato de arrendamento da fração ${d.fracaoRef}`,
       paragrafos: [
@@ -237,6 +243,8 @@ export interface FactosDaFracao {
   temCoeficiente: boolean;
   /** Meses seguidos por liquidar, já sem os contratos de ritmo próprio (arrears.ts). */
   mesesEmAtraso: number;
+  /** Apenas as cartas enviadas no ciclo de atraso atual. */
+  cartas?: CartaEnviada[];
 }
 
 export interface MinutaEnquadrada {
@@ -244,6 +252,8 @@ export interface MinutaEnquadrada {
   label: string;
   descricao: string;
   base: string;
+  nota: string;
+  envio: "simples" | "registada";
   /** null quando a carta se aplica. Caso contrário, a razão, em PT-PT. */
   bloqueio: string | null;
 }
@@ -256,38 +266,38 @@ function somaAnos(iso: string, anos: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/**
- * As cinco cartas, cada uma com o seu bloqueio (ou `null` se se aplica). Devolve-as
- * TODAS, na ordem em que se usam: quem chama decide se esconde as bloqueadas ou se
- * também diz porquê. Filtrar aqui dentro tirava a razão a quem a quisesse mostrar.
- */
+function bloqueioRenda(f: FactosDaFracao): string | null {
+  return !f.temCoeficiente
+    ? "Ainda não há coeficiente de atualização registado (regista-se em Admin)."
+    : f.rendaElegivel
+      ? null
+      : f.rendaElegivelDesde
+        ? `A renda deste contrato só é atualizável a partir de ${fmtDate(f.rendaElegivelDesde)}.`
+        : "Falta a data de início do contrato para calcular a elegibilidade.";
+}
+
+function bloqueioOposicao(f: FactosDaFracao): string | null {
+  return !f.inicioContrato
+    ? "Falta a data de início do contrato para contar o prazo do artigo 1097.º."
+    : f.hoje < somaAnos(f.inicioContrato, ANOS_ATE_OPOSICAO)
+      ? `O senhorio só se pode opor à renovação a partir de ${fmtDate(
+          somaAnos(f.inicioContrato, ANOS_ATE_OPOSICAO),
+        )} (três anos de contrato).`
+      : null;
+}
+
+/** Mantém as cartas bloqueadas na lista para a página poder explicar a razão. */
 export function enquadrarMinutas(f: FactosDaFracao): MinutaEnquadrada[] {
-  const semContrato = f.temContratoAtivo
-    ? null
-    : "A fração não tem contrato de arrendamento ativo.";
-
-  const renda =
-    semContrato ??
-    (!f.temCoeficiente
-      ? "Ainda não há coeficiente de atualização registado (regista-se em Admin)."
-      : f.rendaElegivel
-        ? null
-        : f.rendaElegivelDesde
-          ? `A renda deste contrato só é atualizável a partir de ${fmtDate(f.rendaElegivelDesde)}.`
-          : "Falta a data de início do contrato para calcular a elegibilidade.");
-
-  const interpelacao =
-    semContrato ?? (f.mesesEmAtraso > 0 ? null : "Este contrato não tem rendas por liquidar.");
-
-  const oposicao =
-    semContrato ??
-    (!f.inicioContrato
-      ? "Falta a data de início do contrato para contar o prazo do artigo 1097.º."
-      : f.hoje < somaAnos(f.inicioContrato, ANOS_ATE_OPOSICAO)
-        ? `O senhorio só se pode opor à renovação a partir de ${fmtDate(
-            somaAnos(f.inicioContrato, ANOS_ATE_OPOSICAO),
-          )} (três anos de contrato).`
-        : null);
+  const semContrato = f.temContratoAtivo ? null : "A fração não tem contrato de arrendamento ativo.";
+  const escada = passoDaEscada({ ...f, cartas: f.cartas ?? [] });
+  const cobranca = (["lembrete", "interpelacao", "resolucao"] as const).map((chave) => ({
+    chave, ...resumo(chave),
+    bloqueio: semContrato ?? (escada.proxima === chave && escada.quando === f.hoje ? null :
+      escada.proxima === chave && escada.quando ?
+        `${escada.motivo} Disponível a partir de ${dataPorExtenso(escada.quando)}.` :
+        escada.proxima === chave || escada.proxima === null ? escada.motivo :
+          `O próximo passo é: ${MINUTAS[escada.proxima].label.toLowerCase()}.`),
+  }));
 
   return [
     {
@@ -295,18 +305,22 @@ export function enquadrarMinutas(f: FactosDaFracao): MinutaEnquadrada[] {
       label: MINUTA_RENDA.label,
       descricao: MINUTA_RENDA.descricao,
       base: MINUTA_RENDA.base,
-      bloqueio: renda,
+      nota: MINUTA_RENDA.nota,
+      envio: MINUTA_RENDA.envio,
+      bloqueio: semContrato ?? bloqueioRenda(f),
     },
-    { chave: "interpelacao", ...resumo("interpelacao"), bloqueio: interpelacao },
-    { chave: "oposicao", ...resumo("oposicao"), bloqueio: oposicao },
+    ...cobranca,
+    { chave: "acordo", ...resumo("acordo"),
+      bloqueio: semContrato ?? (f.mesesEmAtraso > 0 ? null : "Sem rendas em atraso.") },
+    { chave: "oposicao", ...resumo("oposicao"), bloqueio: semContrato ?? bloqueioOposicao(f) },
     { chave: "revogacao", ...resumo("revogacao"), bloqueio: semContrato },
     { chave: "cessao", ...resumo("cessao"), bloqueio: semContrato },
   ];
 }
 
-function resumo(tipo: MinutaTipo): { label: string; descricao: string; base: string } {
-  const { label, descricao, base } = MINUTAS[tipo];
-  return { label, descricao, base };
+function resumo(tipo: MinutaTipo): Omit<MinutaSpec, "construir"> {
+  const { label, descricao, base, nota, envio } = MINUTAS[tipo];
+  return { label, descricao, base, nota, envio };
 }
 
 // ----------------------------------------------------------------
@@ -328,6 +342,8 @@ export const MINUTA_RENDA = {
   label: "Atualização de renda",
   descricao: "Comunicação da subida anual pelo coeficiente publicado em Diário da República.",
   base: "Artigo 24.º da Lei n.º 6/2006 (Novo Regime do Arrendamento Urbano)",
+  nota: "Art. 24.º da Lei n.º 6/2006: comunicar por escrito o coeficiente e a nova renda com pelo menos 30 dias de antecedência. Enviar por carta registada com aviso de receção.",
+  envio: "registada" as const,
 };
 
 export function minutaAtualizacaoRenda(d: MinutaDados, a: AtualizacaoRenda): Minuta {
@@ -338,18 +354,16 @@ export function minutaAtualizacaoRenda(d: MinutaDados, a: AtualizacaoRenda): Min
       `Nos termos do artigo 24.º da Lei n.º 6/2006, de 27 de fevereiro (Novo Regime do ` +
         `Arrendamento Urbano), vimos comunicar a atualização anual da renda do contrato de ` +
         `arrendamento da fração acima identificada${refContrato(d)} com início em ` +
-        `${fmtDate(d.inicio)}.`,
+        `${dataPorExtenso(d.inicio)}.`,
       `A renda mensal atualmente em vigor é de ${fmtEur(d.renda, 2)}.`,
       `É aplicado o coeficiente de atualização de renda para o ano de ${a.ano}, fixado em ` +
         `${a.coeficiente.toFixed(4).replace(".", ",")} e publicado em Diário da República.`,
       `Em resultado desta atualização, a nova renda mensal passa a ser de ` +
-        `${fmtEur(a.novaRenda, 2)}, com efeitos a partir de ${fmtDate(a.desde)}.`,
+        `${fmtEur(a.novaRenda, 2)}, com efeitos a partir de ${dataPorExtenso(a.desde)}.`,
       `Solicita-se a confirmação da receção da presente comunicação.`,
       `Com os melhores cumprimentos,`,
     ],
     assinaturas: ["Assinatura do Senhorio"],
-    nota:
-      "Confirmar o prazo de antecedência exigido face à data de vencimento da renda antes de " +
-      "enviar. Enviar por carta registada com aviso de receção.",
+    nota: MINUTA_RENDA.nota,
   };
 }

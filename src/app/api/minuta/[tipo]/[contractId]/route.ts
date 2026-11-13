@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
 import { rentUpdateEligibility } from "@/lib/calc";
 import { getSession } from "@/lib/data";
 import { criarDocx, nomeDeFicheiro, type DocxParagrafo } from "@/lib/docx";
-import { todayISO } from "@/lib/format";
+import { mesPorExtenso, todayISO } from "@/lib/format";
 import {
   MINUTAS,
   MINUTA_RENDA,
@@ -51,17 +51,11 @@ function montarFolha(m: Minuta, d: MinutaDados): DocxParagrafo[] {
     { texto: `Assunto: ${m.assunto}`, negrito: true, espacoDepois: 320 },
     ...m.paragrafos.map((p) => ({ texto: p })),
     { texto: `Local: ${LINHA_ASSINATURA}`, espacoDepois: 160 },
-    { texto: `Data: ${new Date(d.hoje).toLocaleDateString("pt-PT")}`, espacoDepois: 640 },
+    { texto: `Data: ${Number(d.hoje.slice(8, 10))} de ${mesPorExtenso(d.hoje, true)}`, espacoDepois: 640 },
     ...m.assinaturas.flatMap((legenda) => [
       { texto: LINHA_ASSINATURA, espacoDepois: 0 },
       { texto: legenda, espacoDepois: 560 },
     ]),
-    {
-      texto:
-        `${m.nota} Minuta gerada a partir dos dados do contrato. Confirmar prazos e ` +
-        `enquadramento legal do contrato concreto antes de enviar; não constitui ` +
-        `aconselhamento jurídico vinculativo.`,
-    },
   ];
 }
 
@@ -123,6 +117,8 @@ export async function GET(
     inicio: contract.start_date,
     renda: contract.rent,
     hoje: todayISO(),
+    fimContrato: contract.expected_end_date ?? contract.end_date,
+    antecedenciaDias: contract.notice_days_landlord,
   };
 
   let minuta: Minuta;
