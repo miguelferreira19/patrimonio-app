@@ -1,351 +1,43 @@
-// O ANO (PLANO.md §3 e §11): "quanto ganhámos, quanto vamos pagar, que decisão tomar?".
-//
-// É um DOCUMENTO, não um dashboard: lê-se de cima a baixo, pela ordem em que a pergunta
-// se resolve — quanto entrou, quanto se gastou, quanto se retém, que regime paga menos e
-// porquê, que contratos comunicar à AT, exposição a AIMI, e as despesas em detalhe.
-// Imprime-se para a família (§11).
-//
-// Server component. O senhorio e o ano vivem no URL, por isso um link leva alguém
-// diretamente ao mesmo documento.
-
-import Link from "next/link";
 import { Download } from "lucide-react";
 import { carregarAno } from "@/lib/portfolio/ano";
 import { getSession } from "@/lib/data";
-import { Cascata, type Degrau } from "@/components/ano/cascata";
-import { ExpensesClient } from "@/components/ano/despesas-client";
-import { Lede, Money, Seccao } from "@/components/kit";
-import { Badge, buttonClass, EmptyState, Table, Td, Th } from "@/components/ui";
-import { cn } from "@/lib/cn";
-import { AIMI_THRESHOLD_COUPLE, AIMI_THRESHOLD_SINGLE } from "@/lib/irs";
-import { fmtEur, fmtPct } from "@/lib/format";
+import { nomeProprio } from "@/lib/format";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
+import { ExpensesClient } from "@/components/ano/despesas-client";
+import { Lede, Pilulas } from "@/components/kit";
+import { buttonClass, EmptyState } from "@/components/ui";
+import Resumo from "./resumo";
+import Decisoes from "./decisoes";
+import Anexo from "./anexo";
 
-
-export default async function AnoPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ ano: string }>;
-  searchParams: Promise<{ senhorio?: string }>;
+export default async function AnoPage({ params, searchParams }: {
+  params: Promise<{ ano: string }>; searchParams: Promise<{ senhorio?: string }>;
 }) {
-  const [{ ano: anoParam }, sp, { isAdmin }] = await Promise.all([
-    params,
-    searchParams,
-    getSession(),
-  ]);
-  const dados = await carregarAno(parseInt(anoParam, 10));
-
-  if (dados.senhorios.length === 0) {
-    return (
-      <div className="space-y-4">
-        <Lede eyebrow={`IRS ${dados.ano}`} title="Ainda não há senhorios registados." />
-        <EmptyState>Importa os recibos do Portal das Finanças no Admin para começar.</EmptyState>
-      </div>
-    );
-  }
-
-  const escolhido =
-    dados.porSenhorio.find((s) => s.landlord.id === sp.senhorio) ?? dados.porSenhorio[0];
-  const { fy, aimi, anexoF, elegiveisArt72, poupancaArt72, prazoPorConfirmar } = escolhido;
-
-  const nomePorFracao = new Map(dados.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
-  // UMA morada. O `emDinheiro` escolhia entre `/impostos` e `/ano/<ano>` e estava fixo a
-  // "1" pelo unico chamador: era o resto de quando as duas rotas viviam em paralelo.
+  const [{ ano: pedido }, sp, { isAdmin }] = await Promise.all([params, searchParams, getSession()]);
+  const dados = await carregarAno(parseInt(pedido, 10));
+  if (!dados.senhorios.length) return <EmptyState>Ainda não há senhorios registados.</EmptyState>;
+  const escolhido = dados.porSenhorio.find((s) => s.landlord.id === sp.senhorio) ?? dados.porSenhorio[0];
+  const nomes = new Map(dados.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
   const destino = (ano: number, senhorio?: string) =>
-    `/impostos?ano=${ano}${senhorio ? `&senhorio=${senhorio}` : ""}`;
-  const poupancaRegime = Math.abs(fy.autonomousTax - fy.englobedTax);
-  const sobra = fy.netIncome - fy.bestTax;
-
-  const degraus: Degrau[] = [
-    { label: "Rendas documentadas", valor: fy.grossRent, tipo: "entrada", nota: "recibos emitidos no ano, ilíquidos" },
-    {
-      label: "Despesas dedutíveis",
-      valor: fy.deductibleExpenses,
-      tipo: "saida",
-      nota:
-        fy.toConfirmExpenses > 0
-          ? `mais ${fmtEur(fy.toConfirmExpenses)} por confirmar, fora desta conta`
-          : undefined,
-    },
-    { label: "Rendimento líquido predial", valor: fy.netIncome, tipo: "saldo" },
-    {
-      label: `Imposto (${fy.bestRegime === "autonoma" ? "taxa autónoma" : "englobamento"})`,
-      valor: fy.bestTax,
-      tipo: "saida",
-      nota: `escalões de ${fy.bracketsYear}`,
-    },
-    { label: "Sobra depois de imposto", valor: sobra, tipo: "saldo" },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <Lede
-        title={`IRS ${dados.ano} · ${escolhido.landlord.name}`}
-        actions={
-          <a
-            href={`/api/irs?landlord=${escolhido.landlord.id}&year=${dados.ano}`}
-            className={buttonClass({ variant: "outline" })}
-          >
-            <Download size={15} strokeWidth={1.75} />
-            Exportar Anexo F
-          </a>
-        }
-      >
-        {fy.withholding > 0
-          ? `Foram retidos ${fmtEur(fy.withholding)} na fonte, que se abatem ao imposto apurado. O regime mais barato é ${fy.bestRegime === "autonoma" ? "a taxa autónoma" : "o englobamento"}, por ${fmtEur(poupancaRegime)}.`
-          : `Não houve retenção na fonte. O regime mais barato é ${fy.bestRegime === "autonoma" ? "a taxa autónoma" : "o englobamento"}, por ${fmtEur(poupancaRegime)}.`}
-      </Lede>
-
-      {/* Seletores: ano e senhorio, ambos como links, em pílulas do tamanho de um dedo (06/11:
-          eram `text-xs` e quase ninguém via que havia outros anos). Fora da impressão: em
-          papel são botões mortos, e o ano já está no cabeçalho do documento. */}
-      <div data-print="none" className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
-          {dados.anos.map((a) => (
-            <Pilula key={a} href={destino(a, sp.senhorio)} ativa={a === dados.ano} className="tabular-nums">
-              {a}
-            </Pilula>
-          ))}
-        </div>
-        {dados.porSenhorio.length > 1 && (
-          <>
-            <span aria-hidden="true" className="hidden h-5 w-px bg-regua md:block" />
-            <div className="sem-barra -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
-              {dados.porSenhorio.map((s) => (
-                <Pilula key={s.landlord.id} href={destino(dados.ano, s.landlord.id)} ativa={s.landlord.id === escolhido.landlord.id}>
-                  {s.landlord.name}
-                </Pilula>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      <dl className="grid gap-3 sm:grid-cols-3 lg:gap-4">
-        <Resumo rotulo="Rendas ilíquidas" nota={`Recibos emitidos em ${dados.ano}`}>
-          <Money value={fy.grossRent} escala="xl" />
-        </Resumo>
-        <Resumo
-          rotulo="Imposto estimado"
-          nota={`${fy.bestRegime === "autonoma" ? "Taxa autónoma" : "Englobamento"} · antes de abater a retenção`}
-        >
-          <Money value={fy.bestTax} escala="xl" tom="atencao" />
-        </Resumo>
-        {/* O resultado do ano é o único com ênfase (tamanho e fundo), e não cor: o documento
-            imprime-se, e a cor de fundo não sai em papel. */}
-        <Resumo rotulo="Depois do imposto" nota="Com as despesas dedutíveis registadas" destaque>
-          <Money value={sobra} escala="hero" />
-        </Resumo>
-      </dl>
-
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Seccao titulo="Como o dinheiro do ano se decompõe">
-          <Cascata degraus={degraus} />
-        </Seccao>
-
-        <Seccao titulo="A decisão do ano" nota="o que fazer com este ano fiscal">
-          <ol className="space-y-4">
-            <Decisao
-              n={1}
-              titulo={
-                fy.bestRegime === "autonoma"
-                  ? "Manter a taxa autónoma"
-                  : "Optar pelo englobamento no Anexo F"
-              }
-              euros={poupancaRegime}
-              porque={`Autónoma ${fmtEur(fy.autonomousTax)} contra englobamento ${fmtEur(fy.englobedTax)}. A diferença é o que se poupa ao escolher bem.`}
-              conta="O englobamento junta o rendimento predial aos escalões gerais de IRS; a app não conhece os outros rendimentos do agregado, por isso isto é uma estimativa do lado predial."
-            />
-            {elegiveisArt72.length > 0 && (
-              <Decisao
-                n={2}
-                titulo={`Comunicar ${elegiveisArt72.length} ${elegiveisArt72.length === 1 ? "contrato" : "contratos"} à AT para a taxa reduzida do art. 72.º`}
-                euros={poupancaArt72}
-                porque={`${elegiveisArt72
-                  .slice(0, 3)
-                  .map((e) => `${e.propertyName} (prazo de ${e.anos} anos, ${fmtPct(e.rate, 0)})`)
-                  .join(", ")}${elegiveisArt72.length > 3 ? `, e outros ${elegiveisArt72.length - 3}` : ""}.`}
-                conta="(taxa autónoma do contrato − taxa reduzida) × renda anual. A duração é a do PRAZO do contrato, não os anos de casa. Exige comunicação à AT, Portaria 110/2019."
-              />
-            )}
-            {prazoPorConfirmar > 0 && (
-              <Link href="/contratos?estado=desconhecido" className="flex flex-wrap items-center gap-2 rounded-xl border border-regua px-4 py-3 text-sm hover:bg-vellum">
-                <Badge tone="futuro">{prazoPorConfirmar} {prazoPorConfirmar === 1 ? "contrato" : "contratos"}</Badge>
-                <span className="text-tinta-2">com 5+ anos de casa e prazo por registar: podem ter taxa reduzida</span>
-              </Link>
-            )}
-            <Decisao
-              n={elegiveisArt72.length > 0 ? 3 : 2}
-              titulo={
-                aimi.overSingle
-                  ? "Confirmar o AIMI e deduzi-lo no quadro 9"
-                  : "Sem exposição a AIMI"
-              }
-              euros={aimi.tax}
-              porque={`VPT tributável ${fmtEur(aimi.totalVpt)}${
-                aimi.excludedCount > 0
-                  ? `, já sem ${aimi.excludedCount} ${aimi.excludedCount === 1 ? "fração isenta" : "frações isentas"} (${fmtEur(aimi.excludedVpt)})`
-                  : ""
-              }. Limite individual ${fmtEur(AIMI_THRESHOLD_SINGLE)}${
-                aimi.overSingle ? ", ultrapassado" : ", não atingido"
-              }; limite de casal ${fmtEur(AIMI_THRESHOLD_COUPLE)}${
-                aimi.overCouple ? ", ultrapassado" : ", não atingido"
-              }.`}
-              conta="Taxas marginais do art. 135.º-F: 0,7% acima de 600.000 €, 1% acima de 1.000.000 €, 1,5% acima de 2.000.000 €. Ficam de fora, por lei, os rústicos e os urbanos de comércio, indústria ou serviços (art. 135.º-B n.º 2). O valor assume tributação separada; com tributação conjunta a dedução é do casal. Confirmar na nota da AT: é dedutível no quadro 9 do Anexo F."
-            />
-          </ol>
-        </Seccao>
-      </section>
-
-      <Seccao
-        titulo="Anexo F, quadro 4.1"
-        nota={`${anexoF.length} ${anexoF.length === 1 ? "linha" : "linhas"}, com a quota de ${escolhido.landlord.name} já aplicada.`}
-      >
-        {anexoF.length === 0 ? (
-          <EmptyState>Sem rendas declaradas neste ano para este senhorio.</EmptyState>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Fração</Th>
-                  <Th>Matriz</Th>
-                  <Th className="text-right">Rendas</Th>
-                  <Th className="text-right">Retenção</Th>
-                  <Th className="text-right">Condomínio + IMI</Th>
-                  <Th>Taxa</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {anexoF.map((r) => (
-                  <tr key={r.contractId}>
-                    <Td>{nomePorFracao.get(r.propertyId) ?? "fração"}</Td>
-                    <Td className="font-mono text-xs">
-                      {[r.matriz.freguesia, r.matriz.tipo, r.matriz.artigo, r.matriz.fracaoSeccao]
-                        .filter(Boolean)
-                        .join("-") || "por preencher"}
-                    </Td>
-                    <Td className="text-right tabular-nums">{fmtEur(r.grossRent, 2)}</Td>
-                    <Td className="text-right tabular-nums">{fmtEur(r.withholding, 2)}</Td>
-                    <Td className="text-right tabular-nums">
-                      {fmtEur(r.condominio + r.imi, 2)}
-                    </Td>
-                    <Td>
-                      {r.reduced.eligibleRate ? (
-                        <Badge tone="teal">{fmtPct(r.reduced.eligibleRate, 0)}</Badge>
-                      ) : (
-                        <Badge tone="zinc">{fmtPct(r.taxaAutonoma, 0)}</Badge>
-                      )}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-        )}
-        <p className="mt-3 text-xs text-tinta-3">
-          As rendas são o valor ILÍQUIDO do recibo; o líquido é rendas menos retenção. Somar a
-          retenção ao ilíquido sobre-declara o rendimento: foi o bug B1, e está coberto no
-          irs.check.ts.
-        </p>
-      </Seccao>
-
-      <section id="despesas" className="scroll-mt-6">
-        <ExpensesClient
-          expenses={dados.despesas}
-          properties={dados.propriedades.map((p) => ({ id: p.id, name: nomeDaFracao(p) }))}
-          landlords={dados.senhorios}
-          isAdmin={isAdmin}
-          currentYear={dados.ano}
-        />
-      </section>
+    `/financas?tab=impostos&ano=${ano}${senhorio ? `&senhorio=${encodeURIComponent(senhorio)}` : ""}`;
+  return <div className="space-y-6">
+    <Lede title={`IRS ${dados.ano} · ${nomeProprio(escolhido.landlord.name)}`}
+      actions={<a href={`/api/irs?landlord=${escolhido.landlord.id}&year=${dados.ano}`}
+        className={buttonClass({ variant: "outline" })}><Download size={15} />Exportar Anexo F</a>} />
+    <Resumo escolhido={escolhido} />
+    <div data-print="none" className="space-y-2">
+      <Pilulas ativo={String(dados.ano)} itens={dados.anos.map((a) => ({
+        id: String(a), rotulo: String(a), href: destino(a, sp.senhorio),
+      }))} />
+      {dados.porSenhorio.length > 1 && <Pilulas ativo={escolhido.landlord.id}
+        itens={dados.porSenhorio.map(({ landlord: s }) => ({ id: s.id,
+          rotulo: nomeProprio(s.name), href: destino(dados.ano, s.id) }))} />}
     </div>
-  );
-}
-
-/** Um degrau da decisão: título, o que vale, porquê e a conta. Um valor sem conta visível
- *  não se mostra (PLANO.md §6.4). */
-function Decisao({
-  n,
-  titulo,
-  euros,
-  porque,
-  conta,
-}: {
-  n: number;
-  titulo: string;
-  euros: number;
-  porque: string;
-  conta: string;
-}) {
-  return (
-    <li className="flex gap-3 rounded-xl border border-regua p-4">
-      <span
-        aria-hidden="true"
-        className="grid size-7 shrink-0 place-items-center rounded-full bg-vellum text-[13px] font-semibold text-tinta-2 ring-1 ring-regua"
-      >
-        {n}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <p className="text-[15px] font-semibold leading-snug text-tinta">{titulo}</p>
-          {euros > 0 && (
-            <span className="shrink-0 rounded-full bg-acao-tenue px-2.5 py-0.5">
-              <Money value={euros} escala="md" tom="acao" />
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-tinta-2">{porque}</p>
-        <p className="mt-1.5 text-xs leading-relaxed text-tinta-3">{conta}</p>
-      </div>
-    </li>
-  );
-}
-
-/** Um total do topo: etiqueta, valor e a origem. `destaque` dá-lhe fundo e o valor maior. */
-function Resumo({
-  rotulo,
-  nota,
-  destaque = false,
-  children,
-}: {
-  rotulo: string;
-  nota: string;
-  destaque?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn("min-w-0 rounded-2xl border p-5", destaque ? "border-regua-forte bg-vellum" : "border-regua bg-carta")}>
-      <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-tinta-3">{rotulo}</dt>
-      <dd className="mt-2">{children}</dd>
-      <p className="mt-2 text-xs text-tinta-2">{nota}</p>
-    </div>
-  );
-}
-
-function Pilula({
-  href,
-  ativa,
-  className,
-  children,
-}: {
-  href: string;
-  ativa: boolean;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={ativa ? "page" : undefined}
-      className={cn(
-        "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[13px] font-medium transition-colors duration-150 md:min-h-9",
-        ativa ? "border-tinta bg-tinta text-papel" : "border-regua bg-carta text-tinta-2 hover:border-regua-forte hover:text-tinta",
-        className,
-      )}
-    >
-      {children}
-    </Link>
-  );
+    <Decisoes escolhido={escolhido} nomes={nomes} />
+    <Anexo escolhido={escolhido} nomes={nomes} />
+    <details id="despesas"><summary className="flex min-h-11 cursor-pointer items-center text-lg font-semibold">Despesas</summary>
+      <ExpensesClient expenses={dados.despesas} properties={dados.propriedades.map((p) => ({ id: p.id, name: nomeDaFracao(p) }))}
+        landlords={dados.senhorios.map((s) => ({ ...s, name: nomeProprio(s.name) }))} isAdmin={isAdmin} currentYear={dados.ano} />
+    </details>
+  </div>;
 }

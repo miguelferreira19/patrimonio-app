@@ -42,6 +42,7 @@ const nextConfig: NextConfig = {
       { source: "/cobrancas/:id", destination: "/rendas/:id", permanent: true },
       { source: "/cobrancas", destination: "/rendas", permanent: true },
       { source: "/rentabilidade", destination: "/financas", permanent: true },
+      { source: "/impostos", destination: "/financas?tab=impostos", permanent: false },
       { source: "/pagamentos", destination: "/rendas", permanent: false },
       { source: "/atrasos", destination: "/rendas", permanent: false },
       { source: "/fracoes", destination: "/imoveis", permanent: false },
