@@ -1,4 +1,4 @@
-// Kit da V2. Nenhum destes módulos leva "use client" (nenhum usa hooks), para que as
+// Nenhum destes módulos leva "use client" (nenhum usa hooks), para que as
 // páginas server os possam importar — mesma regra do ui.tsx, ver CLAUDE.md.
 export { Money, Figure, TOM_TEXTO, type Tom } from "./money";
 export { Lede } from "./lede";
@@ -7,3 +7,8 @@ export { Confianca, type Nivel } from "./confianca";
 export { Cobertura, type CoberturaFactos } from "./cobertura";
 export { Iniciais } from "./iniciais";
 export { DeviationBadge, PropertyStatusBadge } from "./badges";
+export { Bloco } from "./bloco";
+export { Tira } from "./tira";
+export { Pilulas } from "./pilulas";
+export { Linha } from "./linha";
+export { Barra } from "./barra";

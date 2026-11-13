@@ -14,43 +14,21 @@ export interface CoberturaFactos {
   fontesParadas?: Array<{ nome: string; horizonte: string }>;
 }
 
-/** A tira de cobertura: o que a app sabe, e até onde.
- *
- *  Porque existe: nesta carteira a incerteza é estrutural. Os recibos entram em
- *  LOTE, com semanas de atraso, e enquanto o mês corrente não é importado a app não
- *  tem como distinguir "ninguém pagou" de "ainda não importei". A V1 resolvia isto
- *  com uma trava interna (`dataHorizonMonth`) invisível ao utilizador e um parágrafo
- *  de rodapé. Aqui a fronteira é dita em voz alta, em todas as superfícies.
- *
- *  Regra: esta tira nunca alarma e nunca usa cor de estado. É informação sobre o
- *  CONHECIMENTO, não sobre o dinheiro (PLANO.md §7.5).
- */
-export function Cobertura({
-  factos,
-  className,
-  podeCorrigir = false,
-}: {
-  factos: CoberturaFactos;
-  className?: string;
-  podeCorrigir?: boolean;
-}) {
+function itensDeCobertura(factos: CoberturaFactos, podeCorrigir: boolean) {
   const { fronteira, senhoriosModelados, senhoriosTotal, fichasIncompletas } = factos;
 
-  const itens: Array<{ texto: string; title: string; href?: string }> = [];
-
-  itens.push(
+  const itens: Array<{ texto: string; title: string; href?: string }> = [
     fronteira
       ? {
           texto: `Conhecido até ${monthLabel(fronteira)}`,
-          title:
-            "Último mês com recibos importados. A app não conta atrasos para além " +
+          title: "Último mês com recibos importados. A app não conta atrasos para além " +
             "deste mês: sem o import, «sem recibo» e «não pagou» são indistinguíveis.",
         }
       : {
           texto: "Sem recibos importados",
           title: "Nenhum pagamento na carteira. Todos os números de cobrança estão vazios.",
         },
-  );
+  ];
 
   for (const f of factos.fontesParadas ?? []) {
     itens.push({
@@ -79,11 +57,20 @@ export function Cobertura({
       href: podeCorrigir ? "/saude" : undefined,
     });
   }
+  return itens;
+}
 
+// A cobertura descreve o conhecimento disponível, sem cor de estado.
+export function Cobertura({ factos, className, podeCorrigir = false }: {
+  factos: CoberturaFactos;
+  className?: string;
+  podeCorrigir?: boolean;
+}) {
+  const itens = itensDeCobertura(factos, podeCorrigir);
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-tinta-3",
+        "flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-tinta-3",
         className,
       )}
     >
@@ -94,12 +81,12 @@ export function Cobertura({
             <Link
               href={item.href}
               title={item.title}
-              className="underline decoration-dotted decoration-1 underline-offset-2 hover:text-tinta-2"
+              className="inline-flex min-h-11 items-center underline decoration-dotted decoration-1 underline-offset-2 hover:text-tinta-2"
             >
               {item.texto}
             </Link>
           ) : (
-            <details className="relative"><summary className="cursor-pointer underline decoration-dotted decoration-1 underline-offset-2">{item.texto}</summary><p className="mt-2 max-w-[60ch] text-xs leading-relaxed text-tinta-2">{item.title}</p></details>
+            <details className="relative"><summary className="inline-flex min-h-11 cursor-pointer items-center underline decoration-dotted decoration-1 underline-offset-2">{item.texto}</summary><p className="mt-2 max-w-[60ch] text-xs leading-relaxed text-tinta-2">{item.title}</p></details>
           )}
         </div>
       ))}

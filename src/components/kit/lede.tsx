@@ -2,15 +2,15 @@
 import { cn } from "@/lib/cn";
 import type { ReactNode } from "react";
 
-/** Cabeçalho de superfície da V2.
- *
- *  Substitui o `PageHeader` da V1 (que agora delega aqui, para haver UMA
- *  implementação durante a transição). A diferença que importa não é estética: no
- *  modo `hero` o título é uma SERIFA e a descrição é uma frase gerada a partir dos
- *  números, não um rótulo. É o que separa "documento" de "dashboard" (PLANO.md §10.4).
- *
- *  `variant="plain"` é o cabeçalho pequeno das páginas ainda não reescritas.
- */
+interface LedeProps {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+  variant?: "hero" | "plain";
+  className?: string;
+}
+
 export function Lede({
   eyebrow,
   title,
@@ -18,15 +18,7 @@ export function Lede({
   actions,
   variant = "hero",
   className,
-}: {
-  eyebrow?: ReactNode;
-  title: ReactNode;
-  /** 1 a 3 frases. Nunca um rótulo: se não houver nada a dizer, não passar nada. */
-  children?: ReactNode;
-  actions?: ReactNode;
-  variant?: "hero" | "plain";
-  className?: string;
-}) {
+}: LedeProps) {
   const hero = variant === "hero";
   return (
     <div
@@ -40,14 +32,14 @@ export function Lede({
           no telemóvel, ficava numa coluna estreita com o "Exportar" ao lado. */}
       <div className="min-w-0 flex-[1_1_16rem]">
         {eyebrow && (
-          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-acao">{eyebrow}</p>
+          <p className="text-xs font-semibold text-tinta-2">{eyebrow}</p>
         )}
         <h1
           className={cn(
-            "text-tinta",
+            "font-display font-bold text-tinta",
             hero
-              ? "mt-1.5 text-2xl font-semibold leading-[1.2] tracking-[-0.02em] md:text-[30px]"
-              : "text-xl font-semibold tracking-tight md:text-2xl",
+              ? "mt-1.5 text-[26px] leading-[1.2] tracking-[-0.02em] md:text-[30px]"
+              : "text-xl tracking-tight md:text-2xl",
           )}
         >
           {title}
@@ -56,7 +48,7 @@ export function Lede({
           <p
             className={cn(
               "mt-2 text-tinta-2",
-              hero ? "max-w-[65ch] text-sm leading-relaxed text-pretty" : "text-sm",
+              hero ? "max-w-[65ch] text-[15px] leading-relaxed text-pretty" : "text-[15px]",
             )}
           >
             {children}

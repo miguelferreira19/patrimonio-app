@@ -1,14 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+import { Bricolage_Grotesque, DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { RegistarServiceWorker } from "@/components/pwa";
 
-// V4 (REDESENHO.md §5.3): uma só família para tudo, a Inter, com pesos 400/500/600 e
-// números tabulares. A Geist Mono fica só para códigos (artigos matriciais, NIF, recibos).
-// A Newsreader saiu: dava à app a voz de jornal que a família não queria.
-const inter = Inter({
-  variable: "--font-inter",
+// Sinal: DM Sans no texto, Bricolage Grotesque nos títulos e números grandes.
+// A Geist Mono fica só para códigos (artigos matriciais, NIF, recibos).
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -29,10 +37,10 @@ export const metadata: Metadata = {
 // a cor de fundo do status bar/splash do PWA nos dois modos.
 export const viewport: Viewport = {
   colorScheme: "light dark",
+  viewportFit: "cover",
   themeColor: [
-    // V2: as cores do papel (--color-papel), não mais o zinc-50/950.
-    { media: "(prefers-color-scheme: light)", color: "#f3f5f4" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e1213" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1114" },
   ],
 };
 
@@ -40,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-PT">
       <body
-        className={`${inter.variable} ${geistMono.variable} min-h-screen font-sans`}
+        className={`${dmSans.variable} ${bricolage.variable} ${geistMono.variable} min-h-screen font-sans`}
       >
         {children}
         <RegistarServiceWorker />

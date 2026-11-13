@@ -20,15 +20,15 @@ export const TOM_TEXTO: Record<Tom, string> = {
 };
 
 const ESCALA = {
-  hero: "text-[44px] md:text-[60px] leading-none font-semibold tracking-[-0.04em]",
-  xl: "text-2xl leading-none font-semibold tracking-[-0.015em]",
-  lg: "text-base font-medium",
+  hero: "font-display text-[44px] md:text-[60px] leading-none font-extrabold tracking-[-0.04em]",
+  xl: "font-display text-2xl leading-none font-bold tracking-[-0.015em]",
+  lg: "font-display text-base font-semibold",
   md: "text-[13px] font-medium",
   sm: "text-xs font-medium",
 } as const;
 
 /** Figura monetária. É o objeto de data-viz mais usado da app (PLANO.md §10.6):
- *  magnitude a peso pleno, cêntimos e € esbatidos, sempre `tabular-nums` para as
+ *  magnitude a peso pleno, cêntimos e € menores, sempre `tabular-nums` para as
  *  colunas alinharem pela vírgula sem esforço.
  *
  *  `sign`: mostra "+" em valores positivos. Usar só quando o sinal é a informação
@@ -68,7 +68,7 @@ export function Money({
     <span className={classes} title={title}>
       {prefix}
       {parts.major}
-      <span className="money-minor">{parts.minor}</span>
+      <span className="money-minor text-[max(0.72em,12px)]! opacity-100!">{parts.minor}</span>
     </span>
   );
 }
@@ -97,7 +97,7 @@ export function Figure({
       title={title}
     >
       {value}
-      {unit != null && <span className="money-minor">&nbsp;{unit}</span>}
+      {unit != null && <span className="money-minor text-[max(0.72em,12px)]! opacity-100!">&nbsp;{unit}</span>}
     </span>
   );
 }

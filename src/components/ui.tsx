@@ -47,8 +47,6 @@ export function PageHeader({
 }
 
 // ---------- Card ----------
-// Separação por hairline, não por sombra: a 43 linhas de densidade as sombras são
-// ruído. Elevação fica reservada a overlays (Modal, ficha, comando) — PLANO.md §10.3.
 export function Card({
   title,
   subtitle,
@@ -63,17 +61,17 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-regua bg-carta", className)}>
+    <section className={cn("rounded-[20px] bg-carta", className)}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-regua px-4 py-3">
+        <header className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
           <div>
-            {title && <h2 className="text-sm font-medium text-tinta">{title}</h2>}
+            {title && <h2 className="font-display text-lg font-semibold text-tinta">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-xs text-tinta-2">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-4 [&_input.bg-carta]:bg-elevado [&_select.bg-carta]:bg-elevado [&_textarea.bg-carta]:bg-elevado">{children}</div>
     </section>
   );
 }
@@ -85,14 +83,14 @@ type ButtonSize = "sm" | "md";
 const VARIANTES: Record<ButtonVariant, string> = {
   // primary/danger são superfícies opacas com contraste próprio nos dois temas.
   primary: "bg-acao text-carta hover:bg-acao-forte",
-  outline: "border border-regua-forte bg-carta text-tinta hover:bg-vellum",
-  ghost: "text-tinta-2 hover:bg-vellum hover:text-tinta",
-  danger: "bg-perda text-carta hover:opacity-90",
+  outline: "bg-carta text-tinta hover:bg-elevado",
+  ghost: "text-tinta-2 hover:bg-carta hover:text-tinta",
+  danger: "bg-perda text-papel hover:opacity-90",
 };
 
 const TAMANHOS: Record<ButtonSize, string> = {
-  sm: "min-h-11 px-3 text-xs md:min-h-8",
-  md: "min-h-11 px-3.5 text-sm md:min-h-9",
+  sm: "min-h-11 px-3 text-xs",
+  md: "min-h-12 px-[18px] text-[15px]",
 };
 
 /** Classes de botão, para os casos em que o elemento NÃO pode ser um <button>:
@@ -110,8 +108,8 @@ export function buttonClass({
   className?: string;
 } = {}) {
   return cn(
-    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition-[color,background-color,border-color,transform] duration-150",
-    "active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
+    "inline-flex min-w-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-semibold transition-[color,background-color,transform] duration-150",
+    "active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tinta focus-visible:ring-offset-2 focus-visible:ring-offset-papel",
     "disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
     TAMANHOS[size],
     VARIANTES[variant],
@@ -149,20 +147,20 @@ export function Label({ children, className }: { children: ReactNode; className?
 }
 
 const controlClass =
-  "w-full rounded-lg border border-regua-forte bg-carta px-3 text-sm text-tinta " +
-  "placeholder:text-tinta-3 focus:border-acao focus:outline-none focus:ring-2 focus:ring-acao/20 " +
-  "disabled:bg-vellum disabled:text-tinta-3";
+  "min-h-12 w-full rounded-[14px] border-0 bg-carta px-3 text-base text-tinta " +
+  "placeholder:text-tinta-3 focus:outline-none focus:ring-2 focus:ring-tinta " +
+  "disabled:bg-carta disabled:text-tinta-3";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cn(controlClass, "h-11 text-base md:h-9 md:text-sm", props.className)} />;
+  return <input {...props} className={cn(controlClass, "h-12", props.className)} />;
 }
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cn(controlClass, "h-11 text-base md:h-9 md:text-sm", props.className)} />;
+  return <select {...props} className={cn(controlClass, "h-12", props.className)} />;
 }
 
 export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={cn(controlClass, "py-2 text-base md:text-sm", props.className)} />;
+  return <textarea {...props} className={cn(controlClass, "py-3", props.className)} />;
 }
 
 export function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
@@ -177,9 +175,6 @@ export function Field({ label, children }: { label: ReactNode; children: ReactNo
 // ---------- Badge ----------
 // Os nomes novos são semânticos; os antigos (green/red/amber/zinc/teal/blue) ficam
 // como ALIAS para não haver um varrimento de call sites no meio da transição.
-// Nota: `confirmado` NÃO é verde — é pergaminho com tinta cheia. Um estado
-// confirmado distingue-se de um neutro pelo PESO DA TINTA, não pelo matiz
-// (PLANO.md §10.1: "o que está feito é tinta").
 export type BadgeTone =
   | "confirmado"
   | "perda"
@@ -195,19 +190,19 @@ export type BadgeTone =
   | "blue";
 
 const BADGE_TONES: Record<BadgeTone, string> = {
-  confirmado: "bg-vellum text-tinta ring-regua-forte",
-  perda: "bg-perda-tenue text-perda ring-perda/20",
-  atencao: "bg-atencao-tenue text-atencao ring-atencao/20",
-  neutro: "bg-vellum/60 text-tinta-2 ring-regua",
-  acao: "bg-acao-tenue text-acao ring-acao/20",
-  futuro: "bg-futuro-tenue text-futuro ring-futuro/20",
+  confirmado: "bg-carta text-tinta",
+  perda: "bg-perda-tenue text-perda",
+  atencao: "bg-perda-tenue text-perda",
+  neutro: "bg-carta text-tinta",
+  acao: "bg-carta text-tinta",
+  futuro: "bg-futuro-tenue text-futuro",
   // aliases da V1
-  green: "bg-vellum text-tinta ring-regua-forte",
-  red: "bg-perda-tenue text-perda ring-perda/20",
-  amber: "bg-atencao-tenue text-atencao ring-atencao/20",
-  zinc: "bg-vellum/60 text-tinta-2 ring-regua",
-  teal: "bg-acao-tenue text-acao ring-acao/20",
-  blue: "bg-futuro-tenue text-futuro ring-futuro/20",
+  green: "bg-carta text-tinta",
+  red: "bg-perda-tenue text-perda",
+  amber: "bg-perda-tenue text-perda",
+  zinc: "bg-carta text-tinta",
+  teal: "bg-carta text-tinta",
+  blue: "bg-futuro-tenue text-futuro",
 };
 
 export function Badge({
@@ -222,7 +217,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
         BADGE_TONES[tone],
         className,
       )}
@@ -233,19 +228,10 @@ export function Badge({
 }
 
 // ---------- Tabela ----------
-// `edgeFade`: indício visual (CSS puro, sem listeners de scroll) de que a tabela
-// continua para a direita. Duas camadas: uma sombra "presa" ao contentor
-// (background-attachment: scroll) e uma cobertura "presa" ao fim do conteúdo
-// (local) que a tapa ao chegar ao fim. As cores vêm de variáveis CSS
-// (--fade-surface/--fade-edge) porque um style inline não segue classes de tema.
+// `edgeFade` mantém a assinatura; o indício de scroll usa a barra nativa, sem gradientes.
 const edgeFadeStyle: CSSProperties = {
-  backgroundImage:
-    "linear-gradient(to left, var(--fade-surface), var(--fade-surface) 24px, transparent 44px), " +
-    "linear-gradient(to left, var(--fade-edge), transparent 24px)",
-  backgroundRepeat: "no-repeat, no-repeat",
-  backgroundPosition: "right top, right top",
-  backgroundSize: "44px 100%, 24px 100%",
-  backgroundAttachment: "local, scroll",
+  scrollbarWidth: "thin",
+  scrollbarColor: "var(--s-tinta-3) var(--s-carta)",
 };
 
 export function Table({
@@ -268,7 +254,7 @@ export function Th({ children, className }: { children?: ReactNode; className?: 
   return (
     <th
       className={cn(
-        "border-b border-regua px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-tinta-3",
+        "border-b border-regua px-3 py-2 text-left text-xs font-semibold text-tinta-3",
         className,
       )}
     >
@@ -314,20 +300,20 @@ export function StatCard({
     zinc: "text-tinta",
     green: "text-tinta",
     red: "text-perda",
-    teal: "text-acao",
-    amber: "text-atencao",
+    teal: "text-tinta",
+    amber: "text-perda",
   };
   const iconTones = {
-    zinc: "bg-vellum text-tinta-2",
-    green: "bg-vellum text-tinta",
+    zinc: "bg-carta text-tinta",
+    green: "bg-carta text-tinta",
     red: "bg-perda-tenue text-perda",
-    teal: "bg-acao-tenue text-acao",
-    amber: "bg-atencao-tenue text-atencao",
+    teal: "bg-carta text-tinta",
+    amber: "bg-perda-tenue text-perda",
   };
   return (
-    <div className="h-full rounded-2xl border border-regua bg-carta p-4 transition-colors duration-150 hover:border-regua-forte">
+    <div className="h-full rounded-[20px] bg-carta p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-tinta-3">{label}</p>
+        <p className="text-xs font-semibold text-tinta-2">{label}</p>
         {Icon && (
           <span
             className={cn(
@@ -339,7 +325,7 @@ export function StatCard({
           </span>
         )}
       </div>
-      <p className={cn("mt-2.5 text-[27px] font-medium leading-none tracking-tight tabular-nums", tones[tone])}>
+      <p className={cn("mt-2.5 font-display text-4xl font-bold leading-none tracking-tight tabular-nums", tones[tone])}>
         {value}
       </p>
       {sub && <p className="mt-1.5 text-xs text-tinta-2">{sub}</p>}
@@ -362,12 +348,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 rounded-2xl border border-regua bg-carta px-4 py-10 text-center",
+        "vazio flex flex-col items-center gap-3 rounded-[20px] bg-carta px-4 py-10 text-center",
         className,
       )}
     >
       {Icon && (
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-vellum text-tinta-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-carta text-tinta-3">
           <Icon size={20} strokeWidth={1.75} />
         </span>
       )}

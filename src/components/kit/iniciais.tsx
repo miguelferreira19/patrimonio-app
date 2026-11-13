@@ -1,4 +1,4 @@
-// Sem "use client": só desenha. Duas letras num círculo neutro (vellum): dá corpo a uma lista
+// Sem "use client": só desenha. Duas letras num círculo neutro: dá corpo a uma lista
 // de pessoas sem recorrer a cor, que na app é reservada ao significado (PLANO_VISUAL.md).
 import { cn } from "@/lib/cn";
 
@@ -10,7 +10,7 @@ export function Iniciais({ nome, className }: { nome: string; className?: string
     <span
       aria-hidden="true"
       className={cn(
-        "grid size-10 shrink-0 place-items-center rounded-full bg-vellum text-[13px] font-semibold tracking-wide text-tinta-2 ring-1 ring-regua",
+        "grid size-10 shrink-0 place-items-center rounded-full bg-carta text-[13px] font-semibold text-tinta-2",
         className,
       )}
     >

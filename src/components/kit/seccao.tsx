@@ -2,19 +2,6 @@
 import { cn } from "@/lib/cn";
 import type { ReactNode } from "react";
 
-/** Uma secção de superfície: hairline e etiqueta, não uma caixa.
- *
- *  É a regra R2 da V3 feita componente. A V1 empilhava `Card` para tudo, e uma página que
- *  é uma pilha de cartões lê-se como um formulário de administração, não como um
- *  documento: cada caixa desenha uma fronteira que compete com a seguinte, e ao fim de
- *  seis o olho não sabe qual é a principal. Aqui a hierarquia é a etiqueta e o espaço.
- *
- *  O `Card` continua a existir e continua certo onde há elevação real: overlays, e os
- *  painéis de ferramenta do /admin, que são mesmo objetos separados uns dos outros.
- *
- *  `nota` é a única prosa permitida, e vive no CABEÇALHO. Nunca por baixo de um gráfico:
- *  um gráfico que precisa de um parágrafo debaixo está mal desenhado (R4).
- */
 export function Seccao({
   titulo,
   valor,
@@ -33,9 +20,9 @@ export function Seccao({
 }) {
   return (
     <section id={id} className={cn("scroll-mt-24", className)}>
-      <header className="mb-3 border-b border-regua pb-1.5">
+      <header className="mb-2.5">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-base font-semibold tracking-[-0.01em] text-tinta">
+          <h2 className="font-display text-xl font-bold tracking-[-0.01em] text-tinta">
             {titulo}
           </h2>
           {valor}

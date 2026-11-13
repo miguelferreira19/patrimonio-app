@@ -41,7 +41,7 @@ export function Confianca({
   return (
     <span
       className={cn(
-        "cursor-help align-middle text-[10px] font-medium uppercase tracking-[0.04em] underline decoration-dotted decoration-1 underline-offset-2",
+        "cursor-help align-middle text-xs font-semibold underline decoration-dotted decoration-1 underline-offset-2",
         TOM[nivel],
         className,
       )}
