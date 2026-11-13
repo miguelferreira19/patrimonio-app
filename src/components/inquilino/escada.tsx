@@ -22,11 +22,12 @@ export function EscadaInquilino({ atraso, diario, hoje }: {
       <span className="text-xs font-semibold tabular-nums">{atual + 1} de 3</span>
     </div>
     <div className="text-xs">{nomeDaFracao(atraso.property)}</div>
-    <ol className="grid grid-cols-3 gap-1.5">{TIPOS.map((tipo) => {
+    <ol className="grid grid-cols-3 gap-1.5">{TIPOS.map((tipo, i) => {
       const enviada = cartas.some((c) => c.tipo === tipo);
-      const estado = enviada ? "Enviada" : escada.proxima === tipo ? "A enviar" : "Por vir";
+      const dispensado = !enviada && (i < atual || !escada.proxima);
+      const estado = enviada ? "Enviada" : dispensado ? "Dispensado" : escada.proxima === tipo ? "A enviar" : "Por vir";
       return <li key={tipo} aria-label={`${MINUTAS[tipo].label}: ${estado}`}>
-        <div className={`h-2 rounded ${enviada ? "bg-perda-forte" : escada.proxima === tipo ? "bg-perda" : "bg-papel"}`} />
+        <div className={`h-2 rounded ${enviada ? "bg-perda-forte" : dispensado ? "bg-regua-forte" : escada.proxima === tipo ? "bg-perda" : "bg-papel"}`} />
         <span className="mt-1 block text-xs">{estado}</span>
       </li>;
     })}</ol>

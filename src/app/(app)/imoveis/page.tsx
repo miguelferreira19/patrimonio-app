@@ -26,7 +26,7 @@ export default async function Imoveis({ searchParams }: {
   const [sp, { isAdmin, supabase }, snap] = await Promise.all([searchParams, getSession(), getSnapshot()]);
   const entrada = await carregarEntradaDeProblemas(supabase, snap, snap.hoje);
   const todos = prediosComProblemas(entrada);
-  const comProblemas = todos.filter((p) => p.problemas.length > 0);
+  const comProblemas = todos.filter((p) => p.comProblemas);
   const vagos = todos.filter((p) => p.correntes > p.arrendadas);
   const ver = sp.ver === "problemas" || sp.ver === "vagos" ? sp.ver : "todos";
   const visiveis = ver === "problemas" ? comProblemas : ver === "vagos" ? vagos : todos;

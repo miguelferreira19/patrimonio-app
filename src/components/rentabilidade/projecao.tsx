@@ -1,16 +1,3 @@
-// A ANÁLISE (V3): a quarta superfície, e a única que é só do administrador.
-//
-// Porque existe. As três superfícies da V2 respondem ao presente: o Agora diz o que fazer
-// hoje, a Carteira diz o que aconteceu, o Ano diz quanto se paga de imposto. Nenhuma olha
-// para a frente, e nenhuma responde às perguntas de dono: estou demasiado exposto a um
-// inquilino? a renda está a crescer ou a app só parece maior? dá para comprar outra?
-//
-// Fica fora do Agora de propósito. Meter isto lá dentro engordava a superfície do ritual
-// mensal e trazia de volta o dashboard que a V2 matou: quem abre a app para cobrar rendas
-// não quer um CAGR pelo caminho.
-//
-// Ótica de família (valores por inteiro, sem repartir por quotas), como o resto da app.
-
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
@@ -27,7 +14,6 @@ import { construirConselhos, type Conselho } from "@/lib/portfolio/conselhos";
 import { capacidadeDeInvestimento, projetar, resumoDaProjecao } from "@/lib/portfolio/futuro";
 import { concentracao, crescimento, rendasParadas, serieAnual } from "@/lib/portfolio/renda";
 import { fmtEur, fmtPct, monthLabel } from "@/lib/format";
-
 
 const MESES_PROJETADOS = 24;
 
@@ -110,11 +96,6 @@ const HORIZONTE_LABEL: Record<Conselho["horizonte"], string> = {
   estrutural: "estrutural",
 };
 
-/** As recomendações. Mesmo formato de linha da fila do Agora, com o porquê colapsado (R3):
- *  visível fica o quê e quanto, e a aritmética está a um clique para quem duvidar dela.
- *
- *  Não é conselho financeiro e a página diz isso no lede, uma vez, em vez de repetir um
- *  aviso por cartão. */
 function Recomendacoes({ conselhos, temAreas }: { conselhos: Conselho[]; temAreas: boolean }) {
   return (
     <Seccao
@@ -147,7 +128,7 @@ function Recomendacoes({ conselhos, temAreas }: { conselhos: Conselho[]; temArea
               <div className="flex items-baseline justify-between gap-4">
                 <p className="text-[15px] font-medium text-tinta">
                   {c.titulo}
-                  <span className="ml-2 align-middle text-[10px] uppercase tracking-[0.04em] text-tinta-3">
+                  <span className="ml-2 align-middle text-xs uppercase tracking-[0.04em] text-tinta-3">
                     {HORIZONTE_LABEL[c.horizonte]}
                   </span>
                 </p>
@@ -299,7 +280,7 @@ function Crescimento({
               >
                 {variacao === null ? "" : `${variacao >= 0 ? "+" : ""}${fmtPct(variacao, 0)}`}
               </span>
-              <span className="w-16 shrink-0 text-right text-[11px] text-tinta-3">
+              <span className="w-16 shrink-0 text-right text-xs text-tinta-3">
                 {a.parcial ? "parcial" : ""}
               </span>
             </li>
@@ -392,7 +373,7 @@ function Ranking({
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11px] text-tinta-3">{nota}</p>
+      <p className="mt-2 text-xs text-tinta-3">{nota}</p>
     </div>
   );
 }
@@ -410,9 +391,9 @@ function Numero({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] uppercase tracking-[0.06em] text-tinta-3">{label}</dt>
+      <dt className="text-xs uppercase tracking-[0.06em] text-tinta-3">{label}</dt>
       <dd className="mt-0.5">{valor}</dd>
-      <dd className="mt-0.5 text-[11px] leading-snug text-tinta-3">{nota}</dd>
+      <dd className="mt-0.5 text-xs leading-snug text-tinta-3">{nota}</dd>
     </div>
   );
 }

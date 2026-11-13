@@ -88,7 +88,7 @@ for (const [total, esperado] of [
   assert.deepEqual(prazos.map((p) => p.dia), esperado.length === 1 ? ["2026-05-31"] :
     esperado.length === 2 ? ["2026-05-31", "2026-11-30"] :
       ["2026-05-31", "2026-08-31", "2026-11-30"]);
-  assert.ok(prazos.every((p) => p.estimado && p.nota === "Estimativa pelo IMI do ano anterior."));
+  assert.ok(prazos.every((p) => p.estimado && p.nota === "Estimativa pelo IMI de 2025."));
 }
 
 // G. O ano anterior e a parte de cada titular, sem confundir ausência com zero.
@@ -155,4 +155,25 @@ for (const [total, esperado] of [
   assert.equal(prazosDoAno({ ...entrada(), ano: 2027 }).filter((p) => p.tipo === "heranca").length, 0);
 }
 
-console.log("agenda.check.ts: OK (A a I)");
+// J. A estimativa usa o ano mais recente de cada senhorio, até três anos para trás.
+{
+  const e = { ...entrada([
+    despesa(900), despesa(100, { expense_date: "2024-12-31" }),
+    despesa(300, { landlord_id: "s2", expense_date: "2024-12-31" }),
+    despesa(5000, { landlord_id: "s3", expense_date: "2023-12-31" }),
+    despesa(5000, { landlord_id: "s3", expense_date: "2026-12-31", origem: "estimada" }),
+  ]), ano: 2027, senhorios: [senhorio("s1"), senhorio("s2"), senhorio("s3")] };
+  const imi = prazosDoAno(e).filter((p) => p.tipo === "imi");
+  assert.deepEqual(imi.filter((p) => p.senhorio === "s1").map((p) => p.valor), [300, 300, 300]);
+  assert.ok(imi.filter((p) => p.senhorio === "s1").every((p) => p.nota === "Estimativa pelo IMI de 2025."));
+  assert.deepEqual(imi.filter((p) => p.senhorio === "s2").map((p) => p.valor), [150, 150]);
+  assert.ok(imi.filter((p) => p.senhorio === "s2").every((p) => p.nota === "Estimativa pelo IMI de 2024."));
+  const [semDados] = imi.filter((p) => p.senhorio === "s3");
+  assert.equal(semDados.valor, null);
+  assert.equal(semDados.titulo, "IMI: prestação de maio (s3)");
+  assert.doesNotMatch(semDados.nota ?? "", /Estimativa pelo IMI de/);
+  const recentes = prazosDoAno({ ...e, despesas: [...e.despesas, despesa(90, { expense_date: "2026-12-31" })] });
+  assert.deepEqual(recentes.filter((p) => p.tipo === "imi" && p.senhorio === "s1").map((p) => p.valor), [90]);
+}
+
+console.log("agenda.check.ts: OK (A a J)");

@@ -6,9 +6,10 @@ import type { Ativo, Snapshot } from "@/lib/portfolio/snapshot";
 
 export function prediosComProblemas(entrada: EntradaDeProblemas) {
   const problemas = problemasPorPredio(entrada);
-  return resumirPredios(entrada.snap).map((p) => ({ ...p, problemas: problemas.get(p.chave) ?? [] }))
-    .sort((a, b) => (b.problemas[0]?.gravidade ?? 0) - (a.problemas[0]?.gravidade ?? 0)
-      || (b.problemas[0]?.valor ?? 0) - (a.problemas[0]?.valor ?? 0)
+  return resumirPredios(entrada.snap).map((p) => ({ ...p, problemas: problemas.get(p.chave) ?? [],
+    comProblemas: (problemas.get(p.chave) ?? []).some((x) => x.gravidade >= 2) }))
+    .sort((a, b) => (b.comProblemas ? b.problemas[0].gravidade : 0) - (a.comProblemas ? a.problemas[0].gravidade : 0)
+      || (b.comProblemas ? b.problemas[0].valor ?? 0 : 0) - (a.comProblemas ? a.problemas[0].valor ?? 0 : 0)
       || a.nome.localeCompare(b.nome, "pt", { numeric: true }));
 }
 

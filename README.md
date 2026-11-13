@@ -1,16 +1,15 @@
-# Património — gestão de arrendamentos da família
+# Património · gestão de arrendamentos da família
 
 App para gerir o património de arrendamento da família: frações, contratos, rendas e despesas, tudo num só sítio.
 
-## O que faz
+## Estado (novembro de 2026)
 
-Três superfícies, não um menu de nove páginas:
+Cinco destinos: **Início**, **Rendas**, **Imóveis**, **Finanças** e **Mais**. A ficha do inquilino
+junta estado, meses, diário e escada de cartas. Finanças reúne Resultado, Impostos, Calendário
+e Poupança, na direção visual C "Sinal".
 
-- **Agora** — o que está a acontecer e o que decidir hoje, com cada decisão avaliada em euros por ano.
-- **Carteira** — uma faixa com uma linha por fração e o tempo para a direita, lida por lentes
-  (cobrança, renda, mercado, risco, vazios). A altura de cada célula é a fração da renda recebida.
-- **Ano** — o documento fiscal: rendas, despesas dedutíveis, escolha entre englobamento e taxa
-  autónoma, art. 72.º, AIMI e o quadro 4.1 do Anexo F. Imprime-se.
+Papéis: **admin** administra e consulta o Controlo de emissão; **gestor** regista pagamentos,
+contactos, promessas e casos; **viewer** só consulta. Permissões validadas no servidor por ação.
 
 Por baixo: import dos recibos do Portal das Finanças com diff antes de escrever, benchmarks de renda
 e venda do INE, modelo de risco de crédito por contrato (PD bayesiana, curva de cura, estágios IFRS 9)
@@ -29,12 +28,11 @@ Depois de configurado, duplo clique em [`start.cmd`](start.cmd) para arrancar em
 ## Estrutura de pastas
 
 ```
-src/app/(app)/       Agora (page.tsx), carteira, ano/[ano], fracoes/[id], carta/[contractId],
-                     mercado, senhorios, saude, admin. As rotas antigas (pagamentos, atrasos,
-                     fracoes, despesas, irs) são redirects para a lente equivalente.
+src/app/(app)/       Início (page.tsx), rendas, inquilinos/[chave], imoveis, fracoes/[id],
+                     financas, mais, cartas, controlo e admin. Rotas antigas redirecionam.
 src/app/login/       página e formulário de login
-src/components/      ui, modal, nav, forms, charts + kit/ (Money, Lede, Confianca, Cobertura),
-                     faixa/ (a grelha mensal, implementação única), agora/, ano/, importar/
+src/components/      ui, folhas, formulários, charts, kit/ (Bloco, Tira, Pilulas, Linha, Barra),
+                     faixa/ (grelha mensal única), inicio/, inquilino/, imoveis/, financas/
 src/lib/             cálculos de negócio, cada um com o seu *.check.ts: arrears, calc, irs,
                      monthcell, rent, health, ine, format, parse
 src/lib/portfolio/   o snapshot: load (o único I/O), snapshot, insights, risk, ano
@@ -44,12 +42,17 @@ supabase/            schema.sql (idempotente) e seed_demo.sql (dados fictícios)
 
 ## Testes
 
-`npm run check` corre os self-checks puros de cada módulo de cálculo (sem base de dados e sem
-framework de testes). `npm run build` é o gate antes de qualquer deploy. Ambos correm em CI a cada
-push para `main`.
+`npm run check` compila e corre os self-checks de `src/lib/**/*.check.ts` e depois descobre e
+executa todos os `src/components/**/*.check.cjs`, em processos separados. Usam dados sintéticos,
+sem base de dados, rede ou framework de testes. `npx tsc --noEmit` valida os tipos da app.
+O build de produção é um gate antes do deploy, com o servidor de desenvolvimento parado.
+Para checks em paralelo com `CHECK_DIR`, consultar [`CLAUDE.md`](CLAUDE.md).
 
-## Roadmap
+## Roteiro e histórico
 
-- Conciliação automática com extrato bancário.
-- Projeção de cashflow a 24 meses e recomendações de carteira (superfície `/analise`).
-- Arquivo de documentos por fração/contrato.
+Roteiro ativo: [spec da reforma](docs/superpowers/specs/2026-11-11-reforma-design.md).
+Domínio e pendências: [`PLANO.md`](PLANO.md), Apêndices A e B.
+Planos anteriores: [clareza](docs/historico/PLANO_CLAREZA.md),
+[auditoria de clareza](docs/historico/AUDITORIA_CLAREZA.md),
+[visual](docs/historico/PLANO_VISUAL.md) e
+[visual do resultado](docs/historico/PLANO_VISUAL_RESULTADO.md).

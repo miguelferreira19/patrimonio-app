@@ -81,9 +81,11 @@ const IRS_HERANCA = { ano: 2027, titulo: "IRS do ano do óbito: declaração do 
 function prazosImi(e: EntradaDosPrazos): PrazoDoAno[] {
   return e.senhorios.flatMap((s) => {
     const quotas = quotaPctByProperty(e.titulares ?? [], s.id);
-    const despesas = e.despesas.filter((d) => d.category === "imi" &&
-      d.expense_date.startsWith(`${e.ano - 1}-`) && d.origem === "registada" &&
+    const historico = e.despesas.filter((d) => d.category === "imi" &&
+      d.expense_date >= `${e.ano - 3}-01-01` && d.expense_date < `${e.ano}-01-01` && d.origem === "registada" &&
       (d.landlord_id === s.id || (d.landlord_id === null && quotas.has(d.property_id ?? ""))));
+    const ano = historico.map((d) => d.expense_date.slice(0, 4)).sort().at(-1);
+    const despesas = historico.filter((d) => d.expense_date.startsWith(`${ano}-`));
     const centimos = despesas.length === 0 ? null : Math.round(despesas.reduce((total, d) =>
       total + expenseShare(d, s.id, quotas.get(d.property_id ?? ""), { apenasRegistadas: true }), 0) * 100);
     const datas = centimos === null || centimos <= 10000 ? ["05-31"] :
@@ -91,11 +93,11 @@ function prazosImi(e: EntradaDosPrazos): PrazoDoAno[] {
     const parcela = centimos === null ? null : Math.floor(centimos / datas.length);
     return datas.map((data, i) => ({
       id: `imi:${e.ano}:${s.id}:${i + 1}`, dia: `${e.ano}-${data}`,
-      titulo: `IMI: ${datas.length === 1 ? "pagamento único" : `${i + 1}.ª prestação`} (${s.name})`,
+      titulo: `IMI: ${centimos === null ? "prestação de maio" : datas.length === 1 ? "pagamento único" : `${i + 1}.ª prestação`} (${s.name})`,
       valor: centimos === null || parcela === null ? null :
         (i === datas.length - 1 ? centimos - parcela * i : parcela) / 100,
       estimado: true, senhorio: s.name, tipo: "imi" as const, feito: false,
-      nota: "Estimativa pelo IMI do ano anterior.",
+      nota: ano ? `Estimativa pelo IMI de ${ano}.` : "Sem despesas de IMI nos três anos anteriores.",
     }));
   });
 }

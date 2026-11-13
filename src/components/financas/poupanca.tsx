@@ -8,6 +8,10 @@ import { EXPENSE_CATEGORY_LABEL } from "@/lib/types";
 export default async function Poupanca() {
   const d = await carregarPoupanca();
   const nomes = new Map(d.propriedades.map((p) => [p.id, nomeDaFracao(p)]));
+  const semPrazo = new Set(d.linhas.filter((l) => l.falta === "registar o prazo do contrato")
+    .map((l) => l.contratoId)).size;
+  const linhas = d.linhas.filter((l) => l.falta !== "registar o prazo do contrato" &&
+    l.falta !== "prazo inferior a 5 anos" && (l.eurosPorAno > 0 || l.falta === null));
   return <div className="space-y-6">
     <Lede title="Poupança" />
     <div className="grid gap-3 sm:grid-cols-2">
@@ -18,13 +22,15 @@ export default async function Poupanca() {
         legenda="depende do prazo do contrato" />
     </div>
     <Seccao titulo="Taxa reduzida (art. 72.º)" valor={<span className="text-sm tabular-nums">{d.ano}</span>}>
-      {d.linhas.length ? <ul className="stagger divide-y divide-regua">{d.linhas.map((l) =>
+      {linhas.length > 0 || semPrazo > 0 ? <ul className="stagger divide-y divide-regua">{linhas.map((l) =>
         <li key={`${l.contratoId}:${l.senhorio}`}><Linha href={`/fracoes/${l.propertyId}`}
           titulo={nomes.get(l.propertyId) ?? "Fração"}
           sub={`${nomeProprio(l.senhorio)} · ${fmtPct(l.taxaAtual, 0)} → ${fmtPct(l.taxaPossivel, 0)}`}
           valor={<span><Money value={l.eurosPorAno} /><span className="text-xs">/ano</span></span>}
-          etiqueta={l.falta ? <Badge tone="futuro">{l.falta}</Badge> : undefined} /></li>)}</ul> :
-        <EmptyState>Sem contratos de habitação neste ano.</EmptyState>}
+          etiqueta={l.falta ? <Badge tone="futuro">{l.falta}</Badge> : undefined} /></li>)}
+        {semPrazo > 0 && <li><Linha href="/contratos" titulo={`${semPrazo} ${semPrazo === 1 ? "contrato sem prazo registado" : "contratos sem prazo registado"}`}
+          sub="sem prazo não há taxa reduzida" /></li>}</ul> :
+        <EmptyState>Sem poupança por realizar</EmptyState>}
     </Seccao>
     <Seccao titulo="Despesas por lançar" valor={<span className="text-sm tabular-nums">{d.ano}</span>}>
       {d.despesas.length ? <ul className="divide-y divide-regua">{d.despesas.map((l) =>

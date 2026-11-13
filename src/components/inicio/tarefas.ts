@@ -57,5 +57,9 @@ export function tarefasDoInicio(
       href: i.acoes[0]?.href ?? "/tarefas", dia: snap.hoje,
       valor: i.unidade === "sem_valor" ? null : i.euros, unidade: UNIDADE_LABEL[i.unidade],
       estimado: i.confianca !== "medido" })) : [];
-  return [...cartasProntas(snap, diario), ...promessas, ...calendario, ...fila].slice(0, 5);
+  const cartas = cartasProntas(snap, diario);
+  const visiveis = cartas.length <= 3 ? cartas : [...cartas.slice(0, 2), {
+    id: "mais-cartas", titulo: `Mais ${cartas.length - 2} cartas por enviar`, href: "/cartas", dia: snap.hoje,
+  }];
+  return [...visiveis, ...promessas, ...calendario, ...fila].slice(0, 6);
 }

@@ -86,6 +86,34 @@ function verificarTarefas() {
     "a tarefa liga diretamente à sua ação principal");
 }
 
+function verificarLimiteDeCartas() {
+  const { raw } = ensaio(true);
+  for (const [i, rent] of [100, 300, 200, 700, 600].entries()) {
+    const id = `devedor${i}`;
+    raw.properties.push({ ...raw.properties[0], id });
+    raw.contracts.push({ ...raw.contracts[0], id, property_id: id, tenant_name: `Pessoa ${rent}`, rent });
+    raw.payments.push(...raw.payments.filter((p) => p.contract_id === "c1")
+      .map((p) => ({ ...p, id: `${id}:${p.id}`, contract_id: id, amount: rent })));
+  }
+  const snap = buildSnapshot(raw, new Date("2026-11-13T12:00:00Z"));
+  const promessa = { id: "p", contratoId: "c1", tipo: "promessa", dia: "2026-11-01",
+    texto: "Pagarei", prometidoPara: "2026-11-10", valor: 500, autor: null };
+  const prazos = [20, 21, 22].map((dia) => ({ id: `prazo${dia}`, dia: `2026-11-${dia}`,
+    titulo: "IMI", valor: 50, estimado: true, feito: false, tipo: "imi", senhorio: null }));
+  const tarefas = tarefasDoInicio(snap, [promessa], prazos, false);
+  assert.deepEqual(tarefas.map((t) => t.titulo), ["Enviar lembrete a Pessoa 700",
+    "Enviar lembrete a Pessoa 600", "Mais 4 cartas por enviar", "Promessa por cumprir: João Silva", "IMI", "IMI"]);
+  assert.equal(tarefas[2].href, "/cartas");
+  assert.equal(tarefas.length, 6);
+  for (const n of [1, 2, 3]) {
+    const reduzido = { ...snap, ativos: snap.ativos.filter((a) =>
+      ["c1", "devedor0", "devedor1"].slice(0, n).includes(a.activeContract?.id)) };
+    const cartas = tarefasDoInicio(reduzido, [], [], false);
+    assert.equal(cartas.length, n);
+    assert.ok(cartas.every((t) => t.id.startsWith("carta:")));
+  }
+}
+
 async function verificarPaginas() {
   const inicio = require("../../app/(app)/page.tsx").default;
   const rendas = require("../../app/(app)/rendas/page.tsx").default;
@@ -136,6 +164,7 @@ async function verificarFonteParada() {
 
 verificarFiltros();
 verificarTarefas();
+verificarLimiteDeCartas();
 verificarPaginas().then(verificarFonteParada)
   .then(() => console.log("OK: Início e Rendas, totais, fontes, filtros, pesquisa, cartas, prioridade, registar e vazios (SSR sintético)."))
   .catch((erro) => { console.error(erro); process.exitCode = 1; });

@@ -1,158 +1,151 @@
-# CLAUDE.md — património-app
+# CLAUDE.md · património-app
 
-Contexto operacional para agentes, sobre o ESTADO ATUAL. Roteiro ativo: **PLANO_CLAREZA.md**.
-Conhecimento de domínio e metodologias: **PLANO.md** (o Apêndice A é obrigatório antes de mexer em
-atrasos, import ou schema; o Apêndice B lista o que só o utilizador resolve). Setup: SETUP.md.
-Planos e auditorias antigos (V3, V4, V5): `docs/historico/`. Os comentários do código que citam
-"REDESENHO.md §x", "V3.md" ou "IMPLEMENTACAO_GESTAO.md" referem-se a essa pasta.
+Contexto operacional sobre o estado atual. Roteiro ativo:
+**docs/superpowers/specs/2026-11-11-reforma-design.md**.
+Implementação: `docs/superpowers/plans/2026-11-11-reforma.md`.
+Domínio: **PLANO.md**, Apêndice A obrigatório antes de mexer em atrasos, import ou schema;
+Apêndice B para pendências do utilizador. Arranque inicial: `SETUP.md`.
+Histórico: `docs/historico/`, incluindo `PLANO_CLAREZA.md`, `AUDITORIA_CLAREZA.md`,
+`PLANO_VISUAL.md` e `PLANO_VISUAL_RESULTADO.md`. Citações antigas de REDESENHO/V3 vivem aí.
 
 ## O que é
-App interna da família para ~53 frações arrendadas (61 com terrenos e vendidos): contratos, recibos
-do Portal das Finanças, cobranças, despesas, rentabilidade, IRS. **PT-PT sempre.** Ótica de FAMÍLIA:
-valores por inteiro ("bolo"); as quotas de `property_owners` só entram em Impostos e Senhorios.
-Quem usa é a família: **respostas diretas e visuais** (caixas, barras, tiras de meses), sem
-storytelling; explicações só dentro de "Detalhes". Ver PLANO_CLAREZA.md §3.
+App interna da família para ~53 frações arrendadas (61 com terrenos e vendidos): contratos,
+recibos do Portal das Finanças, cobranças, despesas, rentabilidade e IRS. **PT-PT sempre.**
+Ótica de família: valores por inteiro; quotas de `property_owners` só em Impostos e Senhorios.
+Respostas diretas e visuais: caixas, barras, tiras de meses. Explicações só em "Detalhes".
 
 ## Ambiente (Windows)
-- Node NÃO está no PATH global. Em Git Bash, prefixar sempre:
+- Node NÃO está no PATH global. Antes de npm/npx, em PowerShell:
+  `$env:PATH = "C:\Users\migue\AppData\Local\Logi\LogiPluginService\PluginHosts\node22\node;" + $env:PATH`
+  Em Git Bash:
   `export PATH="/c/Users/migue/AppData/Local/Logi/LogiPluginService/PluginHosts/node22/node:$PATH"`
-- Gates (obrigatórios antes de dar uma tarefa por terminada): `npm run build` e `npm run check`
-  (27 self-checks puros, uma compilação `tsconfig.check.json` strict, runner `scripts/checks.cjs` que
-  descobre sozinho todo o `src/lib/**/*.check.ts`). Casos novos vão para o `*.check.ts` do módulo,
-  nunca um framework novo.
-- **Nunca correr `npm run build` com o dev ligado** (partilham a `.next`): parar o dev, apagar
-  `.next`, voltar a arrancar.
-- Dev: `npm run dev` (launch.json "patrimonio-dev", porta 3000). A sessão do browser de dev está
-  autenticada contra a BD de produção: só leitura, salvo pedido explícito.
-- Deploy: `npx vercel@latest deploy --prod --yes` (manual, com o PATH do node). **Um push para o
-  GitHub também dispara um deploy de produção** (integração Git da Vercel).
-- Supabase `iidvzcgtfbpzhjbsrqql` (UE). Schema em `supabase/schema.sql` (idempotente). RLS:
-  authenticated lê tudo, só admin escreve; os GRANTs no fim do schema são NECESSÁRIOS (sem eles 42501).
-- Smoke sem login NÃO chega: o `anon` não tem GRANT em `payments`. Validar autenticado.
+- Gates: `npx tsc --noEmit` e `npm run check`; antes de deploy, também `npm run build`.
+  Check compila uma vez com `tsconfig.check.json`, descobre `src/lib/**/*.check.ts` e depois
+  executa `src/components/**/*.check.cjs` por `scripts/checks-ui.cjs`, em processos separados.
+  Casos novos no check do módulo, sem framework novo. Os testes usam dados sintéticos.
+- Checks em paralelo: `npx tsc -p tsconfig.check.json --outDir .check-<id>` e, em PowerShell,
+  `$env:CHECK_DIR = ".check-<id>"; node scripts/checks.cjs`. Em Bash:
+  `CHECK_DIR=.check-<id> node scripts/checks.cjs`. Nunca apagar a `.check` de outro agente.
+  Sem agentes em paralelo: `npm run check` completo, com `CHECK_DIR` removido do ambiente.
+- Nunca correr build com o dev ligado: partilham a `.next`. Build só na porta de fase,
+  com dev parado; os construtores da reforma não o correm.
+- Dev: `npm run dev` (launch.json "patrimonio-dev", porta 3000). Browser autenticado na BD de
+  PRODUÇÃO: só leitura, salvo pedido explícito. Smoke sem login não valida páginas com dados.
+- Live: https://patrimonio-app-beryl.vercel.app. Supabase `iidvzcgtfbpzhjbsrqql` (UE).
+- Deploy manual: `npx vercel@latest deploy --prod --yes`. Um push para GitHub também pode
+  disparar produção pela integração Vercel. Na reforma, `main` e produção só com OK explícito.
+- Schema idempotente em `supabase/schema.sql`; reforma aditiva em `supabase/reforma.sql`,
+  repetida no fim do schema. GRANTs são necessários (sem eles, 42501).
 
 ## Regras de trabalho
-- Sem dependências novas sem justificação forte (lucide-react, recharts, clsx/tailwind-merge,
-  papaparse, xlsx já existem).
-- Não fazer commits/push sem pedido explícito. **Um pedido de deploy inclui o git:** build e check
-  verdes → deploy → `git add -A`, commit, push. Gate vermelho = não deployar nem commitar.
-- Alterações de schema: idempotentes, ao fim de `supabase/schema.sql`, coladas pelo utilizador no
-  SQL Editor (o bloco da V5 também vive em `supabase/gestao-operacional.sql`).
-- `dados/` tem dados pessoais reais (gitignored): nunca commitar nem expor. Ler `dados/README.md`
-  antes de mexer (na raiz só os `.py` são fonte).
+- Sem dependências novas sem justificação forte; usar as bibliotecas já instaladas.
+- Sem commits/push sem pedido explícito. Pedido de deploy inclui build e check verdes,
+  deploy, commit e push. Gate vermelho impede deploy e commit. Respeitar o ramo e o caderno ativo.
+- Schema só aditivo, idempotente e compatível com produção; o utilizador cola no SQL Editor.
+- `dados/` tem dados pessoais reais, gitignored: nunca commitar nem expor. Ler `dados/README.md`
+  antes de mexer. Respeitar as restrições de acesso do caderno; não abrir exports ou segredos.
+- Ficheiros novos até 400 linhas, funções até 50; páginas até 200, resto em componentes da área.
+- Fim de tarefa: ficheiros alterados, verificações e ações do utilizador.
 
 ## Dados e domínio (não voltar a partir)
-- **PostgREST devolve no máximo ~1000 linhas** e `.limit()` não passa por cima: `paginateAll`
-  (`src/lib/paginate.ts`) em `payments`/`receipts`/tudo o que possa crescer.
-- **Leituras nunca engolem erros**: `linhas()`/`linha()` (`lib/supabase/dados.ts`) lançam com o
-  nome da tabela; `(q.data ?? []) as T[]` é proibido. **Escritas validam no servidor** (`lib/validar.ts`;
-  números escritos à mão por `parseAmount`). Titulares: upsert e poda. Upload: nunca `upsert: true`.
-- Escrita na BD só via server actions com `requireAdmin` (`src/lib/actions/*`) ou SQL no editor.
-- Recibos: dedupe GLOBAL por `receipt_number` = "contrato/recibo(#parte)". **`receipts.amount` é
-  ILÍQUIDO**; o líquido é `amount - withholding`; `payments.amount` é cash líquido (bug B1).
-- VPT do CSV do Portal vem em cêntimos e × quota do titular; o VPT por inteiro vem da caderneta.
-- **Despesas:** a parte de um senhorio calcula-se só com `expenseShare` (irs.ts). Uma despesa com
-  `landlord_id` é a PARTE dele; sem `landlord_id` é da família e reparte-se. Por inteiro, quando
-  vários co-titulares declaram a mesma (fração, categoria, ano), o valor é Σ declarado ÷ Σ quotas de
-  quem declarou (`quotasDeclarantes` + `scopedExpense`, gestao.ts); nunca cada linha a 100%.
-  `origem != 'registada'` nunca chega ao fisco. Obras/conservação são pontuais: média de 3 anos.
-- **IRS:** taxa autónoma 28%, mas 25% na habitação celebrada desde 07/10/2023 (`taxaAutonoma`,
-  Lei 56/2023). Taxa reduzida do art. 72.º pela DURAÇÃO DO PRAZO do contrato, nunca pelos anos de
-  casa; sem prazo registado não há redução (`prazoDesconhecido`). **AIMI**: fora os rústicos (`-R-`)
-  e os urbanos de comércio/serviços (`classifyUso`); taxas no VPT.
-- Import: (a) pipeline SQL e recolha automática à segunda e à quinta no portátil HP (`ssh hp-coletor`, tarefa `patrimonio-recibos`) (`dados/recolher_recibos.py` →
-  `scripts/importar_recibos_automatico.py`, só recibos novos); (b) largar ficheiro em `/admin` com
-  diff. **O caminho (b) nunca faz update/delete nem cria frações ou contratos.** A recolha corre na
-  máquina local (o Portal barra IPs de datacenter); segredos em `dados/.env`.
-- Relógio de Lisboa no servidor (`instrumentation.ts`). CSP em `next.config.ts`: um serviço novo
-  chamado do browser tem de entrar no `connect-src`. O cron do INE falha fechado sem `CRON_SECRET`.
+- PostgREST corta a ~1000 linhas; `.limit()` não resolve. Usar `paginateAll` em tabelas crescentes.
+- Leituras por `linhas()`/`linha()` (`lib/supabase/dados.ts`), com erros visíveis e nome da tabela;
+  nunca `(q.data ?? []) as T[]`. Escritas validadas no servidor por `lib/validar.ts`.
+- Escrita só via server actions (`lib/actions/*`) com `requireAdmin` ou `requireGestor`, segundo
+  a ação; nunca a partir de páginas. Números manuais por `parseAmount`. Upload sem `upsert: true`.
+  Titulares: upsert e poda. Permissões exigidas no servidor, mesmo com botão escondido.
+- Recibos: dedupe GLOBAL por `receipt_number` = "contrato/recibo(#parte)".
+  `receipts.amount` é ilíquido; líquido = amount - withholding; `payments.amount` é cash líquido.
+  Anulados nunca contam como pagos. Dividir recibos de vários meses em cêntimos exatos.
+- VPT do CSV do Portal vem em cêntimos e × quota; o VPT inteiro vem da caderneta.
+- Despesas por senhorio só por `expenseShare` (`irs.ts`): com `landlord_id`, a linha já é a parte
+  dele; sem titular, reparte-se pela quota. Por inteiro, co-titulares da mesma fração/categoria/ano:
+  soma declarado ÷ soma quotas de quem declarou (`quotasDeclarantes` + `scopedExpense`, gestao.ts).
+  `origem != 'registada'` não chega ao fisco. Obras/conservação: média de três anos.
+- IRS: taxa autónoma 28%, 25% na habitação celebrada desde 07/10/2023 (`taxaAutonoma`). Art. 72.º
+  pela duração do prazo, nunca pelos anos de casa; sem prazo não há redução (`prazoDesconhecido`).
+  AIMI exclui rústicos (`-R-`) e urbanos de comércio/serviços (`classifyUso`); taxas sobre VPT.
+- Import: recolha local no HP (`ssh hp-coletor`, tarefa `patrimonio-recibos`, segunda e quinta
+  às 09:00), `dados/recolher_recibos.py` e `scripts/importar_recibos_automatico.py`.
+  Várias contas via `PF_CONTAS`, com compatibilidade para a conta antiga. Falha numa conta não
+  impede as restantes; saída diferente de zero se alguma falhar. Credenciais nunca no código.
+  Atualiza anulados, refresca meses e guarda `receipt_observations` e `collection_runs`.
+  `first_seen` só quando medido; não inventar emissão anterior ao arquivo de recolhas.
+  Import por ficheiro em `/admin` com diff: não atualiza/apaga nem cria frações ou contratos.
+- Relógio de Lisboa no servidor (`instrumentation.ts`). CSP em `next.config.ts`; serviço novo
+  do browser exige `connect-src`. Cron do INE falha fechado sem `CRON_SECRET`.
 
 ## Estado de um mês: uma só verdade
-Vocabulário único (`monthcell.ts`, `ESTADO_MES_LABEL`): **Pago** (recibo emitido ≥ 90% da renda de
-referência, `isMonthSettled`, ou pagamento registado à mão) · **Em atraso** (mês JÁ TERMINADO, de
-fonte ativa, sem recibo) · **Por receber** (o mês em curso) · **Sem informação** (fonte parada ou
-por importar) · **Sem contrato**. `MonthCellStatus` fica só para desenhar a célula da faixa.
-- Um recibo emitido conta como renda paga: quem o emite é o senhorio, quando recebe.
-- `lastDueMonthKey` = sempre o mês ANTERIOR ao corrente (os recibos entram nas recolhas do 15 e do
-  último dia; a carência de 8 dias fazia de outubro dívida a dia 13).
-- A fronteira é POR FONTE (`horizontePorContrato`): uma fonte cuja última emissão ficou 2+ meses
-  atrás é `parada` (a herança do avô, desde 02/07/2026) e os contratos dela ficam "sem informação".
-- Pagamentos registados à mão (`payment_movements`/`allocations`, V5) substituem o recibo do mesmo
-  contrato-mês ANTES de qualquer cálculo (`comPagamentosManuais` em `load.ts`); nunca se somam.
-- A dívida é `emAtrasoDaCarteira` (insights.ts): a mesma lista no Hoje, na Cobranças (`devedores`,
-  por inquilino), nos Imóveis, na ficha da fração e na do inquilino. Contratos sem recibos há 12+
-  meses (`stale`) ficam fora da dívida e do "por receber" e têm uma tarefa própria.
+Vocabulário `ESTADO_MES_LABEL` (`monthcell.ts`): **Pago**, **Em atraso**, **Por receber**,
+**Sem informação**, **Sem contrato**. `MonthCellStatus` só desenha a célula da faixa.
+- Pago: recibo emitido ≥90% da referência (`isMonthSettled`) ou pagamento manual. Um recibo
+  emitido conta como renda paga: é o senhorio que o emite quando recebe.
+- Em atraso: mês já terminado de fonte ativa, sem recibo. `lastDueMonthKey` é o mês anterior.
+  Por receber: mês corrente. Fonte parada ou por importar: sem informação.
+- Horizonte por fonte (`horizontePorContrato`): última emissão há 2+ meses significa fonte parada.
+- Pagamentos manuais (`payment_movements`/allocations) substituem o recibo do contrato-mês
+  antes de calcular (`comPagamentosManuais` em load.ts); nunca somar as duas fontes.
+- Dívida única: `emAtrasoDaCarteira` (`insights.ts`), usada em Início, Rendas, Imóveis e fichas.
+  Contratos stale, sem recibos há 12+ meses, fora da dívida/por receber e com tarefa própria.
 
-## Saúde dos dados: o que NÃO é anomalia (`health.ts`, casos C4/D/E)
-- `renda_desalinhada` só quando os recibos NÃO confirmam a renda (a retenção de 25% explica o buraco).
-- `contratos_sobrepostos` só entre contratos ATIVOS; o snapshot usa o mais recente.
-- `quotas` abaixo de 100% é `info` (o tio Ilídio, frações minoritárias); acima de 100% é erro.
+## Saúde dos dados: o que NÃO é anomalia
+- `renda_desalinhada` só se os recibos não confirmarem a renda; retenção de 25% explica diferenças.
+- `contratos_sobrepostos` só entre ativos; snapshot escolhe o mais recente.
+- Quotas abaixo de 100% são informação, acima de 100% são erro (`health.ts`, C4/D/E).
 
 ## Navegação e superfícies
-Cinco destinos, iguais no computador e no telemóvel (`components/shell.tsx`):
-- **Hoje** (`/`): o mês em curso, os meses fechados, "Para fazer" (fila do `insights.ts`; admin) ou
-  "Quem está em atraso" (viewer), oportunidades realizáveis, prazos. Liga a `/tarefas`.
-- **Cobranças** (`/cobrancas`): em atraso por inquilino (barra + tira de 12 meses), sem informação,
-  por receber. `/cobrancas/extrato` (admin) é a tabela mês a mês; `/cobrancas/[contrato]?mes=` é o
-  extrato de um mês, com registo de pagamento sem recibo. `/inquilinos/[chave]` (todos).
-- **Imóveis** (`/imoveis`, `/imoveis/[chave]`, `/fracoes/[id]`): prédios em cartões; atalhos para
-  Contratos (`/contratos`), Documentos (`/arquivo`) e Histórico mensal (`/carteira`, a faixa).
-- **Rentabilidade** (`/rentabilidade`): resultado por prédio e fração (`portfolio/rentabilidade.ts`,
-  12 meses até à fronteira comum), oportunidades; separadores Mercado, Despesas e Projeção (admin).
-- **Impostos** (`/impostos`): o documento do ano (`/ano/[ano]`), Anexo F, art. 72.º, AIMI.
-- Admin (menu da conta): Tarefas, Senhorios, Documentos, Saúde dos dados, Admin.
-- Redirects estáticos das rotas antigas em `next.config.ts`; `/dinheiro` e `/relatorios` são páginas
-  porque o destino depende do separador. `/tarefas` é UMA lista (tarefas, cobranças, manutenção,
-  vagas) com o tipo em etiquetas.
-- Prédio = artigo matricial sem a fração (`predios.ts`): fora do prédio usar `nomeDaFracao()`, nunca
-  `property.name` cru; nomes de pessoas por `nomeProprio()`; meses por `monthLabel()`.
+Cinco destinos no computador e no telemóvel (`components/shell.tsx`):
+- **Início** (`/`): estado do mês, pagas/por receber, três maiores devedores, fontes e recolha.
+  "A fazer": até seis linhas; até três de cartas, depois promessas, prazos e tarefas de admin.
+  Se houver mais de três cartas, a terceira linha agrega as restantes e abre `/cartas`.
+- **Rendas** (`/rendas`): inquilinos por estado, pesquisa e A vigiar; `/rendas/extrato` só admin.
+- **Imóveis** (`/imoveis`): prédios; Com problemas só gravidade 2/3, gravidade 1 a acompanhar.
+  Fichas em `/imoveis/[chave]` e `/fracoes/[id]`; histórico mensal continua na faixa.
+- **Finanças** (`/financas`): Resultado, Impostos, Calendário e Poupança. Mercado dentro de
+  Resultado; Despesas e Projeção só admin. Calendário com valores estimados e estados feitos;
+  IMI pelo ano mais recente com despesas do titular, até três anos atrás; feed `.ics` mantido.
+  Poupança por contrato (art. 72.º), despesas por lançar e englobamento por senhorio.
+- **Mais** (`/mais`): Tarefas, Contratos, Documentos, Cartas e Conta; admin também vê Controlo,
+  Senhorios, Saúde dos dados e Administração. Rotas antigas redirecionam em `next.config.ts`.
+- A ficha `/inquilinos/[chave]` é o centro: estado, tira, registo, cartas em escada, diário e factos.
+  Prédio = artigo sem fração; frações por `nomeDaFracao()`, pessoas por `nomeProprio()`.
+- Papéis: admin, gestor, viewer. `getSession()` dá role/isAdmin/isGestor; `pode(role, acao)` em
+  `lib/papeis.ts`. Gestor regista pagamentos, diário e casos; viewer só lê. Controlo só admin,
+  protegido na página, ações e RLS das observações. Menu e botões respeitam o papel.
 
-## Design system "banca calma"
-Tudo em `src/app/globals.css` (Tailwind v4, `@theme`; não existe tailwind.config).
-- **Tinta** = confirmado; **verde-cofre** (`acao`) = exige ação; **âmbar** (`atencao`) = atenção;
-  **vermelho** (`perda`) = perda; **ardósia** (`futuro`) = desconhecido/futuro. **Não há verde de "ok".**
-- Código novo usa só tokens semânticos (`bg-papel bg-carta bg-elevado bg-vellum`, `text-tinta(-2/-3)`,
-  `border-regua(-forte)`, `acao atencao perda futuro`). `zinc/teal/emerald/amber/red/sky` são legado.
-- Tipografia Inter; Geist Mono para códigos. Cartões `rounded-2xl`, botões `rounded-full`.
-  Separação por hairline MAIS uma elevação suave nos cartões (`--sombra-carta`, aplicada por uma só regra
-  a `.rounded-2xl.border.bg-carta`, sem tocar nas páginas) e uma luz subtil no fundo do `body`
-  (`--luz-a/b`); a sombra forte continua só nos overlays. `kit/Iniciais` dá corpo às listas de pessoas
-  (círculo neutro, nunca cor: a cor é significado). Movimento ≤ 420 ms, sem loops; reduced-motion desliga.
-- **Movimento (PLANO_VISUAL_RESULTADO.md), tudo em `globals.css`, só transform/opacity, uma vez no mount:**
-  `.pagina` (no `shell.tsx`) põe os blocos de topo de cada página a entrar em cascata, sem props;
-  `.stagger` faz o mesmo numa lista; `.cartao-link` (cartões/linhas clicáveis: hover só com rato);
-  `.barra-cresce` (barras de quantidade); `.celula-in` + `style={{"--c": i}}` (faixa e tira de meses);
-  `.esqueleto` + `components/esqueleto.tsx` nos `loading.tsx` (estáticos); `.vazio` (estado vazio /
-  "tudo em dia"); `.destaque` (UM cartão principal por página). Gráficos: `useAnim()` em `charts.tsx`
-  (`use-reduced-motion.ts`). Reduced-motion corta também o `animation-delay`; a impressão corta tudo.
-- **Todo o euro passa pelo `<Money>`**; percentagens pelo `<Figure>`/`fmtPct`; `tabular-nums` sempre.
-- Proibido na UI: travessões "—", emojis, gradientes néon, animações infinitas.
+## Design system · direção C "Sinal"
+- Tokens semânticos em `src/app/globals.css` (Tailwind v4, `@theme`, sem tailwind.config).
+  Tinta: pago/confirmado; perda: atraso, laranja; futuro: por receber, azul; cinza tracejado:
+  sem informação. Sem verde de "ok". Usar papel/carta/tinta/regua/perda/futuro e suas variantes.
+- Bricolage Grotesque nos títulos/números, DM Sans no texto. Corpo 15/16 px, mínimo 12 px.
+  `tabular-nums`; euros por `<Money>`, percentagens por `<Figure>`/`fmtPct`, meses por `monthLabel()`.
+- Cor em blocos inteiros, cantos de 20 px, botões em pílula. Sem sombras fora de overlays,
+  gradientes, travessões ou emojis. Números dominam; explicações só em `<details>` "Detalhes".
+- Uma coluna a 375 px, sem scroll horizontal, toque ≥44 px; computador com largura máxima.
+  Movimento existente: `.stagger`, `.cartao-link`, `.barra-cresce`, `.celula-in`, `.destaque`.
+  Esqueletos estáticos e `.vazio`; respeitar reduced-motion e impressão. Sem loops.
 
 ## Componentes
-- `src/components/ui.tsx`: primitivas. **NUNCA `"use client"` neste ficheiro** (as páginas server
-  passam ícones; a diretiva rebenta em runtime, o build não apanha). Componentes com hooks vão para
-  ficheiro próprio (`modal.tsx`, `folha.tsx`). `kit/` (Money, Figure, Lede, Seccao, Confianca,
-  Cobertura) também sem hooks.
-- `faixa/` é a ÚNICA grelha mensal. Não há marcação manual de pagamentos nas células; o pagamento
-  sem recibo regista-se no extrato do mês (V5, `actions/gestao.ts`, RPCs transacionais e idempotentes).
-- `charts.tsx`: o `FluxoMensalChart` do Hoje (recebido por mês contra a renda de referência).
-  Nunca o líquido mês a mês (as despesas do Anexo F ficam todas a 31-12).
-- `forms.tsx` e `gestao/forms.tsx`: formulários (≈730 linhas cada, abaixo do limite de 800).
-- CTAs que navegam usam `buttonClass(...)`.
-- Cartas: `api/minuta/[tipo]/[contractId]` (.docx, texto em `lib/minutas.ts`); `/carta/[id]` explica
-  quando a atualização de renda não se aplica. `enquadrarMinutas()` decide quais se oferecem.
-- Arquivo: bucket privado `documentos`, caminho `<artigo matricial>__<ficheiro>` (`lib/documentos.ts`);
-  upload direto do browser para o Storage.
+- `src/components/ui.tsx` e `kit/` nunca levam `"use client"`. Hooks em ficheiro próprio.
+  Primitivas: `Bloco`, `Tira`, `Pilulas`, `Linha`, `Barra`, `Money`, `Figure`, `Iniciais`, `Seccao`,
+  `Lede`; exemplos em `/admin/catalogo`. Reutilizar, sem estilos ou primitivas paralelos.
+- Páginas server; carteira só por `getSnapshot()`/`getSnapshotComRaw()` (`portfolio/load.ts`).
+  Módulos puros sem I/O, React, Next ou Supabase; hoje recebido como argumento.
+- `faixa/` é a única grelha mensal. Pagamento sem recibo regista-se no extrato, por RPC idempotente.
+- Diário: `registarNoDiario` (`lib/actions/diario.ts`), contacto/promessa/carta/nota, com autor/data.
+  Registar em folha própria; botões só com isGestor. Promessas têm data e montante.
+- Cartas: lembrete, interpelação, resolução; passos saltados ficam Dispensado. Também acordo,
+  atualização e oposição. Texto em `lib/minutas.ts`, .docx em `api/minuta/[tipo]/[contractId]`.
+- Arquivo privado `documentos`, caminho `<artigo matricial>__<ficheiro>` (`lib/documentos.ts`).
+  CTAs de navegação por `buttonClass(...)`. Charts: recebido contra referência, nunca despesas
+  anuais a 31-12 tratadas como fluxo mensal. `charts.tsx` respeita reduced-motion.
 
-## Estrutura de `src/lib`
-`portfolio/load.ts` é o ÚNICO I/O da carteira (`getSnapshot`, `getSnapshotComRaw`); `snapshot.ts`
-puro. Módulos puros com check: arrears, monthcell, gestao, irs, health, calc, rent, minutas,
-portfolio/{insights, inquilinos, mes, rentabilidade, futuro, renda, risk, conselhos, agenda, imoveis,
-predios, pesquisa, ano}. Os conselhos (`/rentabilidade?tab=projecao`) são uma lista separada da fila
-do Hoje; os que ordenavam património ao lado de rendimento saíram (PLANO_CLAREZA.md 3.5).
+## Estrutura de src/lib
+`portfolio/load.ts` é o único I/O da carteira; `snapshot.ts` puro. Cálculos em módulos com
+`*.check.ts`: atrasos, estado mensal, gestão, IRS, saúde, agenda, poupança, problemas, rendas,
+diário, controlo e restantes módulos de portfolio. Loaders específicos mantêm paginação e erros.
 
 ## Pendente do utilizador
-- Herança do avô: código do Portal → pasta e credenciais em `dados/` para a recolha (PLANO_CLAREZA.md,
-  Fase 2). Os recibos retroativos resolvem os 21 contratos "sem informação".
-- NIF dos inquilinos e prazos dos contratos: não vêm nos exports do Portal, só dos documentos.
-- 62 recibos sem contrato (`/saude/recibos`); lote 2e (confirmar se cessou); 3 quotas por fechar.
-- Lista completa e antiga: PLANO.md, Apêndice B.
+- Herança: credenciais e pasta no HP, configuração e ensaio seco conforme `dados/README.md`.
+- NIF dos inquilinos e prazos dos contratos exigem documentos; não vêm nos exports habituais.
+- Recibos sem contrato, confirmação do lote 2e e quotas por fechar: lista em PLANO.md, Apêndice B.

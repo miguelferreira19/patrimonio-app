@@ -1,12 +1,12 @@
 import { Linha, Seccao } from "@/components/kit";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, monthLabel } from "@/lib/format";
 import type { FichaInquilino } from "@/lib/portfolio/inquilinos";
 import { nomeDaFracao } from "@/lib/portfolio/predios";
 
 export function FactosInquilino({ ficha, atualizacao, diaHabitual }: {
   ficha: FichaInquilino; atualizacao: string | null; diaHabitual: number | null;
 }) {
-  const factos = [{ nome: "Contrato desde", valor: ficha.desde ? fmtDate(ficha.desde) : "Sem informação" },
+  const factos = [{ nome: "Contrato desde", valor: ficha.desde ? monthLabel(ficha.desde) : "Sem informação" },
     { nome: "Última atualização", valor: atualizacao ? fmtDate(atualizacao) : "Sem informação" },
     ...(diaHabitual === null ? [] : [{ nome: "Costuma pagar ao dia", valor: new Intl.NumberFormat("pt-PT").format(diaHabitual) }])];
   const fracoes = [...new Map(ficha.contratos.map((c) => [c.property.id, c.property])).values()];

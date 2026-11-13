@@ -1,6 +1,6 @@
 import { Bloco, Lede, Linha, Money, Seccao } from "@/components/kit";
 import { Badge, buttonClass, EmptyState } from "@/components/ui";
-import { fmtDate, monthLabel, nomeProprio } from "@/lib/format";
+import { monthLabel, nomeProprio } from "@/lib/format";
 import { getSnapshotComRaw } from "@/lib/portfolio";
 import { carregarCalendario } from "@/lib/portfolio/financas-load";
 import type { PrazoDoAno } from "@/lib/portfolio/agenda";
@@ -13,7 +13,7 @@ export default async function Calendario({ isAdmin }: { isAdmin: boolean }) {
   const c = calendarioVisivel(prazos, hoje);
   return <div className="space-y-6">
     <Lede title="Calendário" actions={<a href="/api/agenda" className={buttonClass({ variant: "outline" })}>Calendário .ics</a>} />
-    <Bloco tom="futuro" rotulo="Próximo prazo" valor={c.proximo ? fmtDate(c.proximo.dia) : "Sem prazos"}
+    <Bloco tom="futuro" rotulo="Próximo prazo" valor={c.proximo ? `${Number(c.proximo.dia.slice(8, 10))} ${monthLabel(c.proximo.dia, false)}` : "Sem prazos"}
       legenda={c.proximo?.titulo}>
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-sm">Próximos 90 dias</span>
@@ -21,9 +21,10 @@ export default async function Calendario({ isAdmin }: { isAdmin: boolean }) {
       </div>
       <span className="text-xs">Valores conhecidos{c.incluiEstimativas ? " · inclui estimativas" : ""}</span>
     </Bloco>
-    {c.meses.map(({ mes, prazos: lista }) => <Seccao key={mes} titulo={monthLabel(mes, true)}>
-      {lista.length ? <ul className="stagger divide-y divide-regua">{lista.map((p) =>
-        <li key={p.id}><Prazo prazo={p} isAdmin={isAdmin} /></li>)}</ul> : <EmptyState>Sem prazos neste mês.</EmptyState>}
+    {!c.meses.some((m) => m.prazos.length > 0) && <EmptyState>Sem prazos.</EmptyState>}
+    {c.meses.filter((m) => m.prazos.length > 0).map(({ mes, prazos: lista }) => <Seccao key={mes} titulo={monthLabel(mes, true)}>
+      <ul className="stagger divide-y divide-regua">{lista.map((p) =>
+        <li key={p.id}><Prazo prazo={p} isAdmin={isAdmin} /></li>)}</ul>
     </Seccao>)}
   </div>;
 }

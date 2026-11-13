@@ -165,11 +165,64 @@ async function redirecionamentos() {
     /\/financas\?tab=impostos&ano=2025&senhorio=s1/);
 }
 
+async function verificarCalendarioVisivel() {
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const pagina = carregar("src/components/financas/calendario.tsx", {
+    "@/lib/portfolio": { getSnapshotComRaw: async () => ({ raw: { insightState: [] } }) },
+    "@/lib/portfolio/financas-load": { carregarCalendario: async () => ({ hoje: "2026-11-13", prazos: [
+      { id: "imi", dia: "2026-11-30", titulo: "IMI de ensaio", valor: 100, feito: false },
+    ] }) },
+    "./estado-prazo": { default: () => null },
+  }).default;
+  const html = renderToStaticMarkup(await pagina({ isAdmin: false }));
+  assert.match(html, /30 nov/);
+  assert.doesNotMatch(html, /30\/11\/2026|Sem prazos neste mês|dez 2026/);
+}
+
+async function verificarPoupanca() {
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const linha = (contratoId, falta, eurosPorAno = 0) => ({ contratoId, propertyId: contratoId,
+    senhorio: "Pessoa de ensaio", taxaAtual: 0.28, taxaPossivel: 0.28, falta, eurosPorAno });
+  const dados = { ano: 2026, resumo: { realizavel: 100, porConfirmar: 0 }, despesas: [], porSenhorio: [],
+    propriedades: ["sem1", "sem2", "curto", "ganho", "aplicada"].map((id) => ({ id, name: id })), linhas: [
+      linha("sem1", "registar o prazo do contrato"), linha("sem2", "registar o prazo do contrato"),
+      { ...linha("sem1", "registar o prazo do contrato"), senhorio: "Outro titular" },
+      linha("curto", "prazo inferior a 5 anos"), linha("ganho", null, 100), linha("aplicada", null),
+    ] };
+  const pagina = carregar("src/components/financas/poupanca.tsx", {
+    "next/link": { default: ({ children, ...props }) => require("react").createElement("a", props, children) },
+    "@/lib/portfolio/financas-load": { carregarPoupanca: async () => dados },
+  }).default;
+  const html = renderToStaticMarkup(await pagina());
+  assert.match(html, /2 contratos sem prazo registado/);
+  assert.match(html, /sem prazo não há taxa reduzida/);
+  assert.match(html, /href="\/contratos"/);
+  assert.match(html, /ganho/);
+  assert.match(html, /aplicada/);
+  assert.doesNotMatch(html, /registar o prazo do contrato|prazo inferior a 5 anos|>sem1<|>sem2<|>curto</);
+  dados.linhas = [linha("curto", "prazo inferior a 5 anos")];
+  const vazio = renderToStaticMarkup(await pagina());
+  assert.match(vazio, /vazio/);
+  assert.match(vazio, /Sem poupança por realizar/);
+}
+
+function verificarTipografia() {
+  const pastas = ["rentabilidade", "impostos", "controlo", "fracao"];
+  const ficheiros = pastas.flatMap((p) => fs.readdirSync(path.join(raiz, "src/components", p))
+    .filter((f) => f.endsWith(".tsx")).map((f) => `src/components/${p}/${f}`));
+  ficheiros.push("src/components/financas/resultado.tsx", "src/components/financas/resultado-listas.tsx");
+  for (const f of ficheiros) assert.doesNotMatch(fs.readFileSync(path.join(raiz, f), "utf8"),
+    /text-\[(?:[0-9]|1[01])px\]|text-(?:2xs|3xs)|text-\[0\.[0-6][0-9]*rem\]/, f);
+}
+
 (async () => {
+  verificarTipografia();
   calendario();
   controlo();
   await autorizacao();
   await separadores();
   await redirecionamentos();
+  await verificarCalendarioVisivel();
+  await verificarPoupanca();
   console.log("OK t53: calendário, estados, contexto, autorização, migração, separadores e redirects (dados sintéticos).");
 })().catch((erro) => { console.error(erro); process.exitCode = 1; });

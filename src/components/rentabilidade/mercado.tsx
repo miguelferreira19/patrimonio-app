@@ -1,6 +1,6 @@
 // MERCADO. Desde 2026-07-29 é destino de TODA a gente, a pedido do utilizador: saiu da
 // administração quando não tinha números para mostrar (área por preencher em quase toda a
-// carteira, e o código de território errado — bug B5), e essas duas razões desapareceram.
+// carteira, e o código de território errado : bug B5), e essas duas razões desapareceram.
 //
 // Por ser agora uma superfície de família, foi reescrita no idioma da V3: um número herói
 // em vez de um `PageHeader` com um parágrafo (R1), hairlines em vez de uma grelha de
@@ -12,7 +12,7 @@
 //    se cobraria hoje, não o que é legal aumentar num contrato em vigor;
 //  - o INE só publica ~330 freguesias, e nenhuma é desta carteira: a mediana é a do
 //    CONCELHO, e isso tem de estar à vista, não numa nota de rodapé;
-//  - loja, garagem e arrecadação não têm benchmark (`benchmarkForMetric` em calc.ts) —
+//  - loja, garagem e arrecadação não têm benchmark (`benchmarkForMetric` em calc.ts) :
 //    comparar uma garagem com a mediana de habitação não é uma estimativa fraca, é uma
 //    comparação sem significado.
 
@@ -199,7 +199,7 @@ export default async function MercadoPage({ searchParams }: { searchParams: Prom
 function Facto({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode; nota: string }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</dt>
+      <dt className="text-xs font-medium uppercase tracking-[0.06em] text-tinta-3">{rotulo}</dt>
       <dd className="mt-1.5">{valor}</dd>
       <dd className="mt-0.5 text-xs leading-snug text-tinta-3">{nota}</dd>
     </div>
@@ -209,7 +209,7 @@ function Facto({ rotulo, valor, nota }: { rotulo: string; valor: React.ReactNode
 function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div>
-      <dt className="text-[11px] text-tinta-3">{rotulo}</dt>
+      <dt className="text-xs text-tinta-3">{rotulo}</dt>
       <dd className="tabular-nums">{valor}</dd>
     </div>
   );

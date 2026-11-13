@@ -33,10 +33,10 @@ export default async function Predio({ params, searchParams }: {
       {p.morada ?? normalizarMorada(p.fracoes[0]?.property.address)}
       {titulares.length > 0 && <span className="block text-sm">{titulares.join(" · ")}</span>}
     </Lede>
-    <div className="grid grid-cols-2 gap-2.5">
+    <div className={`grid gap-2.5 ${p.divida > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
       <Bloco tom="tinta" rotulo="Renda" legenda="por mês" valor={<Money value={p.renda} escala="xl" className="text-inherit" />} />
-      <Bloco tom={p.divida > 0 ? "perda" : "neutro"} rotulo="Em atraso"
-        valor={<Money value={p.divida} escala="xl" className="text-inherit" />} />
+      {p.divida > 0 && <Bloco tom="perda" rotulo="Em atraso"
+        valor={<Money value={p.divida} escala="xl" className="text-inherit" />} />}
     </div>
     <ListaProblemas itens={problemas} />
     <Seccao titulo="Frações">

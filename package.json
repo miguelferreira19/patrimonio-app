@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "check": "node -e \"require('fs').rmSync('.check',{recursive:true,force:true})\" && tsc -p tsconfig.check.json && node scripts/checks.cjs"
+    "check": "node -e \"require('fs').rmSync('.check',{recursive:true,force:true})\" && tsc -p tsconfig.check.json && node scripts/checks.cjs && node scripts/checks-ui.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

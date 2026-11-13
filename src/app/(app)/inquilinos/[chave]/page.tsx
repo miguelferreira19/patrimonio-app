@@ -69,7 +69,7 @@ export default async function InquilinoPage({ params, searchParams }: {
     {f.linha.aVigiar.length > 0 && <Seccao titulo="A vigiar">
       <div className="flex flex-wrap gap-2">{f.linha.aVigiar.map((motivo) => <Badge key={motivo} tone="perda">{motivo}</Badge>)}</div>
     </Seccao>}
-    <DiarioInquilino eventos={f.diario} />
+    <DiarioInquilino eventos={f.diario} hoje={f.snap.hoje} />
     <FactosInquilino ficha={f.ficha} atualizacao={f.atualizacao} diaHabitual={f.dia} />
     <Contratos ficha={f.ficha} />
   </div>;

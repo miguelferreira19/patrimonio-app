@@ -136,9 +136,33 @@ async function verificarPaginas() {
   const predio = await pagina("imoveis/[chave]", { params: Promise.resolve({ chave: "123456-U-10" }), searchParams: Promise.resolve({}) });
   assert.match(predio, /Problemas/); assert.match(predio, /\/gestao\/avaria/);
   assert.match(predio, /Pessoa de Teste/); assert.match(predio, /celula-in/);
+  assert.doesNotMatch(predio, />Em atraso</, "sem caixa de atraso quando a dívida é zero");
   await assert.rejects(pagina("imoveis/[chave]", { params: Promise.resolve({ chave: "inexistente" }), searchParams: Promise.resolve({}) }), /404/);
   preparar(false, true);
   assert.match(await pagina("imoveis", { searchParams: Promise.resolve({}) }), /class="vazio/);
+}
+
+async function verificarGravidadeUm() {
+  preparar(false, false, { contracts: [
+    { ...contrato("c", "p"), term_kind: "desconhecido" },
+    contrato("cc", "a"),
+  ] });
+  contexto.sessao.supabase = cliente({ management_cases: [], expenses: [] });
+  const { prediosComProblemas } = require("./modelo.ts");
+  const lista = prediosComProblemas({ snap: contexto.snap, hoje: "2026-11-13", casos: [], despesas: [] });
+  assert.equal(lista.filter((p) => p.comProblemas).length, 1);
+  assert.ok(lista[0].problemas.some((p) => p.gravidade >= 2));
+  assert.deepEqual(lista.slice(1).map((p) => p.nome), ["Alfa", "Zulu"], "gravidade 1 não ordena como problema");
+  const html = await pagina("imoveis", { searchParams: Promise.resolve({ ver: "problemas" }) });
+  assert.doesNotMatch(html, />Alfa<|>Zulu</);
+  const todos = await pagina("imoveis", { searchParams: Promise.resolve({}) });
+  assert.match(todos, /1 a acompanhar/);
+  preparar(false, false, { payments: [
+    { contract_id: "c", ref_month: "2026-09-01", amount: 400, received_date: null },
+    { contract_id: "cc", ref_month: "2026-10-01", amount: 400, received_date: null },
+  ] });
+  const predio = await pagina("imoveis/[chave]", { params: Promise.resolve({ chave: "123456-U-10" }), searchParams: Promise.resolve({}) });
+  assert.match(predio, />Em atraso</, "a dívida positiva conserva a caixa");
 }
 
 async function verificarFracao() {
@@ -195,7 +219,8 @@ async function verificarEstadosEspeciais() {
 }
 
 async function main() {
-  await verificarLoader(); verificarHistorico(); await verificarPaginas(); await verificarFracao(); await verificarEstadosEspeciais();
+  await verificarLoader(); verificarHistorico(); await verificarPaginas(); await verificarGravidadeUm();
+  await verificarFracao(); await verificarEstadosEspeciais();
   console.log("OK: T32, loader paginado, anos civis fechados, falhas visíveis, filtros, ordem, problemas e cinco separadores (SSR sintético).");
 }
 main().catch((erro) => { console.error(erro); process.exitCode = 1; });

@@ -9,5 +9,5 @@ export function diaHabitual(datas: Array<string | null>, hoje: string): number |
   }).map((iso) => Number(iso.slice(8, 10))).sort((a, b) => a - b);
   if (!dias.length) return null;
   const meio = Math.floor(dias.length / 2);
-  return dias.length % 2 ? dias[meio] : (dias[meio - 1] + dias[meio]) / 2;
+  return Math.round(dias.length % 2 ? dias[meio] : (dias[meio - 1] + dias[meio]) / 2);
 }
