@@ -6,6 +6,7 @@ import {
   validarContrato,
   validarDespesa,
   validarTitulares,
+  validarRegistoNoDiario,
 } from "./validar";
 
 // A. Datas: só dias que existem.
@@ -49,3 +50,32 @@ validarAtualizacaoRenda({ new_rent: 868.7, effective_date: "2026-11-01" });
 assert.throws(() => validarAtualizacaoRenda({ new_rent: 0, effective_date: "2026-11-01" }), /acima de zero/);
 
 console.log("validar.check.ts: OK (A, B, C, D)");
+
+const registo = {
+  contractId: "11111111-1111-4111-8111-111111111111",
+  requestId: "22222222-2222-4222-8222-222222222222",
+  kind: "contacto" as const, note: " Falámos hoje. ", occurredOn: "2026-11-13",
+};
+const hoje = "2026-11-13";
+assert.equal(validarRegistoNoDiario(registo, hoje).note, "Falámos hoje.");
+validarRegistoNoDiario({ ...registo, note: "a".repeat(500) }, hoje);
+for (const note of ["", "   ", "a".repeat(501)]) {
+  assert.throws(() => validarRegistoNoDiario({ ...registo, note }, hoje), /500/);
+}
+for (const occurredOn of ["2026-02-30", "13/11/2026", "2026-11-14"]) {
+  assert.throws(() => validarRegistoNoDiario({ ...registo, occurredOn }, hoje), /data/i);
+}
+assert.throws(() => validarRegistoNoDiario({ ...registo, kind: "promessa" }, hoje), /prometida/);
+assert.throws(() => validarRegistoNoDiario({ ...registo, kind: "promessa", dueDate: "2026-11-12" }, hoje), /anterior/);
+assert.throws(() => validarRegistoNoDiario({ ...registo, dueDate: "2026-02-30" }, hoje), /data/i);
+for (const amount of [0, -1, NaN, Infinity, "abc"]) {
+  assert.throws(() => validarRegistoNoDiario({ ...registo, kind: "promessa", dueDate: hoje, amount }, hoje), /valor/i);
+}
+assert.equal(validarRegistoNoDiario({ ...registo, kind: "promessa", dueDate: hoje, amount: "1.200,50" }, hoje).amount, 1200.5);
+assert.equal(validarRegistoNoDiario({ ...registo, kind: "promessa", dueDate: hoje }, hoje).amount, undefined);
+validarRegistoNoDiario({ ...registo, kind: "carta" }, hoje);
+validarRegistoNoDiario({ ...registo, kind: "nota" }, hoje);
+assert.throws(() => validarRegistoNoDiario({ ...registo, kind: "visita" }, hoje), /tipo/i);
+assert.throws(() => validarRegistoNoDiario({ ...registo, contractId: "x" }, hoje), /Contrato/);
+assert.throws(() => validarRegistoNoDiario({ ...registo, requestId: "x" }, hoje), /operação/);
+console.log("validar.check.ts: OK (diário, datas, promessa, montante e identificação)");

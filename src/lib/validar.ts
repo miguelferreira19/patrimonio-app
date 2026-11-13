@@ -8,6 +8,8 @@
 // ponytail: guardas à mão em vez de zod. São seis formas de dados; uma dependência nova
 // para isto pesava mais do que o código que substitui.
 
+import { parseAmount } from "./parse";
+
 /** Lança com uma mensagem que o utilizador lê tal e qual (`fail()` passa-a ao formulário). */
 export function exigir(cond: unknown, mensagem: string): asserts cond {
   if (!cond) throw new Error(mensagem);
@@ -79,4 +81,26 @@ export function validarAtualizacaoRenda(u: { new_rent: number; effective_date: s
 /** Área e VPT: ou não vêm, ou são positivos. */
 export function validarPositivoOpcional(v: number | null | undefined, campo: string): void {
   exigir(v == null || (eNumero(v) && v > 0), `${campo} tem de ser um valor acima de zero.`);
+}
+
+export function validarRegistoNoDiario(input: {
+  contractId: string; requestId: string; kind: string; note: string;
+  occurredOn: string; dueDate?: string; amount?: unknown;
+}, hoje: string): { note: string; amount?: number } {
+  const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  exigir(typeof input.contractId === "string" && uuid.test(input.contractId), "Contrato inválido.");
+  exigir(typeof input.requestId === "string" && uuid.test(input.requestId), "Identificação da operação inválida.");
+  exigir(["contacto", "promessa", "carta", "nota"].includes(input.kind), "Tipo de registo inválido.");
+  exigir(typeof input.note === "string" && input.note.trim().length > 0 && input.note.length <= 500,
+    "Escreve uma nota de 1 a 500 caracteres.");
+  exigir(eData(input.occurredOn) && input.occurredOn <= hoje,
+    "A data do registo deve ser válida e não pode ser futura.");
+  exigir(!input.dueDate || eData(input.dueDate), "A data prometida não é válida.");
+  if (input.kind === "promessa") {
+    exigir(input.dueDate, "Indica a data prometida para o pagamento.");
+    exigir(input.dueDate >= input.occurredOn, "A data prometida não pode ser anterior ao registo.");
+  }
+  const amount = input.amount === undefined ? undefined : parseAmount(input.amount);
+  exigir(amount === undefined || (eNumero(amount) && amount > 0), "O valor deve ser positivo.");
+  return { note: input.note.trim(), ...(amount === undefined ? {} : { amount }) };
 }
