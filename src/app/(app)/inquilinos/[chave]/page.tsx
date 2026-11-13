@@ -58,7 +58,8 @@ export default async function InquilinoPage({ params, searchParams }: {
   params: Promise<{ chave: string }>; searchParams: Promise<{ registar?: string }>;
 }) {
   const [{ chave }, query] = await Promise.all([params, searchParams]);
-  const f = await carregarFicha(chave);
+  // A chave ("nome:..." ou "nif:...") chega codificada do URL; sem isto a ficha dá 404.
+  const f = await carregarFicha(decodeURIComponent(chave));
   return <div className="mx-auto w-full max-w-2xl space-y-5 tabular-nums">
     <CabecalhoInquilino linha={f.linha} />
     <Tira meses={f.linha.tira} tamanho="m" rotulos />
