@@ -142,75 +142,79 @@
 :root {
   color-scheme: light dark;
 
-  /* superfície */
-  --s-papel: #f3f5f4;
-  --s-carta: #ffffff;
+  /* REFORMA (11/11/2026), direcao C "Sinal": a cor e o estado e ocupa blocos inteiros.
+     Os NOMES ficam; mudam os valores. `acao` passa a tinta (o botao principal e preto),
+     `perda` e `atencao` passam ao mesmo laranja, `futuro` passa a azul. Continua a nao
+     haver verde de "ok". Contrastes verificados em src/lib/contraste.check.ts. */
+
+  /* superficie */
+  --s-papel: #ffffff;
+  --s-carta: #f3f4f6; /* bloco neutro */
   --s-elevado: #ffffff;
-  --s-vellum: #eef1f0; /* fundo de "confirmado" */
+  --s-vellum: #f3f4f6;
 
   /* tinta */
-  --s-tinta: #0f1517; /* texto principal, valores fechados — 16.3:1 */
-  --s-tinta-2: #4d575a; /* secundário — 6.2:1 */
-  --s-tinta-3: #657073; /* ténue, mas ainda legível — 4.6:1 */
-  --s-regua: #e2e6e4; /* hairline: substitui sombras */
-  --s-regua-forte: #cfd5d2;
+  --s-tinta: #14161a;
+  --s-tinta-2: #4b5563;
+  --s-tinta-3: #636b77;
+  --s-regua: #e5e7eb;
+  --s-regua-forte: #d1d5db;
 
   /* significado */
-  --s-acao: #0f6b5c;
-  --s-acao-forte: #0c5a4d;
-  --s-acao-tenue: #e2f1ed;
-  --s-atencao: #9a5a08;
-  --s-atencao-tenue: #fbf0df;
-  --s-perda: #b8322a;
-  --s-perda-tenue: #fbe9e7;
-  --s-futuro: #55657b;
-  --s-futuro-tenue: #edf0f5;
+  --s-acao: #14161a;
+  --s-acao-forte: #2a2e35;
+  --s-acao-tenue: #e5e7eb;
+  --s-atencao: #c2410c;
+  --s-atencao-tenue: #ffedd5;
+  --s-perda: #c2410c;
+  --s-perda-forte: #7c2d12;
+  --s-perda-tenue: #ffedd5;
+  --s-futuro: #1e3a8a;
+  --s-futuro-tenue: #e0e7ff;
 
-  /* fim de tabela (Table edgeFade em ui.tsx usa style inline em hex, não segue
-     classes `dark:` — tem de trocar de par pelo próprio browser) */
-  --fade-surface: #ffffff;
-  --fade-edge: rgba(15, 21, 23, 0.14);
+  --fade-surface: #f3f4f6;
+  --fade-edge: rgba(20, 22, 26, 0.14);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --s-papel: #0e1213;
-    --s-carta: #161b1c;
-    --s-elevado: #1d2324;
-    --s-vellum: #1d2324;
+    --s-papel: #0f1114;
+    --s-carta: #191c21;
+    --s-elevado: #20242a;
+    --s-vellum: #191c21;
 
-    /* no escuro a "tinta" é clara: é o mesmo papel invertido, não outra cor */
-    --s-tinta: #ecefee;
-    --s-tinta-2: #a3abad;
-    /* medido no browser: a #7e7a70 dava 4.30:1 sobre o cartão escuro, abaixo de 4.5,
-       e este token carrega texto de 11px (tira de cobertura, notas, placeholders). */
-    --s-tinta-3: #8a9496;
-    --s-regua: #262d2f;
-    --s-regua-forte: #343c3e;
+    --s-tinta: #f2f3f5;
+    --s-tinta-2: #b4bac4;
+    --s-tinta-3: #8f97a3;
+    --s-regua: #2a2f37;
+    --s-regua-forte: #3a404a;
 
-    --s-acao: #3fb39b;
-    --s-acao-forte: #6cc6b2;
-    --s-acao-tenue: #12302a;
-    --s-atencao: #e0a34a;
-    --s-atencao-tenue: #2e2210;
-    --s-perda: #f0796e;
-    --s-perda-tenue: #33140f;
-    --s-futuro: #93a1b5;
-    --s-futuro-tenue: #1b2230;
+    --s-acao: #f2f3f5;
+    --s-acao-forte: #ffffff;
+    --s-acao-tenue: #2a2f37;
+    --s-atencao: #fb923c;
+    --s-atencao-tenue: #3a1d0e;
+    --s-perda: #fb923c;
+    --s-perda-forte: #fed7aa;
+    --s-perda-tenue: #3a1d0e;
+    --s-futuro: #a5b4fc;
+    --s-futuro-tenue: #1b2247;
 
-    --fade-surface: #161b1c;
-    --fade-edge: rgba(236, 239, 238, 0.12);
+    --fade-surface: #191c21;
+    --fade-edge: rgba(242, 243, 245, 0.12);
   }
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Arial, sans-serif;
+  /* Titulos e numeros grandes (direcao C). */
+  --font-display: var(--font-bricolage), var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo,
     Consolas, monospace;
   /* Serifa SÓ para texto que se lê: ledes, títulos do Ano, linha de dinheiro.
      Nunca em chrome de UI. */
-  --font-serif: var(--font-inter), ui-sans-serif, system-ui, sans-serif; /* V4: a serifa saiu; `font-serif` legado cai na Inter */
+  --font-serif: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif; /* a serifa saiu; `font-serif` legado cai na DM Sans */
 
   --color-papel: var(--s-papel);
   --color-carta: var(--s-carta);
@@ -229,6 +233,7 @@
   --color-atencao: var(--s-atencao);
   --color-atencao-tenue: var(--s-atencao-tenue);
   --color-perda: var(--s-perda);
+  --color-perda-forte: var(--s-perda-forte);
   --color-perda-tenue: var(--s-perda-tenue);
   --color-futuro: var(--s-futuro);
   --color-futuro-tenue: var(--s-futuro-tenue);
@@ -280,24 +285,9 @@ a { text-underline-offset: 3px; }
    `rounded-2xl border bg-carta`), por isso nenhuma página precisa de ser tocada. `:where`
    deixa-a com especificidade zero: qualquer `shadow-*` explícito ganha-lhe.
    --------------------------------------------------------------------------- */
+/* Direcao C: sem sombra nos cartoes e sem luz no fundo; a separacao e a cor do bloco. */
 :root {
-  --sombra-carta: 0 1px 2px rgba(15, 21, 23, 0.04), 0 14px 30px -22px rgba(15, 21, 23, 0.2);
-  --luz-a: color-mix(in srgb, var(--s-acao) 8%, transparent);
-  --luz-b: color-mix(in srgb, var(--s-futuro) 7%, transparent);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sombra-carta: 0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 16px 34px -24px rgba(0, 0, 0, 0.7);
-    --luz-a: color-mix(in srgb, var(--s-acao) 11%, transparent);
-    --luz-b: color-mix(in srgb, var(--s-futuro) 9%, transparent);
-  }
-}
-body {
-  background-image:
-    radial-gradient(900px 520px at 14% -6%, var(--luz-a), transparent 70%),
-    radial-gradient(720px 440px at 100% 0%, var(--luz-b), transparent 70%);
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  --sombra-carta: none;
 }
 :where(.rounded-2xl.border.bg-carta) { box-shadow: var(--sombra-carta); }
 :where(p) { text-wrap: pretty; }

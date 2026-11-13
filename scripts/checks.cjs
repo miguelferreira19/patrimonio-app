@@ -10,7 +10,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const raiz = path.join(__dirname, "..", ".check");
+// CHECK_DIR: cada agente em paralelo compila para a sua pasta (`--outDir .check-<id>`), para
+// um `npm run check` não apagar a pasta `.check` de outro a meio.
+const raiz = path.join(__dirname, "..", process.env.CHECK_DIR || ".check");
 const encontrar = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(dir, e.name);

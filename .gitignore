@@ -23,3 +23,6 @@ next-env.d.ts
 .vercel
 .impeccable/review/
 .env*
+
+# pastas de check por agente (scripts/checks.cjs, CHECK_DIR)
+.check-*/

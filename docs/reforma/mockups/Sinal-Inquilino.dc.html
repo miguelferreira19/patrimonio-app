@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Sinal · Inquilino</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+</helmet>
+<div style="width: 390px; height: 940px; box-sizing: border-box; position: relative; overflow: hidden; background: #FFFFFF; color: #14161A; font-family: 'DM Sans', system-ui, sans-serif; font-variant-numeric: tabular-nums">
+
+  <div style="background: #C2410C; color: #FFFFFF; padding: 16px 20px 20px; border-radius: 0 0 28px 28px; display: flex; flex-direction: column; gap: 12px">
+    <a href="Sinal-Inicio.dc.html" style="font-size: 14px; font-weight: 600; text-decoration: none; color: #FFFFFF">‹ Rendas</a>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.02em">Alberto Nogueira</h1>
+      <span style="font-size: 14px">Rua do Arco, 12 · R/c Dto. · 335 € por mês</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end">
+      <span style="font-size: 15px; font-weight: 600">Deve 4 meses,<br>desde julho</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 52px; font-weight: 800; letter-spacing: -0.04em; line-height: 0.95">1 340 €</span>
+    </div>
+  </div>
+
+  <div style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 18px">
+
+    <div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end">
+      <sc-for list="{{tira}}" as="c" hint-placeholder-count="12">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <span style="width: 100%; height: {{c.h}}; border-radius: 6px; box-sizing: border-box; background: {{c.bg}}; border: 2px solid {{c.bd}}"></span>
+          <span style="font-size: 11px; font-weight: 600; color: #4B5563">{{c.m}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <a href="Sinal-Inquilino.dc.html" style="background: #14161A; color: #FFFFFF; text-decoration: none; text-align: center; font-size: 16px; font-weight: 700; border-radius: 999px; padding: 16px 8px">Pagou</a>
+      <a href="Sinal-Inquilino.dc.html" style="background: #F3F4F6; color: #14161A; text-decoration: none; text-align: center; font-size: 16px; font-weight: 700; border-radius: 999px; padding: 16px 8px">Falei com ele</a>
+    </div>
+
+    <div style="background: #FFEDD5; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; color: #7C2D12">Próxima carta: interpelação</h2>
+        <span style="font-size: 13px; font-weight: 600; color: #7C2D12">2 de 3</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+        <span style="height: 8px; border-radius: 4px; background: #7C2D12"></span>
+        <span style="height: 8px; border-radius: 4px; background: #C2410C"></span>
+        <span style="height: 8px; border-radius: 4px; background: #FFFFFF"></span>
+      </div>
+      <span style="font-size: 14px; color: #7C2D12">O lembrete seguiu a 3 de novembro. Esta vai registada, com o valor e os meses em dívida.</span>
+      <a href="Sinal-Inquilino.dc.html" style="align-self: flex-start; background: #C2410C; color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 700; border-radius: 999px; padding: 12px 18px">Abrir a carta</a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700">Diário</h2>
+      <sc-for list="{{diario}}" as="e" hint-placeholder-count="3">
+        <div style="display: flex; gap: 12px">
+          <span style="font-size: 13px; font-weight: 700; width: 50px; flex: none; padding-top: 1px">{{e.dia}}</span>
+          <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+            <span style="font-size: 15px">{{e.texto}}</span>
+            <span style="font-size: 13px; color: #4B5563">{{e.quem}}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":940}}'>
+class Component extends DCLogic {
+renderVals() {
+const meses = ['D', 'J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N'];
+const est = {
+P: { bg: '#14161A', bd: '#14161A', h: '44px' },
+A: { bg: '#C2410C', bd: '#C2410C', h: '44px' },
+F: { bg: '#FFFFFF', bd: '#9CA3AF', h: '44px' }
+};
+return {
+tira: 'PPPPPPPAAAAF'.split('').map((k, i) => ({ ...est[k], m: meses[i] })),
+diario: [
+{ dia: '9 nov', texto: 'Falei por telefone. Diz que paga dois meses no dia 20.', quem: 'Tio Ilídio' },
+{ dia: '3 nov', texto: 'Lembrete enviado por carta simples.', quem: 'Miguel' },
+{ dia: '15 out', texto: 'Recibo de junho emitido, 335 €.', quem: 'Portal das Finanças' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

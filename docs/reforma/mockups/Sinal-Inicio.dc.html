@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Sinal · Início</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+</helmet>
+<div style="width: 390px; height: 940px; box-sizing: border-box; position: relative; overflow: hidden; background: #FFFFFF; color: #14161A; font-family: 'DM Sans', system-ui, sans-serif; font-variant-numeric: tabular-nums">
+
+  <div style="background: #C2410C; color: #FFFFFF; padding: 20px 20px 22px; border-radius: 0 0 28px 28px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500">
+      <span>Novembro</span>
+      <span>Recibos lidos há 2 dias</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 16px; font-weight: 600">5 inquilinos em atraso</span>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 68px; font-weight: 800; letter-spacing: -0.04em; line-height: 0.95">5 039 €</span>
+    </div>
+    <a href="Sinal-Inquilino.dc.html" style="align-self: flex-start; background: #FFFFFF; color: #7C2D12; text-decoration: none; font-size: 15px; font-weight: 700; border-radius: 999px; padding: 12px 18px">Ver quem deve</a>
+  </div>
+
+  <div style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 18px">
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <div style="background: #14161A; color: #FFFFFF; border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 36px; font-weight: 700; line-height: 1">31</span>
+        <span style="font-size: 14px; font-weight: 600">pagas este mês</span>
+        <span style="font-size: 13px; color: #C9CDD4">11 292 €</span>
+      </div>
+      <div style="background: #E0E7FF; color: #1E3A8A; border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 36px; font-weight: 700; line-height: 1">10</span>
+        <span style="font-size: 14px; font-weight: 600">por receber</span>
+        <span style="font-size: 13px">3 220 €</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700">Quem deve</h2>
+      <sc-for list="{{devedores}}" as="d" hint-placeholder-count="3">
+        <a href="Sinal-Inquilino.dc.html" style="display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #14161A">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px">
+            <span style="font-size: 16px; font-weight: 600">{{d.nome}}</span>
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700; color: #9A3412; flex: none">{{d.valor}}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px">
+            <div style="flex: 1; height: 12px; background: #FFEDD5; border-radius: 6px; overflow: hidden">
+              <div style="width: {{d.pct}}; height: 100%; background: #C2410C; border-radius: 6px"></div>
+            </div>
+            <span style="font-size: 13px; font-weight: 600; color: #9A3412; width: 62px; text-align: right; flex: none">{{d.meses}}</span>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700">A fazer</h2>
+      <sc-for list="{{fazer}}" as="f" hint-placeholder-count="2">
+        <div style="background: #F3F4F6; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+          <span style="font-size: 13px; font-weight: 700; color: #14161A; width: 50px; flex: none">{{f.quando}}</span>
+          <span style="font-size: 15px; flex: 1">{{f.oque}}</span>
+          <span style="font-size: 15px; font-weight: 700">{{f.valor}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; background: #FFFFFF; border-top: 1px solid #E5E7EB; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center">
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+      <a href="Sinal-Inicio.dc.html" aria-label="{{n.nome}}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; font-size: 11px; font-weight: {{n.peso}}; color: {{n.cor}}; background: {{n.bg}}; width: {{n.w}}; height: {{n.w}}; border-radius: 999px; justify-self: center">
+        <svg aria-hidden="true" width="{{n.s}}" height="{{n.s}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{n.sw}}" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.d}}"></path></svg>
+        <span>{{n.rotulo}}</span>
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":940}}'>
+class Component extends DCLogic {
+renderVals() {
+const nav = [
+['Início', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
+['Rendas', 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'],
+['Registar', 'M12 5v14M5 12h14'],
+['Imóveis', 'M4 21V5l8-2v18M12 9l8 2v10M2 21h20M7 8h2M7 12h2M7 16h2'],
+['Mais', 'M5 12h.01M12 12h.01M19 12h.01']
+];
+return {
+devedores: [
+{ nome: 'Carla Pimentel', valor: '1 770 €', meses: '6 meses', pct: '100%' },
+{ nome: 'Alberto Nogueira', valor: '1 340 €', meses: '4 meses', pct: '76%' },
+{ nome: 'Padaria Sol Nascente, Lda', valor: '375 €', meses: '2 meses', pct: '21%' }
+],
+fazer: [
+{ quando: '30 nov', oque: 'IMI, última prestação', valor: '1 240 €' },
+{ quando: 'Hoje', oque: '2.ª carta a Alberto Nogueira', valor: '' }
+],
+nav: nav.map((n, i) => {
+const mais = i === 2;
+return {
+nome: n[0], d: n[1], rotulo: mais ? '' : n[0],
+cor: mais ? '#FFFFFF' : (i === 0 ? '#14161A' : '#4B5563'),
+peso: i === 0 ? 700 : 500,
+bg: mais ? '#14161A' : 'transparent',
+w: mais ? '56px' : '64px', s: mais ? '26' : '22', sw: mais ? '2.4' : '1.8'
+};
+})
+};
+}
+}
+</script>
+</body>
+</html>
