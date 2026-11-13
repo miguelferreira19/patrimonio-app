@@ -55,7 +55,14 @@ export const getSession = cache(async () => {
       .eq("id", user.id)
       .single();
     if (error) perfilErro = { code: error.code, message: error.message };
-    if (profile?.role === "admin") role = "admin";
+    if (profile?.role === "admin" || profile?.role === "gestor") role = profile.role;
   }
-  return { supabase, user, role, isAdmin: role === "admin", perfilErro };
+  return {
+    supabase,
+    user,
+    role,
+    isAdmin: role === "admin",
+    isGestor: role === "admin" || role === "gestor",
+    perfilErro,
+  };
 });

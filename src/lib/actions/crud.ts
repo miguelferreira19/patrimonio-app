@@ -378,6 +378,7 @@ export async function saveUpdateCoefficient(input: {
 export async function setProfileRole(input: { id: string; role: Role }): Promise<ActionResult> {
   try {
     const { supabase, user } = await requireAdmin();
+    exigir(["admin", "gestor", "viewer"].includes(input.role), "Papel inválido.");
     if (input.id === user.id && input.role !== "admin") {
       throw new Error("Não podes remover o teu próprio acesso de administrador.");
     }

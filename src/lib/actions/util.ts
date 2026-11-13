@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Role } from "@/lib/types";
 
 export type ActionResult = { ok: true; id?: string; info?: string } | { ok: false; error: string };
 
-/** Garante sessão de admin; devolve o cliente Supabase autenticado. */
-export async function requireAdmin() {
+async function exigirPapel(permitidos: readonly Role[], recusa: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,10 +14,17 @@ export async function requireAdmin() {
     .select("role")
     .eq("id", user.id)
     .single();
-  if (profile?.role !== "admin") {
-    throw new Error("Apenas o administrador pode alterar dados.");
-  }
-  return { supabase, user };
+  const role = permitidos.find((papel) => papel === profile?.role);
+  if (!role) throw new Error(recusa);
+  return { supabase, user, role };
+}
+
+export async function requireAdmin() {
+  return exigirPapel(["admin"], "Apenas o administrador pode alterar dados.");
+}
+
+export async function requireGestor() {
+  return exigirPapel(["admin", "gestor"], "Só o administrador ou um gestor podem registar isto.");
 }
 
 export function fail(e: unknown): { ok: false; error: string } {

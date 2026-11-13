@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, fail, type ActionResult } from "./util";
+import { requireAdmin, requireGestor, fail, type ActionResult } from "./util";
 import { eData, eNumero, exigir } from "../validar";
 import { parseAllocations, receiptCandidates, validMonth, type ManagementCase } from "../gestao";
 import { linhas } from "../supabase/dados";
@@ -52,7 +52,7 @@ export async function savePayment(input: {
   correction_reason?: string;
 }): Promise<ActionResult> {
   try {
-    const { supabase } = await requireAdmin();
+    const { supabase } = await requireGestor();
     exigir(
       uuid(input.contract_id) && uuid(input.request_id),
       "Contrato ou identificação da operação inválidos.",
@@ -138,7 +138,7 @@ export async function saveManagementCase(
   input: Partial<ManagementCase> & { request_id: string; title: string; kind: ManagementCase["kind"] },
 ): Promise<ActionResult> {
   try {
-    const { supabase, user } = await requireAdmin();
+    const { supabase, user } = await requireGestor();
     exigir(uuid(input.request_id) && (!input.id || uuid(input.id)), "Identificação da ocorrência inválida.");
     exigir(["cobranca", "tarefa", "manutencao", "vaga"].includes(input.kind), "Tipo de ocorrência inválido.");
     exigir(
@@ -252,7 +252,7 @@ export async function saveManagementEvent(input: {
   request_id: string;
 }): Promise<ActionResult> {
   try {
-    const { supabase } = await requireAdmin();
+    const { supabase } = await requireGestor();
     exigir(uuid(input.case_id) && uuid(input.request_id), "Ocorrência inválida.");
     exigir(["nota", "contacto", "acordo", "visita"].includes(input.kind), "Tipo de diligência inválido.");
     exigir(eData(input.occurred_on) && (!input.due_date || eData(input.due_date)), "Há uma data inválida.");

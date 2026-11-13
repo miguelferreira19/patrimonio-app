@@ -1,6 +1,6 @@
 // Tipos das tabelas Supabase (escritos à mão — manter em sincronia com supabase/schema.sql)
 
-export type Role = "admin" | "viewer";
+export type Role = "admin" | "gestor" | "viewer";
 
 /** De onde vem um numero. Vive aqui, e nao no componente <Confianca>, porque e um facto
  *  de DOMINIO (proveniencia), nao de apresentacao: os geradores de decisoes atribuem-no.

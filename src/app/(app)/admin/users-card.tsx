@@ -3,6 +3,7 @@
 import { useAction } from "@/components/forms";
 import { Card, Select, Table, Td, Th } from "@/components/ui";
 import { setProfileRole } from "@/lib/actions/crud";
+import { ROTULO_PAPEL } from "@/lib/papeis";
 import type { Profile, Role } from "@/lib/types";
 
 function ProfileRoleSelect({ profile, isMe }: { profile: Profile; isMe: boolean }) {
@@ -15,8 +16,11 @@ function ProfileRoleSelect({ profile, isMe }: { profile: Profile; isMe: boolean 
         onChange={(e) => run(setProfileRole({ id: profile.id, role: e.target.value as Role }))}
         className="w-36"
       >
-        <option value="admin">Administrador</option>
-        <option value="viewer">Leitura</option>
+        {(["admin", "gestor", "viewer"] as const).map((r) => (
+          <option key={r} value={r}>
+            {ROTULO_PAPEL[r]}
+          </option>
+        ))}
       </Select>
       {error && <p className="mt-1 text-xs text-perda">{error}</p>}
     </div>
