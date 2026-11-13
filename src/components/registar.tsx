@@ -7,7 +7,8 @@ import { buttonClass } from "./ui";
 
 export function Registar({ isGestor }: { isGestor: boolean }) {
   const pathname = usePathname();
-  const visivel = pathname === "/" || pathname === "/rendas" || pathname.startsWith("/inquilinos/");
+  // Na ficha do inquilino não aparece: a página já tem "Pagou" e "Falei com ele" e o botão tapava a carta.
+  const visivel = pathname === "/" || pathname === "/rendas";
   if (!isGestor || !visivel) return null;
   return (
     <Link href="/rendas?registar=1" data-print="none" className={buttonClass({
