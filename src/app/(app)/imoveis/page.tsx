@@ -1,222 +1,59 @@
-// IMÓVEIS (V4, REDESENHO.md §4.2). Substitui a Carteira como destino.
-//
-// O objeto passa a ser o PRÉDIO (agrupado pelo artigo matricial, lib/portfolio/predios.ts),
-// em cartões com uma fachada desenhada, o estado dos últimos meses e o que importa num
-// relance: em atraso, quanto, ou a renda. A faixa de 24 meses × 53 frações continua a
-// existir como "Histórico mensal" (/carteira), para quem quer a grelha toda.
-//
-// Os filtros vivem no URL, como as lentes da Carteira: partilháveis e sem estado no cliente.
-
 import Link from "next/link";
-import { FileClock, FolderOpen, History } from "lucide-react";
 import { PropertyFormButton } from "@/components/forms";
 import { CartaoPredio } from "@/components/imoveis/cartao-predio";
-import { MesesLegenda } from "@/components/imoveis/meses";
-import { Money } from "@/components/kit";
-import { buttonClass, cn } from "@/components/ui";
+import { prediosComProblemas } from "@/components/imoveis/modelo";
+import { Bloco, Lede, Money, Pilulas } from "@/components/kit";
 import { geoOptionsFromBenchmarks } from "@/lib/calc";
 import { getSession } from "@/lib/data";
+import { nomeProprio } from "@/lib/format";
 import { getSnapshot } from "@/lib/portfolio";
-import { filtrarPredios, resumirPredios, type FiltroImoveis, type OrdemImoveis } from "@/lib/portfolio/imoveis";
-import { emAtrasoDaCarteira } from "@/lib/portfolio/insights";
 import { fetchGeoOptions } from "@/lib/portfolio/load";
+import { carregarEntradaDeProblemas } from "@/lib/portfolio/problemas-load";
 
 export const dynamic = "force-dynamic";
 
-const FILTROS: Array<[FiltroImoveis, string]> = [
-  ["todos", "Todos"],
-  ["atraso", "Com atraso"],
-  ["parados", "Sem informação"],
-  ["vagas", "Com vagas"],
-  ["atualizavel", "Renda atualizável"],
-];
-const ORDENS: Array<[OrdemImoveis, string]> = [
-  ["estado", "Estado"],
-  ["renda", "Renda"],
-  ["nome", "Nome"],
-];
+async function NovaFracao() {
+  const [{ supabase }, snap] = await Promise.all([getSession(), getSnapshot()]);
+  const landlords = Array.from(new Map(snap.ativos.flatMap((a) =>
+    a.titulares.map((t) => [t.landlord.id, { ...t.landlord, name: nomeProprio(t.landlord.name) }] as const),
+  )).values()).sort((a, b) => a.name.localeCompare(b.name, "pt"));
+  return <PropertyFormButton landlords={landlords} geoOptions={geoOptionsFromBenchmarks(await fetchGeoOptions(supabase))} />;
+}
 
-export default async function Imoveis({
-  searchParams,
-}: {
-  searchParams: Promise<{ f?: string; s?: string; senhorio?: string; o?: string }>;
+export default async function Imoveis({ searchParams }: {
+  searchParams: Promise<{ ver?: string }>;
 }) {
-  const sp = await searchParams;
-  const [{ isAdmin, supabase }, snap] = await Promise.all([getSession(), getSnapshot()]);
-  const currentUrl = `/imoveis?${new URLSearchParams(Object.entries(sp).filter((entry): entry is [string, string] => typeof entry[1] === "string"))}`;
-
-  const filtro = (FILTROS.find(([k]) => k === sp.f)?.[0] ?? "todos") as FiltroImoveis;
-  const ordem = (ORDENS.find(([k]) => k === sp.o)?.[0] ?? "estado") as OrdemImoveis;
-  const senhorio = sp.senhorio || sp.s || undefined;
-
-  // Valores por inteiro, sempre (a regra fundadora; o "âmbito" saiu, PLANO_CLAREZA.md 5.3).
-  // O filtro por senhorio diz QUE prédios, não que parte deles.
-  const scopedAssets = snap.ativos.filter((a) => !senhorio || a.titulares.some((t) => t.landlord.id === senhorio));
-  const debts = new Map(emAtrasoDaCarteira(snap).map((r) => [r.propertyId, r.debt]));
-  const todos = resumirPredios({ ...snap, ativos: scopedAssets }).map((p) => ({
-    ...p,
-    renda: p.fracoes.reduce((n, a) => n + (a.activeContract?.rent ?? 0), 0),
-    divida: p.fracoes.reduce((n, a) => n + (debts.get(a.property.id) ?? 0), 0),
-  }));
-  const visiveis = filtrarPredios(todos, { filtro, senhorio, ordem });
-  const contagem: Record<FiltroImoveis, number> = {
-    todos: filtrarPredios(todos, { senhorio }).length,
-    atraso: filtrarPredios(todos, { filtro: "atraso", senhorio }).length,
-    parados: filtrarPredios(todos, { filtro: "parados", senhorio }).length,
-    vagas: filtrarPredios(todos, { filtro: "vagas", senhorio }).length,
-    atualizavel: filtrarPredios(todos, { filtro: "atualizavel", senhorio }).length,
-  };
-  const senhorios = Array.from(
-    new Map(snap.ativos.flatMap((a) => a.titulares.map((t) => [t.landlord.id, t.landlord] as const))).values(),
-  ).sort((a, b) => a.name.localeCompare(b.name, "pt"));
-
-  const filteredAssets = visiveis.flatMap((p) => p.fracoes);
-  const fracoes = filteredAssets.length;
-  const correntes = filteredAssets.filter((a) => a.corrente).length;
-  const arrendadas = filteredAssets.filter((a) => a.corrente && a.activeContract).length;
-  const terrenos = fracoes - correntes;
-  const atraso = emAtrasoDaCarteira(snap).filter((r) => filteredAssets.some((a) => a.property.id === r.propertyId));
-  const divida = atraso.reduce((s, r) => s + r.debt, 0);
-
-  const geoOptions = isAdmin ? geoOptionsFromBenchmarks(await fetchGeoOptions(supabase)) : [];
-
-  /** Um link que muda UM parâmetro e mantém os outros. */
-  const href = (muda: Record<string, string | undefined>) => {
-    const p = new URLSearchParams();
-    const atual: Record<string, string | undefined> = { f: filtro === "todos" ? undefined : filtro, s: senhorio, o: ordem === "estado" ? undefined : ordem, ...muda };
-    for (const [k, v] of Object.entries(atual)) if (v) p.set(k, v);
-    const q = p.toString();
-    return q ? `/imoveis?${q}` : "/imoveis";
-  };
-
-  return (
-    <div className="space-y-6 md:space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] md:text-[30px]">Imóveis</h1>
-          {/* UM denominador (AUDITORIA_CLAREZA.md, ponto 7). O cabeçalho dizia "61 frações"
-              e o KPI ao lado "42 de 53": os terrenos e vendidos entravam numa conta e não na
-              outra. Toda a métrica desta página corre sobre as ARRENDÁVEIS (`correntes`), por
-              isso é esse o número do cabeçalho, e os outros nomeiam-se uma vez, à parte. */}
-          <p className="mt-1.5 text-sm text-tinta-2">
-            {visiveis.length} prédios · {correntes} frações arrendáveis
-            {terrenos > 0 && <span className="text-tinta-3"> · {terrenos} terrenos e vendidos</span>}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/contratos" className={buttonClass({ variant: "outline" })}>
-            <FileClock size={15} strokeWidth={1.75} />
-            Contratos
-          </Link>
-          <Link href="/arquivo" className={buttonClass({ variant: "outline" })}>
-            <FolderOpen size={15} strokeWidth={1.75} />
-            Documentos
-          </Link>
-          <Link href="/carteira" className={buttonClass({ variant: "outline" })}>
-            <History size={15} strokeWidth={1.75} />
-            Histórico mensal
-          </Link>
-          {isAdmin && <PropertyFormButton landlords={senhorios} geoOptions={geoOptions} />}
-        </div>
-      </header>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi rotulo="Renda contratada" valor={<Money value={filteredAssets.reduce((n, a) => n + (a.activeContract?.rent ?? 0), 0)} escala="xl" />} nota="por mês · ilíquida" />
-        <Kpi
-          rotulo="Ocupação"
-          valor={<span className="text-2xl font-semibold tabular-nums">{arrendadas} de {correntes}</span>}
-          nota={`${correntes - arrendadas} por arrendar`}
-        />
-        <Link href="/rendas#em-atraso" className="cartao-link block rounded-2xl">
-          <Kpi
-            rotulo="Em atraso"
-            tom={divida > 0 ? "perda" : "tinta"}
-            valor={<Money value={divida} escala="xl" tom={divida > 0 ? "perda" : "tinta"} />}
-            nota={`${atraso.length} ${atraso.length === 1 ? "contrato" : "contratos"}`}
-          />
-        </Link>
-        <Kpi rotulo="Valor patrimonial" valor={<Money value={filteredAssets.reduce((n, a) => n + (a.property.vpt ?? 0), 0)} escala="xl" />} nota="soma dos VPT registados" />
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-sm text-tinta-2">{visiveis.length} de {todos.length} prédios · abre um cartão para ver as frações.{(filtro !== "todos" || senhorio) && <Link href="/imoveis" className="ml-2 font-medium text-acao underline">Limpar filtros</Link>}</p>
-        <nav aria-label="Filtros" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
-          {FILTROS.map(([k, rotulo]) => (
-            <Pilula key={k} href={href({ f: k === "todos" ? undefined : k })} ativa={filtro === k}>
-              {rotulo}
-              <span className="tabular-nums opacity-60">{contagem[k]}</span>
-            </Pilula>
-          ))}
-          <span className="mx-1 hidden w-px self-stretch bg-regua md:block" aria-hidden="true" />
-          {senhorios.map((l) => (
-            <Pilula key={l.id} href={href({ s: senhorio === l.id ? undefined : l.id })} ativa={senhorio === l.id}>
-              {l.name}
-            </Pilula>
-          ))}
-        </nav>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <MesesLegenda />
-          <p className="flex items-center gap-1 text-xs text-tinta-2">
-            Ordenar:
-            {ORDENS.map(([k, rotulo]) => (
-              <Link
-                key={k}
-                href={href({ o: k === "estado" ? undefined : k })}
-                aria-current={ordem === k ? "true" : undefined}
-                className={cn("inline-flex min-h-11 items-center rounded-full px-2.5 transition-colors duration-150 md:min-h-7", ordem === k ? "bg-vellum font-medium text-tinta" : "hover:text-tinta-2")}
-              >
-                {rotulo}
-              </Link>
-            ))}
-          </p>
-        </div>
-      </div>
-
-      {visiveis.length === 0 ? (
-        <p className="vazio">
-          Nenhum imóvel com este filtro.{" "}
-          <Link href="/imoveis" className="font-medium text-acao hover:underline">
-            Ver todos
-          </Link>
-        </p>
-      ) : (
-        <ul className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-          {visiveis.map((p) => (
-            <li key={p.chave} className="min-w-0">
-              <CartaoPredio p={p} back={currentUrl} />
-            </li>
-          ))}
-        </ul>
-      )}
+  const [sp, { isAdmin, supabase }, snap] = await Promise.all([searchParams, getSession(), getSnapshot()]);
+  const entrada = await carregarEntradaDeProblemas(supabase, snap, snap.hoje);
+  const todos = prediosComProblemas(entrada);
+  const comProblemas = todos.filter((p) => p.problemas.length > 0);
+  const vagos = todos.filter((p) => p.correntes > p.arrendadas);
+  const ver = sp.ver === "problemas" || sp.ver === "vagos" ? sp.ver : "todos";
+  const visiveis = ver === "problemas" ? comProblemas : ver === "vagos" ? vagos : todos;
+  const nVagas = snap.correntes.filter((a) => !a.activeContract).length;
+  return <div className="mx-auto w-full max-w-2xl space-y-6 tabular-nums">
+    <Lede title="Imóveis">{todos.length} {todos.length === 1 ? "prédio" : "prédios"} · {snap.ativos.length} {snap.ativos.length === 1 ? "fração" : "frações"} · {nVagas} {nVagas === 1 ? "vaga" : "vagas"}</Lede>
+    <div className="grid grid-cols-2 gap-2.5">
+      <Bloco tom={comProblemas.some((p) => p.problemas.some((x) => x.gravidade === 3)) ? "perda" : "neutro"}
+        valor={comProblemas.length} rotulo="com problemas" href="/imoveis?ver=problemas" />
+      <Bloco tom="tinta" rotulo="Renda por mês" valor={<Money value={todos.reduce((s, p) => s + p.renda, 0)}
+        escala="xl" className="text-inherit text-[clamp(1.125rem,5vw,1.5rem)]" />} />
     </div>
-  );
-}
-
-function Kpi({ rotulo, valor, nota, tom = "tinta" }: { rotulo: string; valor: React.ReactNode; nota: string; tom?: "tinta" | "perda" }) {
-  const perda = tom === "perda";
-  return (
-    <div className={cn("h-full rounded-2xl border px-4 py-4", perda ? "border-perda/25 bg-perda-tenue" : "border-regua bg-carta")}>
-      <p className={cn("flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]", perda ? "text-perda" : "text-tinta-3")}>
-        {perda && <i aria-hidden="true" className="size-2 rounded-full bg-perda" />}
-        {rotulo}
-      </p>
-      <div className="mt-2">{valor}</div>
-      <p className="mt-1 text-xs text-tinta-2">{nota}</p>
-    </div>
-  );
-}
-
-function Pilula({ href, ativa, children }: { href: string; ativa: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      aria-current={ativa ? "true" : undefined}
-      className={cn(
-        "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 md:min-h-9",
-        ativa ? "border-tinta bg-tinta text-papel" : "border-regua bg-carta text-tinta-2 hover:border-regua-forte hover:text-tinta",
-      )}
-    >
-      {children}
-    </Link>
-  );
+    <Pilulas ativo={ver} itens={[
+      { id: "todos", rotulo: "Todos", n: todos.length, href: "/imoveis" },
+      { id: "problemas", rotulo: "Com problemas", n: comProblemas.length, href: "/imoveis?ver=problemas" },
+      { id: "vagos", rotulo: "Vagos", n: vagos.length, href: "/imoveis?ver=vagos" },
+    ]} />
+    {visiveis.length === 0 ? <div className="vazio rounded-[20px] bg-carta p-5 text-sm text-tinta-2">
+      Nenhum imóvel com este filtro. <Link href="/imoveis" className="inline-flex min-h-11 items-center font-semibold text-tinta">Ver todos</Link>
+    </div> : <ul className="stagger space-y-3">
+      {visiveis.map((p) => <li key={p.chave}><CartaoPredio p={p} problemas={p.problemas}
+        back={ver === "todos" ? "/imoveis" : `/imoveis?ver=${ver}`} /></li>)}
+    </ul>}
+    <nav aria-label="Outras consultas" className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-tinta-2">
+      {[["/contratos", "Contratos"], ["/arquivo", "Documentos"], ["/carteira", "Histórico mensal"]].map(([href, nome]) =>
+        <Link key={href} href={href} className="inline-flex min-h-11 items-center hover:text-tinta">{nome}</Link>)}
+    </nav>
+    {isAdmin && await NovaFracao()}
+  </div>;
 }
