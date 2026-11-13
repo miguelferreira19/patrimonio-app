@@ -38,8 +38,12 @@ const nextConfig: NextConfig = {
   // depende do separador pedido.
   async redirects() {
     return [
-      { source: "/pagamentos", destination: "/cobrancas", permanent: false },
-      { source: "/atrasos", destination: "/cobrancas", permanent: false },
+      { source: "/cobrancas/extrato", destination: "/rendas/extrato", permanent: true },
+      { source: "/cobrancas/:id", destination: "/rendas/:id", permanent: true },
+      { source: "/cobrancas", destination: "/rendas", permanent: true },
+      { source: "/rentabilidade", destination: "/financas", permanent: true },
+      { source: "/pagamentos", destination: "/rendas", permanent: false },
+      { source: "/atrasos", destination: "/rendas", permanent: false },
       { source: "/fracoes", destination: "/imoveis", permanent: false },
       { source: "/irs", destination: "/impostos", permanent: false },
       { source: "/gestao", destination: "/tarefas", permanent: false },
@@ -49,9 +53,9 @@ const nextConfig: NextConfig = {
       // Eram rotas a sério, vivas ao mesmo tempo que os separadores que mostram o mesmo
       // ecrã: duas moradas para o mesmo conteúdo. Aqui, e não num `redirect()` de página,
       // porque com streaming esse devolve 200 e só se resolve no cliente.
-      { source: "/mercado", destination: "/rentabilidade?tab=mercado", permanent: false },
-      { source: "/despesas", destination: "/rentabilidade?tab=despesas", permanent: false },
-      { source: "/analise", destination: "/rentabilidade?tab=projecao", permanent: false },
+      { source: "/mercado", destination: "/financas?tab=mercado", permanent: false },
+      { source: "/despesas", destination: "/financas?tab=despesas", permanent: false },
+      { source: "/analise", destination: "/financas?tab=projecao", permanent: false },
       { source: "/ano/:ano", destination: "/impostos?ano=:ano", permanent: false },
     ];
   },

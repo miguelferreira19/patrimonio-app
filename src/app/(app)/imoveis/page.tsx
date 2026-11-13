@@ -127,7 +127,7 @@ export default async function Imoveis({
           valor={<span className="text-2xl font-semibold tabular-nums">{arrendadas} de {correntes}</span>}
           nota={`${correntes - arrendadas} por arrendar`}
         />
-        <Link href="/cobrancas#em-atraso" className="cartao-link block rounded-2xl">
+        <Link href="/rendas#em-atraso" className="cartao-link block rounded-2xl">
           <Kpi
             rotulo="Em atraso"
             tom={divida > 0 ? "perda" : "tinta"}

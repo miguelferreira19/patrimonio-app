@@ -48,7 +48,7 @@ export default async function Rentabilidade({
         {tabs.map(([k, nome]) => (
           <Link
             key={k}
-            href={k === "resultado" ? "/rentabilidade" : `/rentabilidade?tab=${k}`}
+            href={k === "resultado" ? "/financas" : `/financas?tab=${k}`}
             aria-current={tab === k ? "page" : undefined}
             className={cn(
               "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium transition-colors duration-150 md:min-h-10",
@@ -346,7 +346,7 @@ function Oportunidade({ o }: { o: Insight }) {
 function TabelaDeFracoes({ linhas, ordem }: { linhas: LinhaRentabilidade[]; ordem: Ordem }) {
   const coluna = (o: Ordem, nome: string) => (
     <Link
-      href={o === "resultado" ? "/rentabilidade" : `/rentabilidade?ordem=${o}`}
+      href={o === "resultado" ? "/financas" : `/financas?ordem=${o}`}
       aria-current={ordem === o ? "true" : undefined}
       className={cn("hover:text-tinta", ordem === o && "font-semibold text-tinta")}
     >

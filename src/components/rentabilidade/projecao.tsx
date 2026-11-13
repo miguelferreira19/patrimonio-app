@@ -37,7 +37,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
 
   const q = await searchParams ?? {}; const original = await getSnapshotComRaw();
   const scope: Ambito = ["carteira", "proprietario"].includes(q.ambito ?? "") ? q.ambito as Ambito : "inteiro";
-  if (scope === "proprietario" && !original.raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Projeção de receitas · 24 meses" q={q} landlords={original.raw.landlords} action="/rentabilidade" hidden={{ tab: "projecao" }} />;
+  if (scope === "proprietario" && !original.raw.landlords.some((l) => l.id === q.senhorio)) return <OwnerSelection title="Projeção de receitas · 24 meses" q={q} landlords={original.raw.landlords} action="/financas" hidden={{ tab: "projecao" }} />;
   const scoped = scopeRaw(original.raw, scope, q.senhorio); const raw = scoped.raw; const today = original.today; const snap = scope === "inteiro" ? original.snap : buildSnapshot(raw, today);
   const horizons = horizontePorContrato(original.raw.receiptsRecentes.flatMap((r) => r.landlord_id ? [{ ...r, landlord_id: r.landlord_id, issue_date: r.issue_date ?? null }] : []), today).porContrato;
   const forecastContracts = raw.contracts.map((c) => c.status === "ativo" && c.term_kind === "prazo_certo" && c.terms_confirmed_at && c.term_source && c.expected_end_date ? { ...c, end_date: c.expected_end_date } : c);
@@ -88,7 +88,7 @@ export default async function AnalisePage({ searchParams }: { searchParams: Prom
       >
         Cenário de receitas ilíquidas · {AMBITO_LABEL[scope]} · de {projecao[0]?.mes.slice(0, 7)} a {projecao.at(-1)?.mes.slice(0, 7)}. Não mede o saldo bancário disponível.
       </Lede>
-      <ScopeFilters q={q} landlords={original.raw.landlords} action="/rentabilidade" period={false} search={false} hidden={{ tab: "projecao" }} />
+      <ScopeFilters q={q} landlords={original.raw.landlords} action="/financas" period={false} search={false} hidden={{ tab: "projecao" }} />
       <div><p className="text-sm text-tinta-2">Receita esperada no cenário de 24 meses</p><div className="mt-2"><Money value={resumo.total} escala="hero" /></div><p className="mt-3 text-sm text-tinta-2">Banda de cenários: {fmtEur(resumo.totalP10)} a {fmtEur(resumo.totalP90)} · {raw.contracts.filter((c) => c.status === "ativo" && (!c.term_kind || c.term_kind === "desconhecido")).length} contratos com prazo desconhecido, mantidos no cenário de continuidade.{scoped.excluded > 0 && ` ${scoped.excluded} imóveis excluídos por quota desconhecida ou fora do âmbito.`}</p></div>
       <details className="text-sm text-tinta-2"><summary className="cursor-pointer text-acao">Como foi calculado</summary><p className="mt-3 max-w-[72ch] leading-relaxed">A projeção multiplica as rendas contratuais pela estimativa de ocorrência de receita, ajustada ao histórico e à média da carteira. A cobertura é específica da fonte de cada contrato. Registos de recibos não confirmam movimentos bancários. Prazos certos documentados usam o fim previsto; prazos desconhecidos assumem continuidade, sem renovação ou novo arrendamento inventados. A banda soma limites individuais e não é um intervalo probabilístico do total. As despesas repetem a média dos últimos 12 meses, incluindo valores espelhados quando identificados. O resultado operacional precede impostos, financiamento e despesas não registadas; não representa dinheiro livre para investir.</p></details>
       {scope === "inteiro" && <Recomendacoes conselhos={conselhos} temAreas={snap.correntes.some((a) => a.property.area_m2)} />}

@@ -99,7 +99,7 @@ export default async function Page({
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={`/cobrancas/${c.id}`} className={buttonClass({ variant: "outline", size: "sm" })}>
+              <Link href={`/rendas/${c.id}`} className={buttonClass({ variant: "outline", size: "sm" })}>
                 Consultar pagamentos
               </Link>
               {isAdmin && (

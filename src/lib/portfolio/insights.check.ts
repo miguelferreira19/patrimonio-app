@@ -171,7 +171,7 @@ const fila = construirFila(snap);
   assert.equal(atrasos[0].euros, divida, "o mesmo valor que o 'em atraso' do Hoje");
   assert.ok(atrasos[0].porque.includes("Repeses"), "nomeia os maiores");
   assert.ok(
-    atrasos[0].acoes.some((a) => a.href === "/cobrancas"),
+    atrasos[0].acoes.some((a) => a.href === "/rendas"),
     "leva à lista de quem deve",
   );
 }

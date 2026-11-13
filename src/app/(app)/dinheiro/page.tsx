@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 // As ligações antigas continuam a funcionar.
 export default async function Dinheiro({ searchParams }: { searchParams: Promise<{ tab?: string; ano?: string; senhorio?: string }> }) {
   const sp = await searchParams;
-  if (sp.tab === "analise") redirect("/rentabilidade?tab=projecao");
-  if (sp.tab === "mercado") redirect("/rentabilidade?tab=mercado");
+  if (sp.tab === "analise") redirect("/financas?tab=projecao");
+  if (sp.tab === "mercado") redirect("/financas?tab=mercado");
   const q = new URLSearchParams(Object.entries({ ano: sp.ano, senhorio: sp.senhorio }).filter((e): e is [string, string] => !!e[1]));
   redirect(`/impostos${q.size ? `?${q}` : ""}`);
 }

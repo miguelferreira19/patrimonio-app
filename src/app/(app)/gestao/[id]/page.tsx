@@ -54,7 +54,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           </Link>
         )}
         {contract && (
-          <Link href={`/cobrancas/${contract.id}`} className="text-sm text-acao underline">
+          <Link href={`/rendas/${contract.id}`} className="text-sm text-acao underline">
             Consultar pagamentos
           </Link>
         )}

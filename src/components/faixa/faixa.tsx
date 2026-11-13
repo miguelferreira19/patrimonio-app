@@ -142,7 +142,7 @@ export function Faixa({
 
                 <div className="relative grid flex-1 gap-[2px]" style={grelha}>
                   {l.celulas.map((c, ci) => (
-                    <Celula key={c.month} cell={c} coluna={ci} className="h-11" showMonth={false} label={l.nome} onClick={l.contractId ? () => router.push(`/cobrancas/${l.contractId}?mes=${c.month.slice(0, 7)}&voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`) : undefined} />
+                    <Celula key={c.month} cell={c} coluna={ci} className="h-11" showMonth={false} label={l.nome} onClick={l.contractId ? () => router.push(`/rendas/${l.contractId}?mes=${c.month.slice(0, 7)}&voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`) : undefined} />
                   ))}
                   <Fronteira i={iFronteira} n={meses.length} />
                 </div>

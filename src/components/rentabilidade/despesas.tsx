@@ -29,7 +29,7 @@ export default async function Page({
         title="Despesas"
         q={q}
         landlords={raw.landlords}
-        action="/rentabilidade"
+        action="/financas"
         hidden={{ tab: "despesas", imovel: q.imovel ?? "" }}
       />
     );
@@ -63,7 +63,7 @@ export default async function Page({
       <ScopeFilters
         q={q}
         landlords={raw.landlords}
-        action="/rentabilidade"
+        action="/financas"
         hidden={{ tab: "despesas", imovel: q.imovel ?? "" }}
         ambito={false}
       />

@@ -363,7 +363,7 @@ export default async function FracaoPage({
 
       {emAtraso && (
         <Link
-          href="/cobrancas#em-atraso"
+          href="/rendas#em-atraso"
           className="flex flex-wrap items-baseline justify-between gap-3 rounded-2xl border border-atencao/30 bg-atencao-tenue px-5 py-4"
         >
           <span className="flex flex-wrap items-center gap-2 text-sm">
@@ -377,7 +377,7 @@ export default async function FracaoPage({
         </Link>
       )}
 
-      <div className="flex flex-wrap gap-2"><Link href={`/cobrancas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Pagamentos e saldos</Link><Link href={`/manutencao?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Manutenção</Link><Link href={`/vagas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Disponibilidade</Link></div>
+      <div className="flex flex-wrap gap-2"><Link href={`/rendas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Pagamentos e saldos</Link><Link href={`/manutencao?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Manutenção</Link><Link href={`/vagas?imovel=${property.id}`} className={buttonClass({ variant: "outline" })}>Disponibilidade</Link></div>
       {isAdmin && <QuotaEvidence property={property} owners={owners.map((o) => ({ id: o.landlord_id, label: `${landlords.find((l) => l.id === o.landlord_id)?.name ?? "Proprietário"} · ${o.quota}%`, confirmed: o.quota_confirmed === true }))} />}
       <nav aria-label="Secções da fração" className="-mx-4 flex gap-1 overflow-x-auto border-b border-regua px-4 md:mx-0 md:px-0">
         {TABS.map(([k, nome]) => (
@@ -700,5 +700,5 @@ function ProximoPasso({ titulo, children }: { titulo: string; children: React.Re
 }
 
 function LinhaDoTempo({ ano, meses, total, contractId }: { ano: number; meses: MonthCellData[]; total: number; contractId: string }) {
-  return <Faixa meses={meses.map((m) => m.month)} linhas={[{ id: contractId, contractId, nome: String(ano), sub: "Registos do ano", href: `/cobrancas/${contractId}`, estado: "arrendado", celulas: meses, valor: total, nota: "líquido registado" }]} horizon={meses.filter((m) => m.status !== "futuro" && m.status !== "fora").at(-1)?.month ?? null} carteira={[]} />;
+  return <Faixa meses={meses.map((m) => m.month)} linhas={[{ id: contractId, contractId, nome: String(ano), sub: "Registos do ano", href: `/rendas/${contractId}`, estado: "arrendado", celulas: meses, valor: total, nota: "líquido registado" }]} horizon={meses.filter((m) => m.status !== "futuro" && m.status !== "fora").at(-1)?.month ?? null} carteira={[]} />;
 }

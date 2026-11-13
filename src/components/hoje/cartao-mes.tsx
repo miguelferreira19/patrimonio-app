@@ -19,19 +19,19 @@ const BALDE: Record<BaldeChave, { rotulo: string; barra: string; amostra: string
     rotulo: "Recebido",
     barra: "bg-tinta",
     amostra: "bg-tinta",
-    href: "/cobrancas",
+    href: "/rendas",
   },
   por_receber: {
     rotulo: "Por receber",
     barra: "bg-vellum",
     amostra: "bg-vellum ring-1 ring-regua-forte",
-    href: "/cobrancas#por-receber",
+    href: "/rendas#por-receber",
   },
   sem_informacao: {
     rotulo: "Sem informação",
     barra: "tecido-futuro bg-futuro-tenue",
     amostra: "tecido-futuro bg-futuro-tenue ring-1 ring-regua",
-    href: "/cobrancas#sem-informacao",
+    href: "/rendas#sem-informacao",
   },
 };
 
@@ -89,7 +89,7 @@ export function CartaoMes({ r }: { r: ResumoDoMes }) {
 
       {r.atraso.valor > 0 && (
         <div className="mt-5 border-t border-regua pt-4 text-[13px]">
-          <Link href="/cobrancas#em-atraso" className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors duration-150 hover:bg-vellum">
+          <Link href="/rendas#em-atraso" className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors duration-150 hover:bg-vellum">
             <span className="text-tinta-2 underline decoration-dotted underline-offset-4">
               Em atraso de meses anteriores · {r.atraso.contratos}{" "}
               {r.atraso.contratos === 1 ? "contrato" : "contratos"}

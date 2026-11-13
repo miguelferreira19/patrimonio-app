@@ -1,274 +1,168 @@
 "use client";
 
-// O INVÓLUCRO (V4, REDESENHO.md §3.2; destinos do PLANO_CLAREZA.md §4).
-//
-// Computador: barra lateral fina com os 5 destinos e a conta no rodapé.
-// Telemóvel: cabeçalho fino e os MESMOS 5 destinos numa barra EM BAIXO, ao alcance do polegar.
-//
-// Os destinos respondem a perguntas: Hoje, Cobranças, Imóveis, Rentabilidade, Impostos. As
-// rotas antigas continuam a acender o destino certo (`dono`).
-
-import { Marca as MarcaIdentidade } from "./marca";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import {
-  ChevronUp,
-  FolderOpen,
-  LogOut,
-  Settings,
-  Stethoscope,
-  Users,
-  ClipboardList,
-  type LucideIcon,
-} from "lucide-react";
-import { DESTINOS, type Destino } from "./destinos";
-import { cn } from "./ui";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronUp, LogOut } from "lucide-react";
+import { Marca as MarcaIdentidade } from "./marca";
+import { DESTINOS, destinoAtivo } from "./destinos";
+import { buttonClass, cn } from "./ui";
 import { Pesquisa } from "./pesquisa";
 import { Ajuda } from "./ajuda";
+import { Registar } from "./registar";
 import { createClient } from "@/lib/supabase/client";
+import { pode, ROTULO_PAPEL } from "@/lib/papeis";
 import type { Role } from "@/lib/types";
 
-const MOBILE = DESTINOS;
+type ContaProps = { role: Role; email: string | null; pathname: string };
 
-const ADMIN: Array<{ href: string; label: string; icon: LucideIcon }> = [
-  { href: "/tarefas", label: "Tarefas", icon: ClipboardList },
-  { href: "/senhorios", label: "Senhorios", icon: Users },
-  { href: "/arquivo", label: "Documentos", icon: FolderOpen },
-  { href: "/saude", label: "Saúde dos dados", icon: Stethoscope },
-  { href: "/admin", label: "Admin", icon: Settings },
-];
-
-function ativo(pathname: string, d: Destino): boolean {
-  const meu = d.dono.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  return d.href === "/" ? pathname === "/" || meu : meu;
-}
-
-export function Shell({
-  role,
-  email,
-  children,
-}: {
-  role: Role;
-  email: string | null;
-  children: React.ReactNode;
+export function Shell({ role, email, children }: {
+  role: Role; email: string | null; children: React.ReactNode;
 }) {
   const pathname = usePathname();
-
+  const conta = { role, email, pathname };
   return (
     <div className="min-h-screen bg-papel md:flex">
-      <a
-        href="#conteudo"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-carta focus:px-3 focus:py-2 focus:text-sm focus:text-tinta focus:ring-2 focus:ring-acao"
-      >
+      <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-carta focus:px-3 focus:py-3 focus:text-sm focus:text-tinta focus:ring-2 focus:ring-tinta">
         Saltar para o conteúdo
       </a>
-
-      {/* ---------- Computador: barra lateral ---------- */}
-      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-regua bg-carta px-3.5 py-5 md:flex">
-        <Marca />
-        <div className="mt-5">
-          <Pesquisa />
-        </div>
-        <nav aria-label="Navegação principal" className="mt-4 flex flex-col gap-0.5">
-          {DESTINOS.map((d) => {
-            const on = ativo(pathname, d);
-            return (
-              <Link
-                key={d.href}
-                href={d.href}
-                aria-current={on ? "page" : undefined}
-                className={cn(
-                  "relative flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-medium transition-colors duration-150",
-                  on ? "bg-acao-tenue text-tinta" : "text-tinta-2 hover:bg-vellum hover:text-tinta",
-                )}
-              >
-                {/* Filete do destino ativo: cresce na vertical quando se chega à página. */}
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute -left-3.5 top-1.5 bottom-1.5 w-[3px] origin-center rounded-r-full bg-acao transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                    on ? "scale-y-100" : "scale-y-0",
-                  )}
-                />
-                <d.icon size={18} strokeWidth={on ? 2.1 : 1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
-                {d.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="mt-auto space-y-3 pt-6">
-          {role === "admin" && <Link href="/saude" aria-current={pathname === "/saude" ? "page" : undefined} className="flex min-h-11 items-center gap-2.5 rounded-[10px] px-2.5 text-sm text-tinta-2 hover:bg-vellum"><Stethoscope size={18} aria-hidden="true" />Verificar dados</Link>}
-          <div className="px-2.5"><Ajuda admin={role === "admin"} /></div>
-          <Conta role={role} email={email} pathname={pathname} lado="cima" />
-        </div>
-      </aside>
-
-      {/* ---------- Telemóvel: cabeçalho fino ---------- */}
-      <header data-print="none" className="sticky top-0 z-40 flex items-center justify-between border-b border-regua bg-papel/90 px-4 py-2.5 backdrop-blur-md md:hidden">
-        <Marca />
-        <div className="flex items-center gap-2">
-          <Ajuda admin={role === "admin"} />
-          <Pesquisa compacta />
-          <Conta role={role} email={email} pathname={pathname} lado="baixo" compacta />
-        </div>
-      </header>
-
-      <main
-        id="conteudo"
-        tabIndex={-1}
-        className="mx-auto w-full min-w-0 max-w-[1280px] px-4 pb-28 pt-5 md:px-10 md:pb-16 md:pt-9"
-      >
-        {/* `pagina`: os blocos de topo da página entram em cascata (globals.css). A key
-            reinicia a entrada em cada navegação, e só nela (não nos ?separadores). */}
+      <BarraLateral {...conta} />
+      <Cabecalho {...conta} />
+      <main id="conteudo" tabIndex={-1}
+        className="mx-auto w-full min-w-0 max-w-4xl px-4 pt-5 pb-[calc(10rem+env(safe-area-inset-bottom))] md:px-10 md:pt-9 md:pb-16">
         <div key={pathname} className="pagina">{children}</div>
       </main>
-
-      {/* ---------- Telemóvel: separadores em baixo ---------- */}
-      <nav
-        aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-regua bg-carta/95 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 backdrop-blur-md md:hidden"
-      >
-        {MOBILE.map((d) => {
-          const on = ativo(pathname, d);
-          return (
-            <Link
-              key={d.href}
-              href={d.href}
-              aria-current={on ? "page" : undefined}
-              className={cn(
-                "flex min-h-11 flex-col items-center gap-0.5 py-1 text-[11px] transition-colors duration-150 active:scale-[0.97]",
-                on ? "font-semibold text-tinta" : "font-medium text-tinta-3",
-              )}
-            >
-              {/* Pílula atrás do ícone ativo (a mesma linguagem dos botões em pílula). */}
-              <span
-                className={cn(
-                  "grid h-7 w-12 place-items-center rounded-full transition-[background-color,transform] duration-200",
-                  on ? "scale-100 bg-acao-tenue" : "scale-90 bg-transparent",
-                )}
-              >
-                <d.icon size={21} strokeWidth={on ? 2.1 : 1.8} className={on ? "text-acao" : undefined} aria-hidden="true" />
-              </span>
-              <span className="max-w-full truncate px-0.5">
-                {"curto" in d ? (
-                  <>
-                    <span className="min-[380px]:hidden">{d.curto}</span>
-                    <span className="hidden min-[380px]:inline">{d.label}</span>
-                  </>
-                ) : (
-                  d.label
-                )}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+      <Navegacao pathname={pathname} movel />
+      <Registar isGestor={pode(role, "registar_pagamento")} />
     </div>
+  );
+}
+
+function Navegacao({ pathname, movel = false }: { pathname: string; movel?: boolean }) {
+  return (
+    <nav aria-label="Principal" data-print="none" className={movel
+      ? "fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-regua bg-papel pb-[env(safe-area-inset-bottom)] md:hidden"
+      : "mt-4 flex flex-col gap-1"}>
+      {DESTINOS.map((destino) => {
+        const ativo = destinoAtivo(pathname, destino);
+        return (
+          <Link key={destino.href} href={destino.href} aria-current={ativo ? "page" : undefined}
+            className={cn(
+              "flex min-h-11 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta",
+              movel ? "min-h-16 min-w-0 flex-col justify-center gap-1 px-1 py-2 text-[11px]"
+                : "gap-2.5 rounded-xl px-3 py-3 text-sm",
+              ativo ? "font-bold text-tinta" : "font-medium text-tinta-2",
+              !movel && (ativo ? "bg-papel" : "hover:bg-papel"),
+            )}>
+            <destino.icon size={22} strokeWidth={ativo ? 2.1 : 1.8} aria-hidden="true" className="shrink-0" />
+            <span>{destino.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function BarraLateral(conta: ContaProps) {
+  return (
+    <aside data-print="none" className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-regua bg-carta px-3.5 py-5 md:flex">
+      <Marca />
+      <div className="mt-5"><Pesquisa /></div>
+      <Navegacao pathname={conta.pathname} />
+      <div className="mt-auto space-y-3 pt-6">
+        <div className="px-2.5"><Ajuda admin={pode(conta.role, "administrar")} /></div>
+        <Conta {...conta} />
+      </div>
+    </aside>
+  );
+}
+
+function Cabecalho(conta: ContaProps) {
+  return (
+    <header data-print="none" className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-regua bg-papel px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 md:hidden">
+      <Marca />
+      <div className="flex shrink-0 items-center gap-2">
+        <Pesquisa compacta />
+        <Conta {...conta} compacta />
+      </div>
+    </header>
   );
 }
 
 function Marca() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-1.5">
+    <Link href="/" className="flex min-h-11 min-w-0 items-center rounded-lg px-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tinta">
       <MarcaIdentidade />
     </Link>
   );
 }
 
-/** A conta: e-mail, ferramentas de admin e Sair. Um só menu, que abre para cima na barra
- *  lateral e para baixo no cabeçalho do telemóvel. Esc e clique fora fecham. */
-function Conta({
-  role,
-  email,
-  pathname,
-  lado,
-  compacta,
-}: {
-  role: Role;
-  email: string | null;
-  pathname: string;
-  lado: "cima" | "baixo";
-  compacta?: boolean;
-}) {
-  const router = useRouter();
+function Conta({ role, email, pathname, compacta }: ContaProps & { compacta?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
+  const id = useId();
   useEffect(() => {
     if (!aberto) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAberto(false);
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    const fechar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") {
+        setAberto(false);
+        ref.current?.querySelector("button")?.focus();
+      }
     };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onClick);
+    const fora = (evento: PointerEvent) => {
+      if (ref.current && !ref.current.contains(evento.target as Node)) setAberto(false);
+    };
+    document.addEventListener("keydown", fechar);
+    document.addEventListener("pointerdown", fora);
     return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", fechar);
+      document.removeEventListener("pointerdown", fora);
     };
   }, [aberto]);
-
   useEffect(() => setAberto(false), [pathname]);
-
-  async function sair() {
-    await createClient().auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
-
-  const inicial = (email ?? "?").slice(0, 1).toUpperCase();
-
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={() => setAberto((v) => !v)}
-        aria-expanded={aberto}
-        aria-label={role === "admin" ? "Conta e administração" : "A minha conta"}
-        className={cn(
-          "flex w-full items-center gap-2.5 rounded-[10px] text-left text-sm text-tinta-2 transition-colors duration-150 hover:bg-vellum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acao",
-          compacta ? "size-11 justify-center p-1" : "px-2.5 py-2",
-        )}
-      >
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-vellum text-xs font-semibold text-tinta">
-          {inicial}
-        </span>
-        {!compacta && (
-          <>
-            <span className="min-w-0 flex-1 truncate">{role === "admin" ? "Administração" : "A minha conta"}</span>
-            <ChevronUp size={14} className={cn("transition-transform duration-150", !aberto && "rotate-180")} />
-          </>
-        )}
+      <button type="button" onClick={() => setAberto((valor) => !valor)}
+        aria-expanded={aberto} aria-controls={aberto ? id : undefined} aria-label="A minha conta"
+        className={cn("flex min-h-11 w-full items-center gap-2.5 rounded-xl text-left text-sm text-tinta-2 hover:bg-papel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tinta",
+          compacta ? "size-11 justify-center" : "px-2.5 py-2")}>
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-papel text-xs font-semibold text-tinta">{(email ?? "?").slice(0, 1).toUpperCase()}</span>
+        {!compacta && <><span className="min-w-0 flex-1 truncate">A minha conta</span><ChevronUp size={16} aria-hidden="true" /></>}
       </button>
-      {aberto && (
-        <div
-          aria-label="Opções da conta"
-          className={cn(
-            "absolute z-50 w-60 overflow-hidden rounded-xl border border-regua bg-elevado shadow-[0_16px_40px_-12px_rgba(15,21,23,0.28)] animate-menu",
-            lado === "cima" ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2",
-          )}
-        >
-          <p className="truncate border-b border-regua px-3 py-2 text-xs text-tinta-3">{email}</p>
-          {role === "admin" &&
-            ADMIN.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-tinta-2 transition-colors duration-100 hover:bg-vellum hover:text-tinta"
-              >
-                <Icon size={15} strokeWidth={1.75} className="shrink-0 opacity-70" />
-                {label}
-              </Link>
-            ))}
-          <button
-            onClick={sair}
-            className="flex w-full items-center gap-2.5 border-t border-regua px-3 py-2 text-[13px] text-tinta-2 transition-colors duration-100 hover:bg-perda-tenue hover:text-perda"
-          >
-            <LogOut size={15} strokeWidth={1.75} className="shrink-0 opacity-70" />
-            Sair
-          </button>
-        </div>
-      )}
+      {aberto && <div id={id} aria-label="Opções da conta" className={cn(
+        "absolute z-50 w-60 max-w-[calc(100vw-2rem)] space-y-2 rounded-xl border border-regua bg-elevado p-3 text-sm text-tinta",
+        compacta ? "right-0 top-full mt-2" : "bottom-full left-0 mb-2")}>
+        <div className="break-all">{email}</div>
+        <div className="text-xs text-tinta-2">{ROTULO_PAPEL[role]}</div>
+        <Sair />
+      </div>}
+    </div>
+  );
+}
+
+export function Sair() {
+  const router = useRouter();
+  const [aSair, setASair] = useState(false);
+  const [erro, setErro] = useState(false);
+  async function sair() {
+    setASair(true);
+    setErro(false);
+    try {
+      const { error } = await createClient().auth.signOut();
+      if (error) throw error;
+      router.push("/login");
+      router.refresh();
+    } catch {
+      setErro(true);
+      setASair(false);
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <button type="button" onClick={sair} disabled={aSair} className={buttonClass({ variant: "outline", className: "w-full" })}>
+        <LogOut size={18} aria-hidden="true" />{aSair ? "A sair…" : "Sair"}
+      </button>
+      {erro && <p role="alert" className="text-xs text-perda">Não foi possível sair. Tenta de novo.</p>}
     </div>
   );
 }

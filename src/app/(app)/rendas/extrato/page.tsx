@@ -17,11 +17,11 @@ export const dynamic = "force-dynamic";
 
 export default async function Extrato({ searchParams }: { searchParams: Promise<OperationalQuery> }) {
   const [q, { isAdmin }] = await Promise.all([searchParams, getSession()]);
-  if (!isAdmin) redirect("/cobrancas");
+  if (!isAdmin) redirect("/rendas");
   const data = await operationalData(q);
   const hidden = { imovel: q.imovel ?? "" };
   if (data.scope === "proprietario" && !data.raw.landlords.some((l) => l.id === q.senhorio)) {
-    return <OwnerSelection title="Extrato" q={q} landlords={data.raw.landlords} action="/cobrancas/extrato" hidden={hidden} />;
+    return <OwnerSelection title="Extrato" q={q} landlords={data.raw.landlords} action="/rendas/extrato" hidden={hidden} />;
   }
 
   const conhecidas = data.rows.filter((r) => r.share !== null);
@@ -36,11 +36,11 @@ export default async function Extrato({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="space-y-6">
-      <Link href="/cobrancas" className={buttonClass({ variant: "ghost" })}>Voltar a Cobranças</Link>
+      <Link href="/rendas" className={buttonClass({ variant: "ghost" })}>Voltar a Cobranças</Link>
       <Lede title="Extrato mês a mês">
         Cada linha é um contrato num mês. Abre um mês para ver os recibos e registar um pagamento recebido sem recibo.
       </Lede>
-      <ScopeFilters q={q} landlords={data.raw.landlords} action="/cobrancas/extrato" hidden={hidden} extrato />
+      <ScopeFilters q={q} landlords={data.raw.landlords} action="/rendas/extrato" hidden={hidden} extrato />
       <p className="text-sm text-tinta-2">
         {monthLabel(data.from)} a {monthLabel(data.to)} · {AMBITO_LABEL[data.scope]} · {data.rows.length} meses de contrato
         {excluidos > 0 ? ` · ${excluidos} fora dos totais por quota desconhecida` : ""}

@@ -139,7 +139,7 @@ export default async function Cobrancas() {
       </section>
 
       {isAdmin && (
-        <Link href="/cobrancas/extrato" className={buttonClass({ variant: "outline" })}>
+        <Link href="/rendas/extrato" className={buttonClass({ variant: "outline" })}>
           Extrato mês a mês
         </Link>
       )}
@@ -282,7 +282,7 @@ function LinhaDevedor({
 function Acoes({ contractId, className }: { contractId: string; className?: string }) {
   return (
     <span className={`flex flex-wrap justify-end gap-1.5 ${className ?? ""}`}>
-      <Link href={`/cobrancas/${contractId}`} className={buttonClass({ variant: "outline", size: "sm" })}>
+      <Link href={`/rendas/${contractId}`} className={buttonClass({ variant: "outline", size: "sm" })}>
         Contacto
       </Link>
       <a href={`/api/minuta/interpelacao/${contractId}`} className={buttonClass({ variant: "primary", size: "sm" })}>

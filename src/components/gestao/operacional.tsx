@@ -125,7 +125,7 @@ const RECIBO: Record<"emitido" | "por_emitir" | "por_importar", string> = {
 export function OperationalTable({
   data,
   q,
-  back = "/cobrancas/extrato",
+  back = "/rendas/extrato",
 }: {
   data: Awaited<ReturnType<typeof operationalData>>;
   q: OperationalQuery;
@@ -134,7 +134,7 @@ export function OperationalTable({
   const filtros = Object.entries(q).filter((e): e is [string, string] => typeof e[1] === "string");
   const contexto = `${back}?${new URLSearchParams(filtros)}`;
   const mesHref = (contractId: string, month: string) =>
-    `/cobrancas/${contractId}?mes=${month.slice(0, 7)}&voltar=${encodeURIComponent(contexto)}`;
+    `/rendas/${contractId}?mes=${month.slice(0, 7)}&voltar=${encodeURIComponent(contexto)}`;
   const colunas = ["Imóvel / mês", "Inquilino", "Renda (ilíquida)", "Recebido (líquido)", "Em atraso", "Estado", "Próxima ação"];
 
   return (

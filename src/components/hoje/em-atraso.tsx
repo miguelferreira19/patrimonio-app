@@ -80,7 +80,7 @@ export function EmAtraso({
           )}
         </dl>
         {/* No telemóvel o painel já ocupa um ecrã: o atalho passa para o fim da lista. */}
-        <Link href="/cobrancas" className={buttonClass({ variant: "primary", className: "mt-auto self-start max-lg:hidden" })}>
+        <Link href="/rendas" className={buttonClass({ variant: "primary", className: "mt-auto self-start max-lg:hidden" })}>
           Abrir cobranças
         </Link>
       </div>
@@ -127,11 +127,11 @@ export function EmAtraso({
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <MesesLegenda itens={["pago", "falta", "parcial", "fora"]} />
-          <Link href="/cobrancas#em-atraso" className="text-sm font-medium text-acao hover:underline lg:hidden">
+          <Link href="/rendas#em-atraso" className="text-sm font-medium text-acao hover:underline lg:hidden">
             Abrir cobranças
           </Link>
           {resto > 0 && (
-            <Link href="/cobrancas#em-atraso" className="text-sm font-medium text-acao hover:underline">
+            <Link href="/rendas#em-atraso" className="text-sm font-medium text-acao hover:underline">
               Mais {resto} em Cobranças
             </Link>
           )}

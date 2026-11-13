@@ -269,7 +269,7 @@ const GERADORES: Gerador[] = [
         // "a ganhar este ano" prometia 46.833 € que nenhuma decisão deste ano capta.
         confianca: "assumido",
         conta: `${fmtEur(s.mercado.potencialMes)}/mês × 12. Mediana INE de NOVOS contratos: não é o que se pode exigir a um contrato em vigor.`,
-        acoes: [{ label: "Ver mercado", href: "/rentabilidade?tab=mercado" }],
+        acoes: [{ label: "Ver mercado", href: "/financas?tab=mercado" }],
       },
     ];
   },
@@ -345,7 +345,7 @@ const GERADORES: Gerador[] = [
         conta:
           "Meses em atraso × renda habitual (líquida de retenção), até 24 meses por contrato. " +
           "Um mês conta quando termina sem recibo emitido; renda paga sem recibo regista-se no extrato.",
-        acoes: [{ label: "Ver quem deve", href: "/cobrancas" }],
+        acoes: [{ label: "Ver quem deve", href: "/rendas" }],
       },
     ];
   },
@@ -410,7 +410,7 @@ const GERADORES: Gerador[] = [
       unidade: "acumulado" as const,
       confianca: "assumido" as const,
       conta: `${fmtEur(f.porMes)}/mês × ${f.meses} ${f.meses === 1 ? "mês" : "meses"} de rendas sem recibo.`,
-      acoes: [{ label: "Ver contratos", href: "/cobrancas#sem-informacao" }],
+      acoes: [{ label: "Ver contratos", href: "/rendas#sem-informacao" }],
     }));
   },
 

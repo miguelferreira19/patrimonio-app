@@ -7,16 +7,17 @@ import { DESTINOS, type DestinoHref } from "./destinos";
 // a Ajuda deixou de poder descrever uma navegação que já não existe (auditoria, ponto 14).
 const DESCRICAO: Record<DestinoHref, string> = {
   "/": "O mês em curso repartido entre o que entrou, o que falta entrar e o que não se sabe. Por baixo, o que há a fazer este mês e os prazos.",
-  "/cobrancas": "Quem deve, quanto e desde quando, por inquilino.",
+  "/rendas": "Quem deve, quanto e desde quando, por inquilino.",
   "/imoveis":
     "Os prédios, e dentro de cada um as frações. Filtra por atraso, recibos parados ou vagas. Daqui chega-se aos contratos, ao histórico mensal e ao arquivo de documentos.",
-  "/rentabilidade": "O que rende e o que custa, por prédio e por fração. O Mercado e as Despesas estão em separadores.",
-  "/impostos": "O IRS do ano, por senhorio: Anexo F, taxa do art. 72.º e AIMI.",
+  "/financas": "O que rende e o que custa, por prédio e por fração. O IRS do ano continua na página Impostos.",
+  "/mais": "Tarefas, contratos, documentos, cartas e histórico mensal. A conta e a opção Sair estão no fim.",
 };
 
 /** Só para administradores, por destino. Fica à parte da descrição que toda a gente vê. */
 const SO_ADMIN: Partial<Record<DestinoHref, string>> = {
-  "/rentabilidade": "A Projeção reúne cenários e conselhos.",
+  "/financas": "A Projeção reúne cenários e conselhos.",
+  "/mais": "Inclui Controlo, Senhorios, Saúde dos dados e Administração.",
 };
 
 export function Ajuda({ admin }: { admin: boolean }) {
@@ -39,7 +40,7 @@ export function Ajuda({ admin }: { admin: boolean }) {
         <h3 className="font-semibold">Como ler os estados</h3>
         <dl className="mt-3 space-y-3 text-tinta-2">
           <div><dt className="font-medium text-tinta">Pago</dt><dd>O mês tem recibo emitido, ou um pagamento registado à mão.</dd></div>
-          <div><dt className="font-medium text-atencao">Em atraso</dt><dd>Um mês que já terminou sem recibo emitido. A lista de quem deve está em Cobranças.</dd></div>
+          <div><dt className="font-medium text-atencao">Em atraso</dt><dd>Um mês que já terminou sem recibo emitido. A lista de quem deve está em Rendas.</dd></div>
           <div><dt className="font-medium text-tinta-2">Por receber</dt><dd>O mês em curso. Só passa a atraso depois de terminar.</dd></div>
           <div><dt className="font-medium text-futuro">Sem informação</dt><dd>Os recibos deixaram de ser emitidos (a herança do avô) ou ainda não foram importados. Não conta como pago nem como atraso.</dd></div>
           <div><dt className="font-medium text-atencao">Com vaga</dt><dd>Existe uma fração corrente sem contrato ativo.</dd></div>

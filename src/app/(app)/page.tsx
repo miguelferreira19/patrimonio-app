@@ -149,7 +149,7 @@ function RecibosSuspensos({ snap }: { snap: Snapshot }) {
               <Money value={f.acumulado} escala="xl" tom="futuro" />
               <p className="mt-0.5 text-xs font-medium text-tinta-3">acumulado</p>
             </div>
-            <Link href="/cobrancas#sem-informacao" className={buttonClass({ variant: "outline", size: "sm" })}>
+            <Link href="/rendas#sem-informacao" className={buttonClass({ variant: "outline", size: "sm" })}>
               Ver contratos
             </Link>
           </div>
@@ -237,7 +237,7 @@ function Tarefas({ snap }: { snap: Snapshot }) {
         <section className="rounded-2xl border border-regua bg-carta p-5 md:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold tracking-[-0.01em]">Oportunidades</h2>
-            <Link href="/rentabilidade" className="text-sm font-medium text-acao hover:underline">
+            <Link href="/financas" className="text-sm font-medium text-acao hover:underline">
               Ver em Rentabilidade
             </Link>
           </div>

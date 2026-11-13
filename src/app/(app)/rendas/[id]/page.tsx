@@ -53,7 +53,7 @@ export default async function MonthPage({
   const receipts = data.receipts.filter((r) => r.contract_id === id);
   const history = await getOperationHistory("period_confirmations", `${id}/${s.month}`);
   const back =
-    q.voltar && /^\/(cobrancas|imoveis|carteira|fracoes)(\/|\?|$)/.test(q.voltar) ? q.voltar : "/cobrancas";
+    q.voltar && /^\/(rendas|imoveis|carteira|fracoes)(\/|\?|$)/.test(q.voltar) ? q.voltar : "/rendas";
   return (
     <div className="space-y-6">
       <Link href={back} className={buttonClass({ variant: "ghost" })}>
