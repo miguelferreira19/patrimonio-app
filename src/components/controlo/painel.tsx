@@ -1,5 +1,6 @@
 import { Bloco, Figure, Lede, Linha, Money, Pilulas, Seccao } from "@/components/kit";
 import { Badge, EmptyState } from "@/components/ui";
+import { JANELA_DO_CONTROLO_MESES } from "@/lib/controlo";
 import { fmtDate, monthLabel, nomeProprio } from "@/lib/format";
 import type { carregarControlo } from "./carregar";
 import { FILTROS, ligacaoDoContrato, listaDeSinais } from "./modelo";
@@ -12,7 +13,7 @@ export default function Painel({ dados, ver }: {
   const lista = listaDeSinais(dados.sinais, dados.estados, ver ?? "por_ver");
   const n = lista.contagens.por_ver;
   return <div className="mx-auto w-full max-w-2xl space-y-6 tabular-nums">
-    <Lede title="Controlo" />
+    <Lede title="Controlo">Últimos {JANELA_DO_CONTROLO_MESES} meses</Lede>
     <Bloco tom={n > 0 ? "perda" : "tinta"} tamanho="heroi"
       rotulo={n > 0 ? `${n} sinais por ver` : "Nada por ver"} valor={n} />
     <Contas emissao={dados.emissao} />

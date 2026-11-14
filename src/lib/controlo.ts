@@ -3,6 +3,8 @@ import { addMonthsKey, monthLabel, nomeProprio } from "./format";
 import { rentInMonth } from "./gestao";
 import type { Contract, RentUpdate } from "./types";
 
+export const JANELA_DO_CONTROLO_MESES = 12;
+
 export type Observacao = {
   receiptKey: string; contrato: string; conta: string; periodStart: string; periodEnd: string;
   receivedDate: string | null; amount: number; withholding: number;
@@ -118,13 +120,18 @@ function sinalDeValor(r: Indexada, c: ContratoDoControlo | undefined,
   if (Math.abs((totais.get(mes) ?? 0) - renda) <= 100) return [];
   const diferenca = centimos(r.obs.amount) - renda;
   if (Math.abs(diferenca) <= 100) return [];
+  const atualizacao = c.atualizacoes
+    .filter((a) => a.contract_id === c.id && toMonthKey(a.effective_date) === mes)
+    .sort((a, b) => a.effective_date.localeCompare(b.effective_date)).at(-1);
+  if (atualizacao?.old_rent != null &&
+    Math.abs(centimos(r.obs.amount) - centimos(atualizacao.old_rent)) <= 100) return [];
   return [criar(r.obs, c, "valor_diferente", 2,
     `O valor do recibo da conta ${r.obs.conta} difere da renda em vigor em ${monthLabel(mes)}.`,
     { valor: diferenca / 100 })];
 }
 
 function sinaisDaJanela(emitidos: Indexada[], c: ContratoDoControlo | undefined, hoje: string): Sinal[] {
-  const fim = toMonthKey(hoje), inicio = addMonthsKey(fim, -11);
+  const fim = toMonthKey(hoje), inicio = addMonthsKey(fim, 1 - JANELA_DO_CONTROLO_MESES);
   const recentes = emitidos.filter((r) => r.meses.some((m) => m >= inicio && m <= fim));
   if (!recentes.length) return [];
   const saida: Sinal[] = [], o = recentes[0].obs;
@@ -132,7 +139,7 @@ function sinaisDaJanela(emitidos: Indexada[], c: ContratoDoControlo | undefined,
     diaDaObservacao(b.obs).localeCompare(diaDaObservacao(a.obs)))[0].obs;
   if (recentes.some((r) => r.obs.withholding > 0) && recentes.some((r) => r.obs.withholding === 0)) {
     saida.push(criar(o, c, "retencao_inconsistente", 2,
-      `A conta ${ultima.conta} tem recibos com e sem retenção no mesmo contrato nos últimos 12 meses${c?.empresa ? ", apesar de se esperar retenção" : ""}.`,
+      `A conta ${ultima.conta} tem recibos com e sem retenção no mesmo contrato nos últimos ${JANELA_DO_CONTROLO_MESES} meses${c?.empresa ? ", apesar de se esperar retenção" : ""}.`,
       { dia: diaDaObservacao(ultima) }));
   }
   const meses = [...new Set(recentes.flatMap((r) => r.meses))]
@@ -159,6 +166,8 @@ function sinalDeContacto(c: ContratoDoControlo, recibos: Indexada[], ctx: Contex
 }
 
 export function sinais(obs: Observacao[], ctx: ContextoDoControlo): Sinal[] {
+  const fim = toMonthKey(ctx.hoje), inicio = addMonthsKey(fim, 1 - JANELA_DO_CONTROLO_MESES);
+  const naJanela = (r: Indexada) => r.meses.some((m) => m >= inicio && m <= fim);
   const contratos = new Map(ctx.contratos.filter((c) => c.pf_contract_no).map((c) => [c.pf_contract_no, c]));
   const porContrato = new Map<string, Indexada[]>();
   const saida: Sinal[] = [];
@@ -166,7 +175,7 @@ export function sinais(obs: Observacao[], ctx: ContextoDoControlo): Sinal[] {
     const lista = porContrato.get(r.obs.contrato) ?? [];
     lista.push(r);
     porContrato.set(r.obs.contrato, lista);
-    saida.push(...sinaisDeDatas(r, contratos.get(r.obs.contrato), ctx.hoje));
+    if (naJanela(r)) saida.push(...sinaisDeDatas(r, contratos.get(r.obs.contrato), ctx.hoje));
   }
   for (const [numero, recibos] of porContrato) {
     const c = contratos.get(numero);
@@ -174,9 +183,9 @@ export function sinais(obs: Observacao[], ctx: ContextoDoControlo): Sinal[] {
     const chavesAnuladas = new Set(anulados.map((r) => r.obs.receiptKey));
     const emitidos = recibos.filter((r) => r.obs.state === "emitido" && !chavesAnuladas.has(r.obs.receiptKey));
     const totais = totaisMensais(emitidos);
-    saida.push(...sinaisDeLotes(recibos, c), ...sinaisDaJanela(emitidos, c, ctx.hoje));
-    for (const r of anulados) saida.push(...sinalDeAnulacao(r, emitidos, c));
-    for (const r of emitidos) saida.push(...sinalDeValor(r, c, totais, ctx.hoje));
+    saida.push(...sinaisDeLotes(recibos.filter(naJanela), c), ...sinaisDaJanela(emitidos, c, ctx.hoje));
+    for (const r of anulados.filter(naJanela)) saida.push(...sinalDeAnulacao(r, emitidos, c));
+    for (const r of emitidos.filter(naJanela)) saida.push(...sinalDeValor(r, c, totais, ctx.hoje));
   }
   for (const c of ctx.contratos) {
     if (c.pf_contract_no) saida.push(...sinalDeContacto(c, porContrato.get(c.pf_contract_no) ?? [], ctx));

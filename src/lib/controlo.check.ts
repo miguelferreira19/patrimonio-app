@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {
-  atrasoDeEmissao, resumoDoControlo, sinais,
+  atrasoDeEmissao, JANELA_DO_CONTROLO_MESES, resumoDoControlo, sinais,
   type ContextoDoControlo, type ContratoDoControlo, type Observacao, type TipoDeSinal,
 } from "./controlo";
 import { carregarObservacoes } from "./controlo-load";
@@ -28,6 +28,35 @@ function mensal(mes: string, p: Partial<Observacao> = {}) {
   return recibo({ receiptKey: `portal-1/${mes}`, periodStart: `${mes}-01`,
     periodEnd: `${mes}-28`, receivedDate: `${mes}-01`, firstSeen: null, ...p });
 }
+
+assert.equal(JANELA_DO_CONTROLO_MESES, 12);
+for (const [mes, dentro] of [["2023-11", false], ["2025-10", false], ["2025-11", false],
+  ["2025-12", true], ["2026-09", true], ["2026-11", true], ["2026-12", false]] as const) {
+  const o = mensal(mes, { amount: 600, receivedDate: "2020-01-01", firstSeen: contexto.hoje });
+  for (const tipo of ["valor_diferente", "emissao_tardia", "data_estranha"] as const) {
+    assert.equal(doTipo(tipo, [o]).length, Number(dentro), `${tipo}: período ${mes}`);
+  }
+  const cancelado = { ...o, state: "anulado" as const };
+  assert.equal(doTipo("anulado_sem_substituto", [cancelado]).length, Number(dentro),
+    `anulação sem substituto: período ${mes}`);
+  assert.equal(doTipo("anulado_reemitido", [cancelado, { ...o, receiptKey: "substituto" }]).length,
+    Number(dentro), `anulação com substituto: período ${mes}`);
+}
+const antigosEmLote = ["2025-09", "2025-10", "2025-11"]
+  .map((mes) => mensal(mes, { firstSeen: contexto.hoje }));
+assert.equal(doTipo("lote", antigosEmLote).length, 0, "recolha recente não torna os períodos atuais");
+assert.equal(doTipo("lote", [...antigosEmLote.slice(0, 2),
+  mensal("2026-09", { firstSeen: contexto.hoje })]).length, 0, "histórico não completa um lote recente");
+const tocaJanela = recibo({ periodStart: "2025-09-01", periodEnd: "2025-12-31",
+  amount: 2000, receivedDate: "2025-09-01", firstSeen: contexto.hoje });
+assert.equal(doTipo("emissao_tardia", [tocaJanela]).length, 1, "um mês na janela basta");
+const anuladoNaFronteira = { ...tocaJanela, state: "anulado" as const };
+assert.equal(doTipo("anulado_sem_substituto", [anuladoNaFronteira]).length, 1);
+const substitutosDaFronteira = [mensal("2025-09", { periodEnd: "2025-11-30", amount: 1500 }),
+  mensal("2025-12")];
+assert.equal(doTipo("anulado_sem_substituto", [anuladoNaFronteira, ...substitutosDaFronteira]).length, 0);
+assert.equal(doTipo("anulado_reemitido", [anuladoNaFronteira, ...substitutosDaFronteira])[0].valor, 0,
+  "substituto fora da janela continua a cobrir os meses antigos do anulado");
 
 for (const [dias, gravidade] of [[10, 0], [11, 1], [30, 1], [31, 2]]) {
   const firstSeen = new Date(Date.UTC(2026, 9, 1 + dias)).toISOString().slice(0, 10);
@@ -90,6 +119,8 @@ assert.equal(doTipo("valor_diferente", [recibo({ amount: 200 }),
   { ...substituto, amount: 300 }]).length, 0, "pagamento em partes soma a renda");
 assert.equal(doTipo("valor_diferente", [recibo({ amount: 200 }),
   { ...substituto, amount: 301 }]).length, 0, "a tolerância também vale para a soma");
+assert.equal(doTipo("valor_diferente", [recibo({ amount: 200 }),
+  { ...substituto, amount: 200 }]).length, 2, "soma mensal diferente assinala os dois recibos");
 assert.equal(doTipo("valor_diferente", [substitutoLongo]).length, 0);
 assert.equal(doTipo("valor_diferente", [{ ...substitutoLongo, amount: 999.99 }]).length, 0);
 assert.equal(doTipo("valor_diferente", [anulado, recibo({ amount: 400 })]).length, 0);
@@ -98,7 +129,27 @@ const atualizado = { ...contrato, rent: 550, atualizacoes: [{ id: "u1", contract
 assert.equal(doTipo("valor_diferente", [mensal("2026-09"), mensal("2026-10", { amount: 550 })],
   { ...contexto, contratos: [atualizado] }).length, 0);
 assert.equal(doTipo("valor_diferente", [mensal("2026-10")],
-  { ...contexto, contratos: [atualizado] })[0].valor, -50);
+  { ...contexto, contratos: [atualizado] }).length, 0, "renda anterior aceite no mês da atualização");
+assert.equal(doTipo("valor_diferente", [mensal("2026-11")],
+  { ...contexto, contratos: [atualizado] })[0].valor, -50, "exceção não passa ao mês seguinte");
+assert.equal(doTipo("valor_diferente", [mensal("2026-10", { amount: 499 })],
+  { ...contexto, contratos: [atualizado] }).length, 0, "tolerância de 1 euro na renda anterior");
+assert.equal(doTipo("valor_diferente", [mensal("2026-10", { amount: 498.99 })],
+  { ...contexto, contratos: [atualizado] }).length, 1, "valor diferente de ambas as rendas");
+const duasAtualizacoes = { ...atualizado, rent: 600, atualizacoes: [
+  { ...atualizado.atualizacoes[0], id: "u2", effective_date: "2026-11-01", old_rent: 550, new_rent: 600 },
+  atualizado.atualizacoes[0],
+] };
+const ctxAtualizado = { ...contexto, contratos: [duasAtualizacoes] };
+assert.equal(doTipo("valor_diferente", [mensal("2026-10", { amount: 550 })], ctxAtualizado).length, 0,
+  "renda histórica usa a atualização do mês e não a renda atual");
+assert.equal(doTipo("valor_diferente", [mensal("2026-11", { amount: 550 })], ctxAtualizado).length, 0);
+assert.equal(doTipo("valor_diferente", [mensal("2026-11")], ctxAtualizado).length, 1,
+  "só a renda imediatamente anterior à última atualização beneficia da exceção");
+const semRendaAnterior = { ...atualizado,
+  atualizacoes: [{ ...atualizado.atualizacoes[0], old_rent: null }] };
+assert.equal(doTipo("valor_diferente", [mensal("2026-10")],
+  { ...contexto, contratos: [semRendaAnterior] }).length, 1, "sem renda anterior não se inventa exceção");
 
 const semRetencao = mensal("2026-09", { withholding: 0 });
 assert.equal(doTipo("retencao_inconsistente", [recibo(), semRetencao]).length, 1);
